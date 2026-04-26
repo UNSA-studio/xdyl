@@ -11,7 +11,7 @@
         <item name="android:navigationBarColor">@color/background_dark</item>
         <item name="android:fontFamily">@font/silver</item>
         <item name="android:windowActivityTransitions">false</item>
-        <!-- 全局基础字号放大 -->
-        <item name="android:textSize">18sp</item>
+        <!-- 全局基础字号增大到 22sp -->
+        <item name="android:textSize">22sp</item>
     </style>
 </resources>
