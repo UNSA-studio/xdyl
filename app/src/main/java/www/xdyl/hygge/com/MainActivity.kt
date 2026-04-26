@@ -84,11 +84,15 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissionsIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
-                startActivity(Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                val intent = Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                startActivity(intent)
             }
         } else {
             requestPermissions(
-                arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE, android.Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                arrayOf(
+                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ),
                 100
             )
         }
@@ -101,159 +105,273 @@ class MainActivity : AppCompatActivity() {
             "Material Files" to "me.zhanghai.android.files"
         )
         val installed = managers.filter { isPackageInstalled(it.second) }
+
         if (installed.isEmpty()) {
             selectDirectory(null)
             return
         }
+
+        val items = installed.map { it.first }.toTypedArray()
         AlertDialog.Builder(this)
             .setTitle("请选择文件管理器")
-            .setItems(installed.map { it.first }.toTypedArray()) { _, which ->
-                launchThirdPartyManager(installed[which].second)
+            .setItems(items) { _, which ->
+                val packageName = installed[which].second
+                launchThirdPartyManager(packageName)
             }
-            .setNeutralButton("系统默认") { _, _ -> selectDirectory(null) }
+            .setNeutralButton("系统默认") { _, _ ->
+                selectDirectory(null)
+            }
             .show()
     }
 
-    private fun isPackageInstalled(pkg: String) = try {
-        packageManager.getPackageInfo(pkg, 0); true
-    } catch (_: Exception) { false }
+    private fun isPackageInstalled(packageName: String): Boolean {
+        return try {
+            packageManager.getPackageInfo(packageName, 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
+        }
+    }
 
-    private fun launchThirdPartyManager(pkg: String) {
+    private fun launchThirdPartyManager(packageName: String) {
         try {
-            startActivity(Intent(Intent.ACTION_VIEW).setClassName(pkg, "com.android.documentsui.DocumentsActivity").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        } catch (_: Exception) {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setClassName(packageName, "com.android.documentsui.DocumentsActivity")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(intent)
+            Toast.makeText(this, "请在该管理器中手动导航至游戏目录，然后返回本应用", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "无法启动所选管理器，将使用系统默认", Toast.LENGTH_SHORT).show()
             selectDirectory(null)
         }
     }
 
-    private fun selectDirectory(uri: Uri?) = dirPickerLauncher.launch(uri)
+    private fun selectDirectory(initialUri: Uri?) {
+        dirPickerLauncher.launch(initialUri)
+    }
 
-    private val dirPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+    private val dirPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
         uri?.let {
-            contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            contentResolver.takePersistableUriPermission(it,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             selectedBaseUri = it
-            findMinecraftVersionDir(it)?.let { (dir, similar) ->
-                if (similar) showError(Constants.ERROR06)
-                else {
+            findMinecraftVersionDir(it)?.let { (dir, isSimilar) ->
+                if (isSimilar) {
+                    showError(Constants.ERROR06)
+                } else {
                     targetModsDir = dir
                     binding.btnStartDownload.isEnabled = true
                     log("Game dir selected: ${dir.absolutePath}")
+                    Toast.makeText(this, "已选择游戏目录", Toast.LENGTH_SHORT).show()
                 }
-            } ?: showError(Constants.ERROR01)
+            } ?: run {
+                showError(Constants.ERROR01)
+            }
         }
     }
 
     private fun findMinecraftVersionDir(baseUri: Uri): Pair<File, Boolean>? {
         try {
             val doc = DocumentFile.fromTreeUri(this, baseUri) ?: return null
-            val mc = doc.findFile(".minecraft") ?: doc.findFile("minecraft") ?: return null
-            val vers = mc.listFiles()?.find { it.name == "versions" } ?: return null
-            val target = getVersionFolderName()
-            val vDir = vers.listFiles()?.find { it.name?.equals(target, true) == true }
-            if (vDir != null) {
-                val mods = vDir.listFiles()?.find { it.name == "mods" } ?: vDir.createDirectory("mods")
-                val rawPath = mods?.uri?.path?.substringAfter("/tree/")?.let { "/storage/emulated/0/$it" } ?: return null
-                val f = File(rawPath).also { if (!it.exists()) it.mkdirs() }
-                return Pair(f, false)
-            } else return checkSimilar(vers)
-        } catch (_: Exception) { return null }
+            val minecraftDoc = doc.findFile(".minecraft") ?: doc.findFile("minecraft") ?: return null
+            val versionsDoc = minecraftDoc.listFiles()?.find { it.name == "versions" } ?: return null
+            val targetVersion = getVersionFolderName()
+            val versionDir = versionsDoc.listFiles()?.find {
+                it.name?.equals(targetVersion, ignoreCase = true) == true
+            }
+            if (versionDir != null) {
+                val modsDir = versionDir.listFiles()?.find { it.name == Constants.MODS_DIR }
+                    ?: versionDir.createDirectory(Constants.MODS_DIR)
+                val rawPath = modsDir?.uri?.path?.let {
+                    it.substring(it.indexOf("/tree/") + 6).let { p ->
+                        "/storage/emulated/0/$p"
+                    }
+                } ?: return null
+                val file = File(rawPath)
+                if (!file.exists()) file.mkdirs()
+                return Pair(file, false)
+            } else {
+                return checkSimilar(versionsDoc)
+            }
+        } catch (e: Exception) {
+            return null
+        }
     }
 
-    private fun getVersionFolderName() = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
+    private fun getVersionFolderName(): String {
+        return prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
+    }
 
-    private fun checkSimilar(vers: DocumentFile): Pair<File, Boolean>? {
-        val prefix = getVersionFolderName().take(5)
-        val similar = vers.listFiles()?.find { it.name?.contains(prefix) == true && it.name != getVersionFolderName() }
+    private fun checkSimilar(versionsDoc: DocumentFile): Pair<File, Boolean>? {
+        val targetPrefix = getVersionFolderName().substring(0, 5)
+        val similar = versionsDoc.listFiles()?.find {
+            it.name?.contains(targetPrefix) == true &&
+            it.name != getVersionFolderName()
+        }
         if (similar != null) {
-            val mods = similar.listFiles()?.find { it.name == "mods" } ?: similar.createDirectory("mods")
-            val rawPath = mods?.uri?.path?.substringAfter("/tree/") ?: return null
-            return Pair(File("/storage/emulated/0/$rawPath"), true)
+            val modsDir = similar.listFiles()?.find { it.name == Constants.MODS_DIR }
+                ?: similar.createDirectory(Constants.MODS_DIR)
+            val rawPath = modsDir?.uri?.path?.let {
+                it.substring(it.indexOf("/tree/") + 6)
+            } ?: return null
+            val file = File("/storage/emulated/0/$rawPath")
+            return Pair(file, true)
         }
         return null
     }
 
-    private fun parseCsvMods(csv: String): List<ModInfo> {
-        return csv.lines().drop(1).filter { it.isNotBlank() }.map { line ->
-            val p = line.split(",")
-            ModInfo(p[0].trim('"').removePrefix("./"), p[2].toLong(), p[3].trim('"'), p[4].trim('"'))
-        }
-    }
-
-    private fun showError(code: String) {
-        log("Error: $code")
-        AlertDialog.Builder(this).setTitle("意外错误!").setMessage("错误码: $code\n请查看是否是您的问题,如不是,请联系开发者").setPositiveButton("确定", null).show()
+    private fun showError(errorCode: String) {
+        log("Error: $errorCode")
+        AlertDialog.Builder(this)
+            .setTitle("意外错误!")
+            .setMessage("错误码: $errorCode\n请查看是否是您的问题,如不是,请联系开发者")
+            .setPositiveButton("确定", null)
+            .show()
     }
 
     private suspend fun fetchServerFileList(): List<String> = withContext(Dispatchers.IO) {
         try {
-            val html = client.newCall(Request.Builder().url(Constants.BASE_URL).build()).execute().body?.string() ?: return@withContext emptyList()
+            val request = Request.Builder().url(Constants.BASE_URL).build()
+            val response = client.newCall(request).execute()
+            val html = response.body?.string() ?: return@withContext emptyList()
+            val pattern = Pattern.compile("<a href=\"([^\"]+)\">")
+            val matcher = pattern.matcher(html)
             val files = mutableListOf<String>()
-            val m = Pattern.compile("<a href=\"([^\"]+)\">").matcher(html)
-            while (m.find()) m.group(1)?.let { if (it.endsWith(".jar")) files.add(it) }
+            while (matcher.find()) {
+                val link = matcher.group(1)
+                if (link != null && link.endsWith(".jar")) {
+                    files.add(link)
+                }
+            }
             log("Server file count: ${files.size}")
             files
         } catch (e: Exception) {
-            log("Server fetch error: ${e.message}")
+            log("Failed to fetch server file list: ${e.message}")
             emptyList()
         }
     }
 
+    private fun parseCsvMods(csv: String): List<ModInfo> {
+        val lines = csv.lines().drop(1).filter { it.isNotBlank() }
+        return lines.map { line ->
+            val parts = line.split(",")
+            val fileName = parts[0].trim('"').removePrefix("./")
+            val size = parts[2].toLong()
+            val md5 = parts[3].trim('"')
+            val sha256 = parts[4].trim('"')
+            ModInfo(fileName, size, md5, sha256)
+        }
+    }
+
+    private suspend fun downloadWithRetry(
+        url: String,
+        size: Long,
+        destFile: File,
+        maxRetries: Int = 3
+    ) {
+        var lastException: Exception? = null
+        for (attempt in 1..maxRetries) {
+            try {
+                val manager = DownloadManager(url, size, 1, useRange = false)
+                manager.download(destFile) { /* optional progress */ }
+                return
+            } catch (e: Exception) {
+                lastException = e
+                log("Retry $attempt/$maxRetries for ${destFile.name}: ${e.message}")
+                delay(500)
+            }
+        }
+        throw lastException ?: RuntimeException("Download failed after $maxRetries retries")
+    }
+
     private fun startUpdateProcess() {
-        if (isProcessing) return
-        val modsDir = targetModsDir ?: run { showError(Constants.ERROR01); return }
+        if (isProcessing) {
+            Toast.makeText(this, "正在处理中，请稍候", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val modsDir = targetModsDir ?: run {
+            showError(Constants.ERROR01)
+            return
+        }
         isProcessing = true
         binding.btnStartDownload.isEnabled = false
         binding.progressBar.visibility = View.VISIBLE
         binding.progressBar.progress = 0
-        logBuilder.clear(); binding.tvLog.text = ""
+        logBuilder.clear()
+        binding.tvLog.text = ""
         log("Fetching server file list...")
 
-        val threads = prefs.getInt("thread_count", 20).coerceIn(20, 128)
+        val threadCount = prefs.getInt("thread_count", 20).coerceIn(20, 128)
 
         scope.launch {
             try {
                 val serverFiles = fetchServerFileList()
-                if (serverFiles.isEmpty()) { showError(Constants.ERROR01); return@launch }
+                if (serverFiles.isEmpty()) {
+                    showError(Constants.ERROR01)
+                    return@launch
+                }
                 val csvMods = parseCsvMods(Constants.CSV_CONTENT)
                 val csvSet = csvMods.map { it.fileName }.toSet()
                 val toDownload = serverFiles.filter { csvSet.contains(it) }
-                if (toDownload.isEmpty()) { showError(Constants.ERROR01); return@launch }
+                if (toDownload.isEmpty()) {
+                    log("No files to download (CSV mismatch)")
+                    showError(Constants.ERROR01)
+                    return@launch
+                }
 
-                val sem = Semaphore(threads)
+                val sem = Semaphore(threadCount)
                 val failed = AtomicInteger(0)
                 var completed = 0
+                val total = toDownload.size
+
                 withContext(Dispatchers.IO) {
-                    toDownload.map { name ->
+                    val jobs = toDownload.map { name ->
                         launch {
                             sem.acquire()
                             try {
                                 val mod = csvMods.first { it.fileName == name }
                                 val file = File(modsDir, name)
-                                log("Download $name (${mod.size} bytes)")
-                                DownloadManager(Constants.BASE_URL + name, mod.size, 1).download(file) {}
-                                if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256)) throw RuntimeException("Checksum fail: $name")
+                                log("Downloading $name (${mod.size} bytes)")
+                                downloadWithRetry(Constants.BASE_URL + name, mod.size, file)
+                                val verifier = FileVerifier()
+                                if (!verifier.verifyFile(file, mod.md5, mod.sha256)) {
+                                    throw RuntimeException("Checksum failed: $name")
+                                }
                                 completed++
                                 withContext(Dispatchers.Main) {
-                                    binding.progressBar.progress = completed * 100 / toDownload.size
-                                    binding.tvStatus.text = "$completed/${toDownload.size}"
+                                    binding.progressBar.progress = (completed * 100) / total
+                                    binding.tvStatus.text = "$completed/$total"
                                 }
                                 log("$name done")
                             } catch (e: Exception) {
                                 log("Failed $name: ${e.message}")
                                 failed.incrementAndGet()
-                            } finally { sem.release() }
+                            } finally {
+                                sem.release()
+                            }
                         }
-                    }.joinAll()
+                    }
+                    jobs.joinAll()
                 }
-                if (failed.get() > 0) showError(Constants.ERROR05)
-                else {
-                    log("All done!")
-                    Toast.makeText(this@MainActivity, "模组已经更新完成!", Toast.LENGTH_LONG).show()
-                    binding.progressBar.visibility = View.GONE
+
+                if (failed.get() > 0) {
+                    showError(Constants.ERROR05)
+                } else {
+                    withContext(Dispatchers.Main) {
+                        log("All mods updated successfully!")
+                        Toast.makeText(this@MainActivity, "模组已经更新完成!", Toast.LENGTH_LONG).show()
+                        binding.tvStatus.text = "完成"
+                        binding.progressBar.visibility = View.GONE
+                    }
                 }
-            } catch (e: java.net.SocketTimeoutException) { showError(Constants.ERROR03) }
-            catch (e: Exception) {
-                if (e.message?.contains("Permission") == true) showError(Constants.ERROR02) else showError(Constants.ERROR01)
+            } catch (e: java.net.SocketTimeoutException) {
+                showError(Constants.ERROR03)
+            } catch (e: Exception) {
+                if (e.message?.contains("Permission") == true) showError(Constants.ERROR02)
+                else showError(Constants.ERROR01)
                 log("Exception: ${e.message}")
             } finally {
                 isProcessing = false
@@ -264,27 +382,46 @@ class MainActivity : AppCompatActivity() {
 
     fun appendLog(msg: String) {
         logBuilder.appendLine(msg)
-        runOnUiThread { binding.tvLog.text = logBuilder.toString(); binding.logScroll.post { binding.logScroll.fullScroll(View.FOCUS_DOWN) } }
+        runOnUiThread {
+            binding.tvLog.text = logBuilder.toString()
+            binding.logScroll.post { binding.logScroll.fullScroll(View.FOCUS_DOWN) }
+        }
     }
 
-    private fun log(msg: String) = LogManager.log(msg)
+    private fun log(msg: String) {
+        LogManager.log(msg)
+    }
 
     private fun exportLogToFile() {
         try {
             val log = LogManager.getFullLog()
-            if (log.isEmpty()) { Toast.makeText(this, "暂无日志", Toast.LENGTH_SHORT).show(); return }
-            val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "mod_update_log_${System.currentTimeMillis()}.txt")
+            if (log.isEmpty()) {
+                Toast.makeText(this, "暂无日志可导出", Toast.LENGTH_SHORT).show()
+                return
+            }
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val fileName = "mod_update_log_${System.currentTimeMillis()}.txt"
+            val file = File(downloadsDir, fileName)
             FileOutputStream(file).use { it.write(log.toByteArray()) }
-            Toast.makeText(this, "日志导出至 ${file.absolutePath}", Toast.LENGTH_LONG).show()
-        } catch (e: Exception) { Toast.makeText(this, "导出失败: ${e.message}", Toast.LENGTH_LONG).show() }
+            Toast.makeText(this, "日志已导出至 ${file.absolutePath}", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "导出失败: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun activateGreenScreen() {
         binding.greenOverlay.visibility = View.VISIBLE
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {}
+            override fun handleOnBackPressed() {
+                // 屏蔽返回
+            }
         })
+        Toast.makeText(this, "你为啥要点呢？", Toast.LENGTH_LONG).show()
     }
 
-    override fun onDestroy() { instance = null; job.cancel(); super.onDestroy() }
+    override fun onDestroy() {
+        instance = null
+        job.cancel()
+        super.onDestroy()
+    }
 }

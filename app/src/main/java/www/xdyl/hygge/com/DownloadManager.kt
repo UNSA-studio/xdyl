@@ -10,7 +10,8 @@ import java.util.concurrent.atomic.AtomicLong
 class DownloadManager(
     private val url: String,
     private val totalSize: Long,
-    private val threadCount: Int = 20
+    private val threadCount: Int = 20,
+    private val useRange: Boolean = true  // 可以关闭 Range 请求
 ) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
@@ -19,26 +20,46 @@ class DownloadManager(
         .build()
 
     suspend fun download(destFile: File, onProgress: (Int) -> Unit) = withContext(Dispatchers.IO) {
-        val chunkSize = totalSize / threadCount
-        val rem = totalSize % threadCount
-
-        val randomAccessFile = RandomAccessFile(destFile, "rw")
-        randomAccessFile.setLength(totalSize)
-
-        val progress = AtomicInteger(0)
-        val downloadedBytes = AtomicLong(0)
-
-        val jobs = mutableListOf<Job>()
-        for (i in 0 until threadCount) {
-            val start = i * chunkSize
-            var end = start + chunkSize - 1
-            if (i == threadCount - 1) end = totalSize - 1
-            jobs.add(launch {
-                downloadChunk(start, end, randomAccessFile, downloadedBytes, progress, onProgress)
-            })
+        if (!useRange || threadCount <= 1) {
+            // 简单模式：直接 GET，不使用 Range
+            val request = Request.Builder().url(url).build()
+            val response = client.newCall(request).execute()
+            response.use {
+                if (!it.isSuccessful) throw RuntimeException("Download failed ${it.code}")
+                val body = it.body ?: throw RuntimeException("Empty body")
+                val input = body.byteStream()
+                val buffer = ByteArray(8192)
+                var downloaded = 0L
+                destFile.outputStream().use { fos ->
+                    var bytesRead: Int
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        fos.write(buffer, 0, bytesRead)
+                        downloaded += bytesRead
+                        val pct = (downloaded * 100 / totalSize).toInt()
+                        withContext(Dispatchers.Main) { onProgress(pct) }
+                    }
+                }
+            }
+        } else {
+            // 多线程 Range 下载
+            val chunkSize = totalSize / threadCount
+            val rem = totalSize % threadCount
+            val randomAccessFile = RandomAccessFile(destFile, "rw")
+            randomAccessFile.setLength(totalSize)
+            val progress = AtomicInteger(0)
+            val downloadedBytes = AtomicLong(0)
+            val jobs = mutableListOf<Job>()
+            for (i in 0 until threadCount) {
+                val start = i * chunkSize
+                var end = start + chunkSize - 1
+                if (i == threadCount - 1) end = totalSize - 1
+                jobs.add(launch {
+                    downloadChunk(start, end, randomAccessFile, downloadedBytes, progress, onProgress)
+                })
+            }
+            jobs.joinAll()
+            randomAccessFile.close()
         }
-        jobs.joinAll()
-        randomAccessFile.close()
     }
 
     private suspend fun downloadChunk(
