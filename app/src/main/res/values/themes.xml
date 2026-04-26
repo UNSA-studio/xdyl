@@ -9,11 +9,9 @@
         <item name="android:colorBackground">@color/background_dark</item>
         <item name="android:statusBarColor">@color/background_dark</item>
         <item name="android:navigationBarColor">@color/background_dark</item>
-        <!-- 开启窗口内容过渡 -->
-        <item name="android:windowContentTransitions">true</item>
-        <item name="android:windowEnterTransition">@transition/slide_enter</item>
-        <item name="android:windowExitTransition">@transition/slide_exit</item>
-        <item name="android:windowSharedElementEnterTransition">@transition/shared_element_enter</item>
-        <item name="android:windowSharedElementExitTransition">@transition/shared_element_exit</item>
+        <!-- 全局字体 -->
+        <item name="android:fontFamily">@font/silver</item>
+        <!-- 关闭系统默认窗口过渡，手动控制 -->
+        <item name="android:windowActivityTransitions">false</item>
     </style>
 </resources>

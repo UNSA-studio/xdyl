@@ -1,7 +1,6 @@
 package www.xdyl.hygge.com
 
 import android.app.AlertDialog
-import android.app.ActivityOptions
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -33,12 +32,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var prefs: SharedPreferences
     private val logBuilder = StringBuilder()
 
+    companion object {
+        var instance: MainActivity? = null
+    }
+
     data class ModInfo(val fileName: String, val size: Long, val md5: String, val sha256: String)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        instance = this
 
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         binding.tvLog.movementMethod = ScrollingMovementMethod()
@@ -54,10 +58,12 @@ class MainActivity : AppCompatActivity() {
             startUpdateProcess()
         }
         binding.btnSettings.setOnClickListener {
-            val options = ActivityOptions.makeSceneTransitionAnimation(
-                this, binding.btnSettings, "settings_button"
-            ).toBundle()
-            startActivity(Intent(this, SettingsActivity::class.java), options)
+            // 齿轮旋转动画
+            it.animate().rotationBy(180f).setDuration(300).start()
+            // 启动设置页面，并添加从右滑入的动画
+            val intent = Intent(this, SettingsActivity::class.java)
+            startActivity(intent)
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
     }
 
@@ -156,7 +162,7 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     targetModsDir = dir
                     binding.btnStartDownload.isEnabled = true
-                    appendLog("游戏目录已选择: ${dir.absolutePath}")
+                    log("Game dir selected: ${dir.absolutePath}")
                     Toast.makeText(this, "已选择游戏目录", Toast.LENGTH_SHORT).show()
                 }
             } ?: run {
@@ -228,7 +234,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showError(errorCode: String) {
-        appendLog("错误: $errorCode")
+        log("Error: $errorCode")
         AlertDialog.Builder(this)
             .setTitle("意外错误!")
             .setMessage("错误码: $errorCode\n请查看是否是您的问题,如不是,请联系开发者")
@@ -251,7 +257,7 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.progress = 0
         logBuilder.clear()
         binding.tvLog.text = ""
-        appendLog("开始下载模组...")
+        log("Starting mod download...")
 
         val threadCount = prefs.getInt("thread_count", 20).coerceIn(20, 128)
         val mods = parseCsvMods(Constants.CSV_CONTENT)
@@ -270,17 +276,17 @@ class MainActivity : AppCompatActivity() {
                         launch {
                             semaphore.acquire()
                             try {
-                                appendLog("下载 ${mod.fileName} (${mod.size} bytes)")
+                                log("Download ${mod.fileName} (${mod.size} bytes)")
                                 val file = File(modsDir, mod.fileName)
                                 val manager = DownloadManager(Constants.BASE_URL + mod.fileName, mod.size, 1)
-                                manager.download(file) { progress -> /* 可选进度 */ }
+                                manager.download(file) { progress -> /* optional */ }
                                 val verifier = FileVerifier()
                                 if (!verifier.verifyFile(file, mod.md5, mod.sha256)) {
-                                    throw RuntimeException("校验失败: ${mod.fileName}")
+                                    throw RuntimeException("Checksum failed: ${mod.fileName}")
                                 }
-                                appendLog("${mod.fileName} 完成")
+                                log("${mod.fileName} completed")
                             } catch (e: Exception) {
-                                appendLog("失败: ${mod.fileName} - ${e.message}")
+                                log("Failed: ${mod.fileName} - ${e.message}")
                                 failed.incrementAndGet()
                             } finally {
                                 semaphore.release()
@@ -293,7 +299,7 @@ class MainActivity : AppCompatActivity() {
                     showError(Constants.ERROR05)
                 } else {
                     withContext(Dispatchers.Main) {
-                        appendLog("所有模组更新完成！")
+                        log("All mods updated successfully!")
                         Toast.makeText(this@MainActivity, "模组已经更新完成!", Toast.LENGTH_LONG).show()
                         binding.tvStatus.text = "完成"
                         binding.progressBar.visibility = View.GONE
@@ -304,7 +310,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 if (e.message?.contains("Permission") == true) showError(Constants.ERROR02)
                 else showError(Constants.ERROR01)
-                appendLog("异常: ${e.message}")
+                log("Exception: ${e.message}")
             } finally {
                 isProcessing = false
                 binding.btnStartDownload.isEnabled = true
@@ -312,7 +318,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun appendLog(msg: String) {
+    fun appendLog(msg: String) {
         logBuilder.appendLine(msg)
         runOnUiThread {
             binding.tvLog.text = logBuilder.toString()
@@ -320,9 +326,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun log(msg: String) {
+        LogManager.log(msg)
+    }
+
     private fun exportLogToFile() {
         try {
-            val log = logBuilder.toString()
+            val log = LogManager.getFullLog()
             if (log.isEmpty()) {
                 Toast.makeText(this, "暂无日志可导出", Toast.LENGTH_SHORT).show()
                 return
@@ -348,6 +358,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        instance = null
         job.cancel()
         super.onDestroy()
     }

@@ -7,6 +7,15 @@ android {
     namespace = "www.xdyl.hygge.com"
     compileSdk = 35
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("xdyl_keystore.jks")
+            storePassword = "xdyl123"
+            keyAlias = "xdyl"
+            keyPassword = "xdyl123"
+        }
+    }
+
     defaultConfig {
         applicationId = "www.xdyl.hygge.com"
         minSdk = 28
@@ -16,7 +25,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("release")
+        }
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
