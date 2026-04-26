@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.text.method.ScrollingMovementMethod
+import android.view.View
 import android.view.animation.AnimationUtils
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,13 +18,8 @@ import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.*
 import www.xdyl.hygge.com.databinding.ActivityMainBinding
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.util.zip.ZipFile
-import com.github.junrar.Junrar
-import org.apache.commons.compress.archivers.ArchiveEntry
-import org.apache.commons.compress.archivers.ArchiveInputStream
-import org.apache.commons.compress.archivers.ArchiveStreamFactory
+import java.util.concurrent.Semaphore
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -34,6 +30,8 @@ class MainActivity : AppCompatActivity() {
     private val scope = CoroutineScope(Dispatchers.Main + job)
     private lateinit var prefs: SharedPreferences
     private val logBuilder = StringBuilder()
+
+    data class ModInfo(val fileName: String, val size: Long, val md5: String, val sha256: String)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,7 +52,21 @@ class MainActivity : AppCompatActivity() {
             startUpdateProcess()
         }
         binding.btnSettings.setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
+            val options = android.app.ActivityOptions.makeSceneTransitionAnimation(this, binding.btnSettings, "settings_button").toBundle(); startActivity(Intent(this, SettingsActivity::class.java), options)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 检查是否需要导出日志
+        if (prefs.getBoolean("request_export_log", false)) {
+            prefs.edit().putBoolean("request_export_log", false).apply()
+            exportLogToFile()
+        }
+        // 检查是否需要触发绿屏
+        if (prefs.getBoolean("trigger_green", false)) {
+            prefs.edit().putBoolean("trigger_green", false).apply()
+            activateGreenScreen()
         }
     }
 
@@ -200,6 +212,18 @@ class MainActivity : AppCompatActivity() {
         return null
     }
 
+    private fun parseCsvMods(csv: String): List<ModInfo> {
+        val lines = csv.lines().drop(1).filter { it.isNotBlank() }
+        return lines.map { line ->
+            val parts = line.split(",")
+            val fileName = parts[0].trim('"').removePrefix("./")
+            val size = parts[2].toLong()
+            val md5 = parts[3].trim('"')
+            val sha256 = parts[4].trim('"')
+            ModInfo(fileName, size, md5, sha256)
+        }
+    }
+
     private fun showError(errorCode: String) {
         appendLog("错误: $errorCode")
         AlertDialog.Builder(this)
@@ -220,98 +244,58 @@ class MainActivity : AppCompatActivity() {
         }
         isProcessing = true
         binding.btnStartDownload.isEnabled = false
-        binding.progressBar.visibility = android.view.View.VISIBLE
+        binding.progressBar.visibility = View.VISIBLE
         binding.progressBar.progress = 0
         logBuilder.clear()
         binding.tvLog.text = ""
-        appendLog("开始下载 mods.rar ...")
+        appendLog("开始下载模组...")
 
-        val threadCount = getThreadCount()
-        val extractKernel = getExtractKernel()
+        val threadCount = prefs.getInt("thread_count", 20).coerceIn(20, 128)
+        val mods = parseCsvMods(Constants.CSV_CONTENT)
+        if (mods.isEmpty()) {
+            showError(Constants.ERROR01)
+            return
+        }
 
         scope.launch {
-            val downloadDir = cacheDir
-            val rarFile = File(downloadDir, Constants.RAR_NAME)
+            val semaphore = Semaphore(threadCount)
+            val failed = AtomicInteger(0)
 
             try {
                 withContext(Dispatchers.IO) {
-                    val manager = DownloadManager(Constants.DOWNLOAD_URL, Constants.FILE_SIZE, threadCount)
-                    manager.download(rarFile) { progress ->
-                        launch(Dispatchers.Main) {
-                            binding.progressBar.progress = progress
-                            binding.tvStatus.text = "下载中... $progress%"
-                            if (progress % 10 == 0) appendLog("下载进度 $progress%")
+                    val jobs = mods.map { mod ->
+                        launch {
+                            semaphore.acquire()
+                            try {
+                                appendLog("下载 ${mod.fileName} (${mod.size} bytes)")
+                                val file = File(modsDir, mod.fileName)
+                                // 如果文件已存在且大小相同，可跳过（可选）
+                                val manager = DownloadManager(Constants.BASE_URL + mod.fileName, mod.size, 1)
+                                manager.download(file) { /* 单文件进度未展示 */ }
+                                // 校验
+                                val verifier = FileVerifier()
+                                if (!verifier.verifyFile(file, mod.md5, mod.sha256)) {
+                                    throw RuntimeException("校验失败: ${mod.fileName}")
+                                }
+                                appendLog("${mod.fileName} 完成")
+                            } catch (e: Exception) {
+                                appendLog("失败: ${mod.fileName} - ${e.message}")
+                                failed.incrementAndGet()
+                            } finally {
+                                semaphore.release()
+                            }
                         }
                     }
+                    jobs.joinAll()
                 }
-                appendLog("下载完成，开始校验...")
-                val verifier = FileVerifier()
-                val rarCheck = withContext(Dispatchers.IO) {
-                    verifier.verifyFile(rarFile, Constants.EXPECTED_MD5, Constants.EXPECTED_SHA256)
-                }
-                if (!rarCheck) {
-                    showError(Constants.ERROR04)
-                    return@launch
-                }
-                appendLog("校验通过，开始解压（内核：$extractKernel）...")
-                withContext(Dispatchers.IO) {
-                    when (extractKernel) {
-                        "junrar" -> {
-                            Junrar.extract(rarFile, modsDir)
-                            appendLog("Junrar 解压完成")
-                        }
-                        "sevenz" -> {
-                            // 使用 Apache Commons Compress 处理 7z/RAR/ZIP 等
-                            val fis = FileInputStream(rarFile)
-                            val ais: ArchiveInputStream<*> = ArchiveStreamFactory().createArchiveInputStream(fis)
-                            ais.use { archive ->
-                                var entry: ArchiveEntry? = archive.nextEntry
-                                while (entry != null) {
-                                    if (!entry.isDirectory) {
-                                        val outFile = File(modsDir, entry.name)
-                                        outFile.parentFile?.mkdirs()
-                                        FileOutputStream(outFile).use { fos ->
-                                            val buffer = ByteArray(8192)
-                                            var len: Int
-                                            while (archive.read(buffer).also { len = it } != -1) {
-                                                fos.write(buffer, 0, len)
-                                            }
-                                        }
-                                    }
-                                    entry = archive.nextEntry
-                                }
-                            }
-                            appendLog("7z (Commons Compress) 解压完成")
-                        }
-                        "builtin_zip" -> {
-                            ZipFile(rarFile).use { zip ->
-                                zip.entries().asIterator().forEach { entry ->
-                                    if (!entry.isDirectory) {
-                                        val outFile = File(modsDir, entry.name)
-                                        outFile.parentFile?.mkdirs()
-                                        FileOutputStream(outFile).use { fos ->
-                                            zip.getInputStream(entry).copyTo(fos)
-                                        }
-                                    }
-                                }
-                            }
-                            appendLog("内置ZIP解压完成")
-                        }
-                        else -> throw RuntimeException("未知解压内核")
-                    }
-                }
-                appendLog("开始校验模组文件...")
-                val allValid = withContext(Dispatchers.IO) {
-                    verifier.verifyModsFromCsv(modsDir, Constants.CSV_CONTENT)
-                }
-                if (!allValid) {
+                if (failed.get() > 0) {
                     showError(Constants.ERROR05)
                 } else {
                     withContext(Dispatchers.Main) {
                         appendLog("所有模组更新完成！")
                         Toast.makeText(this@MainActivity, "模组已经更新完成!", Toast.LENGTH_LONG).show()
                         binding.tvStatus.text = "完成"
-                        binding.progressBar.visibility = android.view.View.GONE
+                        binding.progressBar.visibility = View.GONE
                     }
                 }
             } catch (e: java.net.SocketTimeoutException) {
@@ -331,20 +315,42 @@ class MainActivity : AppCompatActivity() {
         logBuilder.appendLine(msg)
         runOnUiThread {
             binding.tvLog.text = logBuilder.toString()
-            binding.logScroll.post { binding.logScroll.fullScroll(android.view.View.FOCUS_DOWN) }
+            binding.logScroll.post { binding.logScroll.fullScroll(View.FOCUS_DOWN) }
         }
     }
 
-    private fun getThreadCount(): Int {
-        return prefs.getInt("thread_count", 20).coerceIn(20, 128)
+    private fun exportLogToFile() {
+        try {
+            val log = logBuilder.toString()
+            if (log.isEmpty()) {
+                Toast.makeText(this, "暂无日志可导出", Toast.LENGTH_SHORT).show()
+                return
+            }
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val fileName = "mod_update_log_${System.currentTimeMillis()}.txt"
+            val file = File(downloadsDir, fileName)
+            FileOutputStream(file).use { it.write(log.toByteArray()) }
+            Toast.makeText(this, "日志已导出至 ${file.absolutePath}", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "导出失败: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
-    private fun getExtractKernel(): String {
-        return prefs.getString("extract_kernel", "junrar") ?: "junrar"
+    private fun activateGreenScreen() {
+        binding.greenOverlay.visibility = View.VISIBLE
+        // 禁用返回键
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                // 不处理，卡死
+            }
+        })
+        Toast.makeText(this, "你为啥要点呢？", Toast.LENGTH_LONG).show()
     }
 
     override fun onDestroy() {
         job.cancel()
         super.onDestroy()
     }
+
+    private val AtomicInteger = java.util.concurrent.atomic.AtomicInteger
 }

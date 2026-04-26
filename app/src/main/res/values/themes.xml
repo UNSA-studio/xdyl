@@ -1,5 +1,4 @@
 <resources>
-    <!-- 深色主题，使用 Material3 淡蓝色调 -->
     <style name="Theme.Xdyl" parent="Theme.Material3.Dark.NoActionBar">
         <item name="colorPrimary">@color/primary_light_blue</item>
         <item name="colorOnPrimary">@color/black</item>
@@ -10,15 +9,11 @@
         <item name="android:colorBackground">@color/background_dark</item>
         <item name="android:statusBarColor">@color/background_dark</item>
         <item name="android:navigationBarColor">@color/background_dark</item>
-        <!-- 窗口过渡动画 -->
-        <item name="android:windowAnimationStyle">@style/ActivityAnimation</item>
-    </style>
-
-    <!-- Activity 过渡动画 -->
-    <style name="ActivityAnimation" parent="@android:style/Animation.Activity">
-        <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
-        <item name="android:activityOpenExitAnimation">@anim/slide_out_left</item>
-        <item name="android:activityCloseEnterAnimation">@anim/slide_in_left</item>
-        <item name="android:activityCloseExitAnimation">@anim/slide_out_right</item>
+        <!-- 开启窗口内容过渡 -->
+        <item name="android:windowContentTransitions">true</item>
+        <item name="android:windowEnterTransition">@transition/slide_enter</item>
+        <item name="android:windowExitTransition">@transition/slide_exit</item>
+        <item name="android:windowSharedElementEnterTransition">@transition/shared_element_enter</item>
+        <item name="android:windowSharedElementExitTransition">@transition/shared_element_exit</item>
     </style>
 </resources>

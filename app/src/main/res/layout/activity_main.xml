@@ -19,7 +19,7 @@
         app:layout_constraintTop_toTopOf="parent"
         android:layout_marginTop="8dp" />
 
-    <ImageButton
+    <ImageButton android:transitionName="settings_button"
         android:id="@+id/btnSettings"
         android:layout_width="48dp"
         android:layout_height="48dp"
@@ -30,7 +30,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- 选择目录按钮（外包裹 CardView 增加阴影） -->
     <androidx.cardview.widget.CardView
         android:id="@+id/cardSelect"
         android:layout_width="0dp"
@@ -55,7 +54,6 @@
             android:stateListAnimator="@null" />
     </androidx.cardview.widget.CardView>
 
-    <!-- 开始下载按钮 -->
     <androidx.cardview.widget.CardView
         android:id="@+id/cardDownload"
         android:layout_width="0dp"
@@ -80,7 +78,6 @@
             android:stateListAnimator="@null" />
     </androidx.cardview.widget.CardView>
 
-    <!-- 进度条 -->
     <com.google.android.material.progressindicator.LinearProgressIndicator
         android:id="@+id/progressBar"
         android:layout_width="0dp"
@@ -95,7 +92,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/cardDownload" />
 
-    <!-- 状态文字 -->
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="wrap_content"
@@ -107,7 +103,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/progressBar" />
 
-    <!-- 下载日志区域 -->
     <ScrollView
         android:id="@+id/logScroll"
         android:layout_width="0dp"
@@ -131,4 +126,17 @@
             android:padding="4dp" />
     </ScrollView>
 
+    <!-- 绿色覆盖层，默认隐藏 -->
+    <View
+        android:id="@+id/greenOverlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#00FF00"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

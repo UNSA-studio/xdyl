@@ -16,7 +16,6 @@
         android:textStyle="bold"
         android:layout_marginBottom="24dp"/>
 
-    <!-- Minecraft 版本文件夹名 -->
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -35,7 +34,6 @@
             android:singleLine="true"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- 线程数 -->
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -56,54 +54,24 @@
             android:singleLine="true"/>
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- 解压内核选择 -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="解压内核"
-        android:textColor="@color/primary_light_blue"
-        android:textSize="18sp"
-        android:layout_marginTop="24dp"
-        android:layout_marginBottom="8dp"/>
-
-    <RadioGroup
-        android:id="@+id/radioGroup"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-        <RadioButton
-            android:id="@+id/rbJunrar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Junrar (RAR专用)"
-            android:textColor="@android:color/white"
-            android:buttonTint="@color/primary_light_blue"/>
-
-        <RadioButton
-            android:id="@+id/rbSevenZ"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="7z (支持7z/ZIP/RAR)"
-            android:textColor="@android:color/white"
-            android:buttonTint="@color/primary_light_blue"/>
-
-        <RadioButton
-            android:id="@+id/rbBuiltinZip"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="内置ZIP"
-            android:textColor="@android:color/white"
-            android:buttonTint="@color/primary_light_blue"/>
-    </RadioGroup>
-
     <Button
-        android:id="@+id/btnSave"
+        android:id="@+id/btnExportLog"
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:text="保存设置"
+        android:text="导出日志"
         android:textColor="@android:color/black"
         android:backgroundTint="@color/primary_light_blue"
         android:layout_marginTop="32dp"
         android:textSize="16sp"/>
+
+    <Button
+        android:id="@+id/btnGreenScreen"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="千万别点!"
+        android:textColor="#FFFF0000"
+        android:backgroundTint="#FF333333"
+        android:layout_marginTop="16dp"
+        android:textSize="16sp"
+        android:textStyle="bold"/>
 </LinearLayout>

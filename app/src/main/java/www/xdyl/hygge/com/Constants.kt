@@ -1,11 +1,9 @@
 package www.xdyl.hygge.com
 
 object Constants {
-    const val DOWNLOAD_URL = "https://dlink.host/1drv/aHR0cHM6Ly8xZHJ2Lm1zL3UvYy9mY2Y0ZmRjNmFjNzU5YTNlL0lRQ2pNaWpIVnhRTVE0a1VnZXNGdEZDOUFYbXloa2hXSlV3VzFrTmR1NWk0TnkwP2U9NjV"
-    const val RAR_NAME = "mods.rar"
+    const val BASE_URL = "http://8.129.236.213:5551/mods/"
     const val TARGET_VERSION_DIR = "1.21.1-NeoForge"
     const val MODS_DIR = "mods"
-    const val MINECRAFT_PATH = ".minecraft/versions/$TARGET_VERSION_DIR"
 
     const val ERROR01 = "ERROR01"
     const val ERROR02 = "ERROR02"
@@ -14,11 +12,7 @@ object Constants {
     const val ERROR05 = "ERROR05"
     const val ERROR06 = "ERROR06"
 
-    const val EXPECTED_MD5 = "f5b2399b4a3d41f0c21a85c64f377615"
-    const val EXPECTED_SHA256 = "f2338a562bd65752229decb3c9312294a001e13a3877584211872791cdcd7874"
-    const val FILE_SIZE = 452185702L
-
-    // 改用 val，因为 trimIndent() 不是编译期常量
+    // CSV 内容（已过滤自身行），请用你的最新数据替换下面内容
     val CSV_CONTENT = """
 "./CBMultipart-1.21.1-3.5.0.155.jar","535K",547450,5a6dedd06ddd39f1b341126d428424e3,b95ad536b91a264c484937909e5d3dab4bab9b268fc72f1e51611d0a80506da5
 "./CodeChickenLib-1.21.1-4.6.1.526.jar","1.5M",1538347,cb6cc54c315e9e11278a0542473d5f2f,e35cb0ca3e3aeb87e1e171242454426d22edf517b06dc38e5c3d5b6d44d6bc04
@@ -56,6 +50,7 @@ object Constants {
 "./[天境] aether-1.21.1-1.5.10-neoforge.jar","39M",40223909,87bb550408f2833299a93980c2f41bb0,b19386301560a017a458e9790a7b59999e270f93010def0b61e7cbe4c8630dbf
 "./[女仆实用任务] 1.21.1-maid_useful_task-1.4.2.jar","157K",160465,8804bc512ff880f2673bab6f3ddf2d2c,e9334d429ff9da4ede5b9a8d2cad0f8472c3821ba20c8ec5e6a8827a52278711
 "./[应用能源2] appliedenergistics2-19.2.17.jar","7.9M",8230896,1d9768edc90fb50f065949f2628ea991,460d779a0609b81409907d9956de8f6f70a1b0912257e3e5c3c7e75ac9630e95
+"./[局部气候&风暴] weather2-neoforge-1.21.0-2.8.6.jar","6.6M",6837438,0d24a82dd5e3da9664928da9a79d1fac,759df24e88436dcdd93c610fd8455684f5f6d040b3b9370362952961b3186504
 "./[建筑手杖-耕云钓月版] constructionwand-kots-1.21.1-2.16.3.jar","193K",196864,1d6e2402108fcf36ed655506e90bb134,e52f9e094be460619e410e583b5d86b58e6a49d8a4bbd1b30f995013d93e0a2d
 "./[搬运] carryon-neoforge-1.21.1-2.2.4.4.jar","350K",357489,116381c8900494997eac5a2c1bf42348,ad69537be8be8b433227792e43f8df7b4d3cef7e359255d471a44e776ad8dd57
 "./[暮色森林] twilightforest-1.21.1-4.8.3345-universal.jar","26M",27154121,c1e465c8b2855902368ff4679e1fc2e7,493da16d10210f9f53a3c33b3d8fcb4ae9b14016ee420d753c894562bd9aba35
@@ -83,8 +78,8 @@ object Constants {
 "./[网络音乐机] netmusic-1.4.0-neoforge+mc1.21.1.jar","675K",690578,2b40c40c783f5c7454cd991445385fd5,7cda69432daf2a48af6d8d451a768df40e32258a1a6e9468397f6eb8415fb16d
 "./[群青] ultramarine-1.21.1-0.7.jar","4.8M",4931591,d43c5c21bc365e6f1964ddf9705d0a85,91537fe70699f6c44eea9d86c1b4ea0e1883dd38855b1d55e17018e7275f3d03
 "./[聊天动画] chatanimation-neoforge-1.21.1-1.1.3.jar","372K",380396,a4aa4c8b0dc3a6a6e1ae46caec6b5cbf,2830e1699ccf66d618376abf2bc756a4763096b2f31b4812c452822e86860b13
-"./[聊天头像] chat_heads-0.15.1-neoforge-1.21.jar","88K",89272,d04498e9a1c39f29b4f6d5b6c32c16b1,b1ed6a52efa3cb43e4c37e3982bc7b08116302511b8f675346f6aea6d3524e41
 "./citadel-1.21.1-2.7.5.jar","2.9M",3029054,5b81c237af085baad2635a65e01a1f86,6abf9492db59c0dc1f38e884710f2352bf55e1cb2ceb919c62aac4fabb1de6b8
+"./[聊天头像] chat_heads-0.15.1-neoforge-1.21.jar","88K",89272,d04498e9a1c39f29b4f6d5b6c32c16b1,b1ed6a52efa3cb43e4c37e3982bc7b08116302511b8f675346f6aea6d3524e41
 "./[越肩视角重制] ShoulderSurfing-NeoForge-1.21.1-4.22.7.jar","266K",271436,1042f5000741bd3dc88c372b780cab5a,79bb5e7f78399a76bcb659e6cc8a2075f107946ae157832d55ffae93b13604b2
 "./[连锁破坏] ftb-ultimine-neoforge-2101.1.13.jar","173K",176935,a6bbde7129ebc4c53e20d171113da68a,d27fa030dcd7cf7c31e8c706db8c0d40932f10218de4f34c653d672e4c5e92d7
 "./[通用拼音搜索] jecharacters-1.21-neoforge-4.5.23.jar","238K",243572,9e852a9ed18f83fc2990d23af0c76f28,bd61da17dab517fa06560d325f37a63853df275bae37d56572fef075b486d9f5
@@ -96,8 +91,10 @@ object Constants {
 "./balm-neoforge-1.21.1-21.0.57.jar","685K",701108,179ddfa1dc036c7009651778df40ae58,ab56a4edaaf7366e6aa5a7446cf4f0d939e844ab0fb0df9b27967916bff0425a
 "./clientsort-neoforge-2.2.1+1.21.1.jar","335K",342334,13e44da0d39e459e34c3ef6019ceb37a,985bf84e001a614b7342d5b610ff99a438ac4c22e8aa33be2c032042ffb639a8
 "./cloth-config-15.0.140-neoforge.jar","1.2M",1163890,4c3757160403fcccb8ad468c2ea22862,65e722e0d98431a07c45f8bdd8d529a217cc8c175fde1740248bd5c1b4f3c0d4
+"./coroutil-neoforge-1.21.0-1.3.9.jar","65K",65716,741721a51d325dfccf1b74f0a792bd88,097434e256a428335cc4e9b718ad7bb9c6804c2c775aa3dd7149a6904adca2bc
 "./create-1.21.1-6.0.10.jar","19M",19123767,179189c52b45a469e683570be4e77188,ef87fe5709f1ba1f5b8bb20a2925b5afb4669e178fd6d8bf10c167759eefe37a
 "./createcontraptionterminals-1.21-1.3.0.jar","89K",90967,f4a4315aa9767aa51f1c5b31933e5ac4,7c4efa9b10dc9684f835eebb7c7d9c3b9032587d3f848bcf6120bc7e4771eaed
+"./do_a_barrel_roll-neoforge-3.7.3+1.21.jar","455K",465787,92ad2f96176a94d07283b1bd0ec76d5e,e56395ebb26318c11f3a9474bba14518f17f4f2028683eb0aa9cdc7dacf124e2
 "./emi-1.1.22+1.21.1+neoforge.jar","1014K",1038248,ca9775a6f300989cb4d2063e1833579b,772cf3108900e86e336a42f73ec0dfc2f8d5168840285f4a71fda84ea98859a8
 "./forgified-fabric-api-0.116.7+2.2.4+1.21.1.jar","5.4M",5569793,882dc798bf56e49d746da462da242afd,68abf2864e957df26ac0cc3bd5352ee67880e052b47a80f22f28556c1179f18d
 "./ftb-library-neoforge-2101.1.31.jar","1.4M",1411181,4c526bc440231e459ce23f2beca88937,3d44705187cf938842e06d484a93e0491b82b0689785e6da4f7cabe40bd88aeb
@@ -109,7 +106,9 @@ object Constants {
 "./jerksteve-1.0.0-mc1.21-1.21.1neo.jar","53K",53932,9a37fb6837062e40967693c31703b182,508bda7a0cafea00590147fb332c070e8ef611c594f9816760dccc5478889a0f
 "./kotlinforforge-5.11.0-all.jar","6.6M",6869790,ad515a1a34f47bbc17aabab0b99ecee4,89d2ccd9d2ca2996ca3ee57b27165893f4bc4b8431be89461f8b2f8fe6162ac1
 "./lithostitched-1.7.2-neoforge-21.1.jar","792K",810015,1708cc57da45565e6b50fd018310faf1,52c4b387f41a7bcc6ce85daeccd9356dd96314f5ea5df33ebc3ef0249c8c7500
+"./moderndeco-4.0.2-neoforge-1.21.1.jar","856K",875703,98b0c7842b20ab44bee28287a194db05,4d1189dea597c50d94564605fdca1688b0e56d3d6bb5020191b3c83b8b8830a0
 "./modernfix-neoforge-5.27.3+mc1.21.1.jar","549K",562031,01d41313ec3051e560c9f373edce3786,b3c611855b9869e716653de00c61b8cd06b4be7f334c1b2b1172bb8e0f94b7ac
+"./moonlight-1.21-2.29.33-neoforge.jar","1.6M",1596760,6f0a35d8e761509ed9f8239d6723b2d7,47759081ab26271fed829f17abe1a8aa8ac1a17a111acb3b9255749e35e00f7a
 "./open-parties-and-claims-neoforge-1.21.1-0.26.1.jar","1.6M",1577014,8ca7e3e4679054c133bdd3ee5ec9afd9,a905e737d5ce4e8b98dfd470b4b7dd818e2a3c67091f82f05055e498ed399258
 "./owo-lib-neoforge-0.12.15.5-beta.1+1.21.jar","1.2M",1221583,4c8323c3d0493f7e82a2287e5ca9df7f,de6ed336bd80154b7241a7b3276694befc1c94550add8bcdfe7f82e5172fd13d
 "./polylib-2100.1.0-build.183-neoforge.jar","1.3M",1299974,1b0b791ce01ef0b38b7b5ce4d91f163e,6861974b2300c899627374470b81cf4922378cd042363c383c36d758fb3808cb
@@ -120,11 +119,12 @@ object Constants {
 "./tectonic-3.0.22-neoforge-21.1.jar","330K",337253,b0659af9b55f8aff56aa7f77d7d9709f,bf5cf7e351586865905eceb2a63e06769f8cd0f9c826864b6a30541e20cffc56
 "./voicechat-neoforge-1.21.1-2.6.16.jar","4.7M",4901132,7b565b27d669e3c9ac30407dc6d47d0f,1d3cc0668f3aaad383e2f0940c14c8c7d278ff6f71332afbac6d368a2438bedc
 "./waystones-neoforge-1.21.1-21.1.30.jar","857K",877356,6f1a97fd30ca9cf0f74110308d1dacfc,9b4ccf9e5811ecdebdb0acbf3f3ee3f525df0ab9c1fe9ae3e3ee7c9f52288099
-"./xaerominimap-neoforge-1.21.1-25.3.10.jar","2.1M",2137784,bb44c90c8bc60cac6caa07f504f5cf9f,b28dd669e17d70be126b887845646ade10f2c9a2aed15a0750e7cc1c760e653d
 "./zume-1.2.1.jar","97K",99253,a86a55026d18d38468b469f644a747aa,2dc01e57a47c1817794d920f582e061c6a45539936cb20572fac5c9a86599a13
+"./xaerominimap-neoforge-1.21.1-25.3.10.jar","2.1M",2137784,bb44c90c8bc60cac6caa07f504f5cf9f,b28dd669e17d70be126b887845646ade10f2c9a2aed15a0750e7cc1c760e653d
 "./[车万女仆] touhoulittlemaid-1.5.2-neoforge+mc1.21.1.jar","24M",24399610,3bcce3106ca4ef9ac1e3c2e3223cbc30,43d5c7e6c3e3c87733b04cfb269fde6711972180f70095b53e822dfabf261348
 "./[进度牌匾] AdvancementPlaques-1.21.1-neoforge-1.6.8.jar","192K",195730,ad6dc60871b30f6d69f25c0ec7d79871,a24674330b8de59a02e0ebe4dd81fcff15d90e8c1cdcc32980d73c1cab050933
 "./[通用机械发电机] MekanismGenerators-1.21.1-10.7.19.85.jar","1.1M",1114598,1ccb5604857497903e330488a3871f0e,0e5783b111e756f27b48c62b2f0e02fff750c77f7985ff809bfadc5f444ba4ac
+"./[锦致装饰] supplementaries-1.21-3.5.34-neoforge.jar","13M",13366044,9ed38b8ed1e77756cdee338b086c8479,3e82252fcd89b090786e1640f8cf8fac76e3e35f30465849944e7b89ca2f433b
 "./[饮酒作乐] BrewinAndChewin-neoforge-4.4.2+1.21.1.jar","1.5M",1566859,be14ed36a350594d0bac22bcf1810556,2164f5c859b928d689f6cef566081f0db5b3339d401ef84eee84b2c28ffa8105
 "./connector-2.0.0-beta.14+1.21.1-full.jar","4.4M",4526785,debe1e1916febcd3e6254bc76ebae361,a79817f1076e2e6499b0ab09c4e8c032d04b071341b66d036c3d96112804e51b
 "./createbetterfps-1.21.1-1.1.4.jar","26K",26547,88827dcbad6f5bf8974c40e6fff77ed5,f0080f5cb186bf9f785dc5510babab94d97adc7918952cff780d2c5fadf2ac9a
@@ -133,7 +133,6 @@ object Constants {
 "./flatbedrock-neoforge-87.0.0.jar","7.6K",7728,d825e50c95fdbf0e03e38c1870da843a,0a7dc68a9d0c943bc9451a7ee476cb7f17c5c2facd3c9af188d2d06ea6a7bbbf
 "./flerovium-neoforge-1.21.1-1.0.18-all.jar","179K",182390,50b894e7bc41d8d4ccf11f2c8418b504,653914a858dabd05bfa271b5605ac65aca8abe22d034bd2672c08a28c52691cb
 "./fogoverrides-1.21.1-2.3.0.jar","404K",413126,80e6f06c94ee454dc3ab2fc2ed5ec614,8bd449433f9fa31f455675fed290d2032735f851bccb4daedf34c778f27b7e72
-"./ftb-stuff-things-21.1.17.jar","1.4M",1423085,b28952bffeb432829ed97b34530a8d42,afb34362f101bbc464bdacb2eacbf45ce52cb90c139d52d6700f6b71a2ba38ba
 "./jei-1.21.1-neoforge-19.27.0.340.jar","1.5M",1529391,6c7cf71d0f92c30d2e8e0cf3fd94a8bf,8aaf547432f1b4958239b036356b910692fe40f858c3073d996f56bbf7c99826
 "./libIPN-neoforge-1.21.1-6.6.3.jar","612K",626146,208d2c5832cf08b4bf64bae3b6025040,98f061ba69d31764fa10ab7810ca49062633e107a6b261ba3b66dc25ba5fef7b
 "./lithium-neoforge-0.15.3+mc1.21.1.jar","757K",774148,8207aaae8fea906c7eb2447da40b8c83,a6548862bd13ff8eea6747cf61df50c8374a16a22d067614e414ed600eee6d83
