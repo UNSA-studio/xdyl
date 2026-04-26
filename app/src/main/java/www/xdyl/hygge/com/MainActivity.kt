@@ -21,6 +21,9 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.zip.ZipFile
 import com.github.junrar.Junrar
+import org.apache.commons.compress.archivers.ArchiveStreamFactory
+import org.apache.commons.compress.archivers.ArchiveInputStream
+import org.apache.commons.compress.archivers.ArchiveEntry
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -258,22 +261,18 @@ class MainActivity : AppCompatActivity() {
                             appendLog("Junrar 解压完成")
                         }
                         "sevenz" -> {
-                            // 使用 Apache Commons Compress 统一处理
-                            org.apache.commons.compress.archivers.ArchiveStreamFactory().let { factory ->
-                                FileInputStream(rarFile).use { fis ->
-                                    factory.createArchiveInputStream(fis).use { archive ->
-                                        var entry = archive.nextEntry
-                                        while (entry != null) {
-                                            if (!entry.isDirectory) {
-                                                val outFile = File(modsDir, entry.name)
-                                                outFile.parentFile?.mkdirs()
-                                                FileOutputStream(outFile).use { fos ->
-                                                    archive.copyTo(fos)
-                                                }
-                                            }
-                                            entry = archive.nextEntry
+                            FileInputStream(rarFile).use { fis ->
+                                val archive: ArchiveInputStream = ArchiveStreamFactory().createArchiveInputStream(fis)
+                                var entry: ArchiveEntry? = archive.nextEntry
+                                while (entry != null) {
+                                    if (!entry.isDirectory) {
+                                        val outFile = File(modsDir, entry.name)
+                                        outFile.parentFile?.mkdirs()
+                                        FileOutputStream(outFile).use { fos ->
+                                            archive.copyTo(fos)
                                         }
                                     }
+                                    entry = archive.nextEntry
                                 }
                             }
                             appendLog("7z (Commons Compress) 解压完成")
