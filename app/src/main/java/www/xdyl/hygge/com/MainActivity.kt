@@ -21,9 +21,9 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.zip.ZipFile
 import com.github.junrar.Junrar
-import org.apache.commons.compress.archivers.ArchiveStreamFactory
-import org.apache.commons.compress.archivers.ArchiveInputStream
 import org.apache.commons.compress.archivers.ArchiveEntry
+import org.apache.commons.compress.archivers.ArchiveInputStream
+import org.apache.commons.compress.archivers.ArchiveStreamFactory
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -261,15 +261,21 @@ class MainActivity : AppCompatActivity() {
                             appendLog("Junrar 解压完成")
                         }
                         "sevenz" -> {
-                            FileInputStream(rarFile).use { fis ->
-                                val archive: ArchiveInputStream = ArchiveStreamFactory().createArchiveInputStream(fis)
+                            // 使用 Apache Commons Compress 处理 7z/RAR/ZIP 等
+                            val fis = FileInputStream(rarFile)
+                            val ais: ArchiveInputStream<*> = ArchiveStreamFactory().createArchiveInputStream(fis)
+                            ais.use { archive ->
                                 var entry: ArchiveEntry? = archive.nextEntry
                                 while (entry != null) {
                                     if (!entry.isDirectory) {
                                         val outFile = File(modsDir, entry.name)
                                         outFile.parentFile?.mkdirs()
                                         FileOutputStream(outFile).use { fos ->
-                                            archive.copyTo(fos)
+                                            val buffer = ByteArray(8192)
+                                            var len: Int
+                                            while (archive.read(buffer).also { len = it } != -1) {
+                                                fos.write(buffer, 0, len)
+                                            }
                                         }
                                     }
                                     entry = archive.nextEntry
