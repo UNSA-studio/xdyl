@@ -6,14 +6,15 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
-    <application android:usesCleartextTraffic="true" android:usesCleartextTraffic="true"
+    <application
         android:name=".App"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="日影西沉-模组更新器"
         android:requestLegacyExternalStorage="true"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Xdyl">
+        android:theme="@style/Theme.Xdyl"
+        android:usesCleartextTraffic="true">
         <activity
             android:name="www.xdyl.hygge.com.MainActivity"
             android:exported="true">
