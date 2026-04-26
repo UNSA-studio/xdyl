@@ -1,7 +1,25 @@
 <resources>
-    <style name="Theme.Xdyl" parent="Theme.MaterialComponents.Light.NoActionBar">
-        <item name="colorPrimary">#FFBB86FC</item>
-        <item name="colorPrimaryVariant">#FF6200EE</item>
-        <item name="colorOnPrimary">#FFFFFFFF</item>
+    <!-- 深色主题，使用 Material3 淡蓝色调 -->
+    <style name="Theme.Xdyl" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/primary_light_blue</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorPrimaryContainer">@color/primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/on_primary_container</item>
+        <item name="colorSecondary">@color/secondary_light_blue</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="android:colorBackground">@color/background_dark</item>
+        <item name="android:statusBarColor">@color/background_dark</item>
+        <item name="android:navigationBarColor">@color/background_dark</item>
+        <!-- 全局圆角、动画 -->
+        <item name="android:windowActivityTransitions">true</item>
+        <item name="android:animationStyle">@style/ActivityAnimation</item>
+    </style>
+
+    <!-- 活动切换动画 -->
+    <style name="ActivityAnimation" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
+        <item name="android:activityOpenExitAnimation">@anim/slide_out_left</item>
+        <item name="android:activityCloseEnterAnimation">@anim/slide_in_left</item>
+        <item name="android:activityCloseExitAnimation">@anim/slide_out_right</item>
     </style>
 </resources>

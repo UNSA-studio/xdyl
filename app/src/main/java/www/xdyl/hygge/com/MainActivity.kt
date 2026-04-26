@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.view.animation.AnimationUtils
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -30,13 +31,22 @@ class MainActivity : AppCompatActivity() {
 
         requestPermissionsIfNeeded()
 
-        binding.btnSelectDir.setOnClickListener { showDirectorySelector() }
-        binding.btnStartDownload.setOnClickListener { startUpdateProcess() }
+        binding.btnSelectDir.setOnClickListener {
+            // 点击动画
+            it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
+            showDirectorySelector()
+        }
+        binding.btnStartDownload.setOnClickListener {
+            it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
+            startUpdateProcess()
+        }
         binding.btnSettings.setOnClickListener {
+            it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
             Toast.makeText(this, "设置功能将在后续版本开放", Toast.LENGTH_SHORT).show()
         }
     }
 
+    // --- 以下内容与之前完全相同，包括 requestPermissionsIfNeeded 等 ---
     private fun requestPermissionsIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
