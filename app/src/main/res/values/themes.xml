@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.Xdyl" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">#FFBB86FC</item>
+        <item name="colorPrimaryVariant">#FF6200EE</item>
+        <item name="colorOnPrimary">#FFFFFFFF</item>
+    </style>
+</resources>
