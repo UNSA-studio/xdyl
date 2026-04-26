@@ -10,12 +10,11 @@
         <item name="android:colorBackground">@color/background_dark</item>
         <item name="android:statusBarColor">@color/background_dark</item>
         <item name="android:navigationBarColor">@color/background_dark</item>
-        <!-- 全局圆角、动画 -->
-        <item name="android:windowActivityTransitions">true</item>
-        <item name="android:animationStyle">@style/ActivityAnimation</item>
+        <!-- 窗口过渡动画 -->
+        <item name="android:windowAnimationStyle">@style/ActivityAnimation</item>
     </style>
 
-    <!-- 活动切换动画 -->
+    <!-- Activity 过渡动画 -->
     <style name="ActivityAnimation" parent="@android:style/Animation.Activity">
         <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
         <item name="android:activityOpenExitAnimation">@anim/slide_out_left</item>
