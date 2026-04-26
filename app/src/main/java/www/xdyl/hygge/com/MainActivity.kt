@@ -54,7 +54,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun selectDirectory() {
-        // OpenDocumentTree 的 launch 参数是初始目录 Uri，传 null 表示根目录
         dirPickerLauncher.launch(null)
     }
 
@@ -82,18 +81,15 @@ class MainActivity : AppCompatActivity() {
     private fun findMinecraftVersionDir(baseUri: Uri): Pair<File, Boolean>? {
         try {
             val doc = DocumentFile.fromTreeUri(this, baseUri) ?: return null
-            // .minecraft 或 minecraft 目录
             val minecraftDoc = doc.findFile(".minecraft") ?: doc.findFile("minecraft") ?: return null
-            // versions 目录
-            val versionsDoc = minecraftDoc.listFiles().find { it.name == "versions" } ?: return null
-            // 精确匹配目标版本
-            val versionDir = versionsDoc.listFiles().find { 
+            val versionsDoc = minecraftDoc.listFiles()?.find { it.name == "versions" } ?: return null
+            val versionDir = versionsDoc.listFiles()?.find { 
                 it.name?.equals(Constants.TARGET_VERSION_DIR, ignoreCase = true) == true 
             }
             if (versionDir != null) {
-                val modsDir = versionDir.listFiles().find { it.name == Constants.MODS_DIR }
+                val modsDir = versionDir.listFiles()?.find { it.name == Constants.MODS_DIR }
                     ?: versionDir.createDirectory(Constants.MODS_DIR)
-                val rawPath = modsDir.uri.path?.let {
+                val rawPath = modsDir?.uri?.path?.let {
                     it.substring(it.indexOf("/tree/") + 6).let { p ->
                         "/storage/emulated/0/$p"
                     }
@@ -102,7 +98,6 @@ class MainActivity : AppCompatActivity() {
                 if (!file.exists()) file.mkdirs()
                 return Pair(file, false)
             } else {
-                // 检查相似文件夹
                 return checkSimilar(versionsDoc)
             }
         } catch (e: Exception) {
@@ -111,14 +106,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkSimilar(versionsDoc: DocumentFile): Pair<File, Boolean>? {
-        val similar = versionsDoc.listFiles().find {
+        val similar = versionsDoc.listFiles()?.find {
             it.name?.contains(Constants.TARGET_VERSION_DIR.substring(0, 5)) == true &&
             it.name != Constants.TARGET_VERSION_DIR
         }
         if (similar != null) {
-            val modsDir = similar.listFiles().find { it.name == Constants.MODS_DIR }
+            val modsDir = similar.listFiles()?.find { it.name == Constants.MODS_DIR }
                 ?: similar.createDirectory(Constants.MODS_DIR)
-            val rawPath = modsDir.uri.path?.let {
+            val rawPath = modsDir?.uri?.path?.let {
                 it.substring(it.indexOf("/tree/") + 6)
             } ?: return null
             val file = File("/storage/emulated/0/$rawPath")
