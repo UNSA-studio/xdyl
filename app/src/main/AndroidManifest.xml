@@ -21,6 +21,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name="www.xdyl.hygge.com.SettingsActivity"
+            android:label="设置"
+            android:parentActivityName="www.xdyl.hygge.com.MainActivity" />
     </application>
 
 </manifest>

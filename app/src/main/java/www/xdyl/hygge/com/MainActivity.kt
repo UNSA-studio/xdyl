@@ -2,11 +2,13 @@ package www.xdyl.hygge.com
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.text.method.ScrollingMovementMethod
 import android.view.animation.AnimationUtils
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +17,10 @@ import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.*
 import www.xdyl.hygge.com.databinding.ActivityMainBinding
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.util.zip.ZipFile
+import com.github.junrar.Junrar
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -23,16 +29,20 @@ class MainActivity : AppCompatActivity() {
     private var isProcessing = false
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.Main + job)
+    private lateinit var prefs: SharedPreferences
+    private val logBuilder = StringBuilder()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
+        binding.tvLog.movementMethod = ScrollingMovementMethod()
+
         requestPermissionsIfNeeded()
 
         binding.btnSelectDir.setOnClickListener {
-            // 点击动画
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
             showDirectorySelector()
         }
@@ -41,12 +51,10 @@ class MainActivity : AppCompatActivity() {
             startUpdateProcess()
         }
         binding.btnSettings.setOnClickListener {
-            it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
-            Toast.makeText(this, "设置功能将在后续版本开放", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
     }
 
-    // --- 以下内容与之前完全相同，包括 requestPermissionsIfNeeded 等 ---
     private fun requestPermissionsIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
@@ -130,6 +138,7 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     targetModsDir = dir
                     binding.btnStartDownload.isEnabled = true
+                    appendLog("游戏目录已选择: ${dir.absolutePath}")
                     Toast.makeText(this, "已选择游戏目录", Toast.LENGTH_SHORT).show()
                 }
             } ?: run {
@@ -143,8 +152,9 @@ class MainActivity : AppCompatActivity() {
             val doc = DocumentFile.fromTreeUri(this, baseUri) ?: return null
             val minecraftDoc = doc.findFile(".minecraft") ?: doc.findFile("minecraft") ?: return null
             val versionsDoc = minecraftDoc.listFiles()?.find { it.name == "versions" } ?: return null
-            val versionDir = versionsDoc.listFiles()?.find { 
-                it.name?.equals(Constants.TARGET_VERSION_DIR, ignoreCase = true) == true 
+            val targetVersion = getVersionFolderName()
+            val versionDir = versionsDoc.listFiles()?.find {
+                it.name?.equals(targetVersion, ignoreCase = true) == true
             }
             if (versionDir != null) {
                 val modsDir = versionDir.listFiles()?.find { it.name == Constants.MODS_DIR }
@@ -165,10 +175,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun getVersionFolderName(): String {
+        return prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
+    }
+
     private fun checkSimilar(versionsDoc: DocumentFile): Pair<File, Boolean>? {
+        val targetPrefix = getVersionFolderName().substring(0, 5)
         val similar = versionsDoc.listFiles()?.find {
-            it.name?.contains(Constants.TARGET_VERSION_DIR.substring(0, 5)) == true &&
-            it.name != Constants.TARGET_VERSION_DIR
+            it.name?.contains(targetPrefix) == true &&
+            it.name != getVersionFolderName()
         }
         if (similar != null) {
             val modsDir = similar.listFiles()?.find { it.name == Constants.MODS_DIR }
@@ -183,6 +198,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showError(errorCode: String) {
+        appendLog("错误: $errorCode")
         AlertDialog.Builder(this)
             .setTitle("意外错误!")
             .setMessage("错误码: $errorCode\n请查看是否是您的问题,如不是,请联系开发者")
@@ -203,7 +219,12 @@ class MainActivity : AppCompatActivity() {
         binding.btnStartDownload.isEnabled = false
         binding.progressBar.visibility = android.view.View.VISIBLE
         binding.progressBar.progress = 0
-        binding.tvStatus.text = "准备下载..."
+        logBuilder.clear()
+        binding.tvLog.text = ""
+        appendLog("开始下载 mods.rar ...")
+
+        val threadCount = getThreadCount()
+        val extractKernel = getExtractKernel()
 
         scope.launch {
             val downloadDir = cacheDir
@@ -211,12 +232,16 @@ class MainActivity : AppCompatActivity() {
 
             try {
                 withContext(Dispatchers.IO) {
-                    val manager = DownloadManager(Constants.DOWNLOAD_URL, Constants.FILE_SIZE)
+                    val manager = DownloadManager(Constants.DOWNLOAD_URL, Constants.FILE_SIZE, threadCount)
                     manager.download(rarFile) { progress ->
-                        binding.progressBar.progress = progress
-                        binding.tvStatus.text = "下载中... $progress%"
+                        launch(Dispatchers.Main) {
+                            binding.progressBar.progress = progress
+                            binding.tvStatus.text = "下载中... $progress%"
+                            if (progress % 10 == 0) appendLog("下载进度 $progress%")
+                        }
                     }
                 }
+                appendLog("下载完成，开始校验...")
                 val verifier = FileVerifier()
                 val rarCheck = withContext(Dispatchers.IO) {
                     verifier.verifyFile(rarFile, Constants.EXPECTED_MD5, Constants.EXPECTED_SHA256)
@@ -225,11 +250,52 @@ class MainActivity : AppCompatActivity() {
                     showError(Constants.ERROR04)
                     return@launch
                 }
-                binding.tvStatus.text = "正在解压..."
+                appendLog("校验通过，开始解压（内核：$extractKernel）...")
                 withContext(Dispatchers.IO) {
-                    RarExtractor.extract(rarFile, modsDir)
+                    when (extractKernel) {
+                        "junrar" -> {
+                            Junrar.extract(rarFile, modsDir)
+                            appendLog("Junrar 解压完成")
+                        }
+                        "sevenz" -> {
+                            // 使用 Apache Commons Compress 统一处理
+                            org.apache.commons.compress.archivers.ArchiveStreamFactory().let { factory ->
+                                FileInputStream(rarFile).use { fis ->
+                                    factory.createArchiveInputStream(fis).use { archive ->
+                                        var entry = archive.nextEntry
+                                        while (entry != null) {
+                                            if (!entry.isDirectory) {
+                                                val outFile = File(modsDir, entry.name)
+                                                outFile.parentFile?.mkdirs()
+                                                FileOutputStream(outFile).use { fos ->
+                                                    archive.copyTo(fos)
+                                                }
+                                            }
+                                            entry = archive.nextEntry
+                                        }
+                                    }
+                                }
+                            }
+                            appendLog("7z (Commons Compress) 解压完成")
+                        }
+                        "builtin_zip" -> {
+                            ZipFile(rarFile).use { zip ->
+                                zip.entries().asIterator().forEach { entry ->
+                                    if (!entry.isDirectory) {
+                                        val outFile = File(modsDir, entry.name)
+                                        outFile.parentFile?.mkdirs()
+                                        FileOutputStream(outFile).use { fos ->
+                                            zip.getInputStream(entry).copyTo(fos)
+                                        }
+                                    }
+                                }
+                            }
+                            appendLog("内置ZIP解压完成")
+                        }
+                        else -> throw RuntimeException("未知解压内核")
+                    }
                 }
-                binding.tvStatus.text = "正在校验模组..."
+                appendLog("开始校验模组文件...")
                 val allValid = withContext(Dispatchers.IO) {
                     verifier.verifyModsFromCsv(modsDir, Constants.CSV_CONTENT)
                 }
@@ -237,6 +303,7 @@ class MainActivity : AppCompatActivity() {
                     showError(Constants.ERROR05)
                 } else {
                     withContext(Dispatchers.Main) {
+                        appendLog("所有模组更新完成！")
                         Toast.makeText(this@MainActivity, "模组已经更新完成!", Toast.LENGTH_LONG).show()
                         binding.tvStatus.text = "完成"
                         binding.progressBar.visibility = android.view.View.GONE
@@ -247,11 +314,28 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 if (e.message?.contains("Permission") == true) showError(Constants.ERROR02)
                 else showError(Constants.ERROR01)
+                appendLog("异常: ${e.message}")
             } finally {
                 isProcessing = false
                 binding.btnStartDownload.isEnabled = true
             }
         }
+    }
+
+    private fun appendLog(msg: String) {
+        logBuilder.appendLine(msg)
+        runOnUiThread {
+            binding.tvLog.text = logBuilder.toString()
+            binding.logScroll.post { binding.logScroll.fullScroll(android.view.View.FOCUS_DOWN) }
+        }
+    }
+
+    private fun getThreadCount(): Int {
+        return prefs.getInt("thread_count", 20).coerceIn(20, 128)
+    }
+
+    private fun getExtractKernel(): String {
+        return prefs.getString("extract_kernel", "junrar") ?: "junrar"
     }
 
     override fun onDestroy() {

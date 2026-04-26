@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background_dark"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="设置"
+        android:textColor="@color/primary_light_blue"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="24dp"/>
+
+    <!-- Minecraft 版本文件夹名 -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Minecraft 版本文件夹名"
+        android:textColorHint="#AAFFFFFF"
+        app:hintTextColor="@color/primary_light_blue"
+        app:boxStrokeColor="@color/primary_light_blue"
+        app:boxBackgroundColor="#2A2A2A">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etVersionName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1.21.1-NeoForge"
+            android:textColor="@android:color/white"
+            android:singleLine="true"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- 线程数 -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:hint="下载线程数 (20-128)"
+        android:textColorHint="#AAFFFFFF"
+        app:hintTextColor="@color/primary_light_blue"
+        app:boxStrokeColor="@color/primary_light_blue"
+        app:boxBackgroundColor="#2A2A2A">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etThreadCount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="20"
+            android:textColor="@android:color/white"
+            android:inputType="number"
+            android:singleLine="true"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- 解压内核选择 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="解压内核"
+        android:textColor="@color/primary_light_blue"
+        android:textSize="18sp"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="8dp"/>
+
+    <RadioGroup
+        android:id="@+id/radioGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/rbJunrar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Junrar (RAR专用)"
+            android:textColor="@android:color/white"
+            android:buttonTint="@color/primary_light_blue"/>
+
+        <RadioButton
+            android:id="@+id/rbSevenZ"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="7z (支持7z/ZIP/RAR)"
+            android:textColor="@android:color/white"
+            android:buttonTint="@color/primary_light_blue"/>
+
+        <RadioButton
+            android:id="@+id/rbBuiltinZip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="内置ZIP"
+            android:textColor="@android:color/white"
+            android:buttonTint="@color/primary_light_blue"/>
+    </RadioGroup>
+
+    <Button
+        android:id="@+id/btnSave"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="保存设置"
+        android:textColor="@android:color/black"
+        android:backgroundTint="@color/primary_light_blue"
+        android:layout_marginTop="32dp"
+        android:textSize="16sp"/>
+</LinearLayout>
