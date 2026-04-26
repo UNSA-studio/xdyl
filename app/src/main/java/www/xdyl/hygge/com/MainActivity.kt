@@ -58,9 +58,7 @@ class MainActivity : AppCompatActivity() {
             startUpdateProcess()
         }
         binding.btnSettings.setOnClickListener {
-            // 齿轮旋转动画
             it.animate().rotationBy(180f).setDuration(300).start()
-            // 启动设置页面，并添加从右滑入的动画
             val intent = Intent(this, SettingsActivity::class.java)
             startActivity(intent)
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -266,6 +264,9 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        val totalMods = mods.size
+        var completedCount = 0
+
         scope.launch {
             val semaphore = Semaphore(threadCount)
             val failed = AtomicInteger(0)
@@ -276,15 +277,22 @@ class MainActivity : AppCompatActivity() {
                         launch {
                             semaphore.acquire()
                             try {
+                                withContext(Dispatchers.Main) {
+                                    binding.tvStatus.text = "Downloading ${mod.fileName} (${completedCount+1}/$totalMods)"
+                                }
                                 log("Download ${mod.fileName} (${mod.size} bytes)")
                                 val file = File(modsDir, mod.fileName)
                                 val manager = DownloadManager(Constants.BASE_URL + mod.fileName, mod.size, 1)
-                                manager.download(file) { progress -> /* optional */ }
+                                manager.download(file) { /* per-file progress not shown globally */ }
                                 val verifier = FileVerifier()
                                 if (!verifier.verifyFile(file, mod.md5, mod.sha256)) {
                                     throw RuntimeException("Checksum failed: ${mod.fileName}")
                                 }
                                 log("${mod.fileName} completed")
+                                completedCount++
+                                withContext(Dispatchers.Main) {
+                                    binding.progressBar.progress = (completedCount * 100 / totalMods)
+                                }
                             } catch (e: Exception) {
                                 log("Failed: ${mod.fileName} - ${e.message}")
                                 failed.incrementAndGet()

@@ -9,9 +9,9 @@
         <item name="android:colorBackground">@color/background_dark</item>
         <item name="android:statusBarColor">@color/background_dark</item>
         <item name="android:navigationBarColor">@color/background_dark</item>
-        <!-- 全局字体 -->
         <item name="android:fontFamily">@font/silver</item>
-        <!-- 关闭系统默认窗口过渡，手动控制 -->
         <item name="android:windowActivityTransitions">false</item>
+        <!-- 全局基础字号放大 -->
+        <item name="android:textSize">18sp</item>
     </style>
 </resources>
