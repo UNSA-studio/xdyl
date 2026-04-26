@@ -40,6 +40,7 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("org.apache.commons:commons-compress:1.26.0")
+    // 替换为 junrar，更稳定且 Android 友好
+    implementation("com.github.junrar:junrar:7.5.5")
     implementation("androidx.documentfile:documentfile:1.0.1")
 }

@@ -18,7 +18,8 @@ object Constants {
     const val EXPECTED_SHA256 = "f2338a562bd65752229decb3c9312294a001e13a3877584211872791cdcd7874"
     const val FILE_SIZE = 452185702L
 
-    const val CSV_CONTENT = """
+    // 改用 val，因为 trimIndent() 不是编译期常量
+    val CSV_CONTENT = """
 "./CBMultipart-1.21.1-3.5.0.155.jar","535K",547450,5a6dedd06ddd39f1b341126d428424e3,b95ad536b91a264c484937909e5d3dab4bab9b268fc72f1e51611d0a80506da5
 "./CodeChickenLib-1.21.1-4.6.1.526.jar","1.5M",1538347,cb6cc54c315e9e11278a0542473d5f2f,e35cb0ca3e3aeb87e1e171242454426d22edf517b06dc38e5c3d5b6d44d6bc04
 "./Controlling-neoforge-1.21.1-19.0.5.jar","76K",77555,7141c2d0bb774dc6e4481be32b685179,cc525fb6b030d9e4d33176983f278919e17b33935e2ca568929bdfa98f2b44a0

@@ -6,16 +6,13 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.provider.DocumentsContract
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.*
 import www.xdyl.hygge.com.databinding.ActivityMainBinding
 import java.io.File
-import java.util.concurrent.atomic.AtomicInteger
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -57,13 +54,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun selectDirectory() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-        intent.addFlags(
-            Intent.FLAG_GRANT_READ_URI_PERMISSION or
-            Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
-            Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-        )
-        dirPickerLauncher.launch(intent)
+        // OpenDocumentTree 的 launch 参数是初始目录 Uri，传 null 表示根目录
+        dirPickerLauncher.launch(null)
     }
 
     private val dirPickerLauncher = registerForActivityResult(
@@ -90,23 +82,29 @@ class MainActivity : AppCompatActivity() {
     private fun findMinecraftVersionDir(baseUri: Uri): Pair<File, Boolean>? {
         try {
             val doc = DocumentFile.fromTreeUri(this, baseUri) ?: return null
-            val minecraftDoc = doc.findFile(".minecraft")
-                ?: doc.findFile("minecraft")
-                ?: return null
-            val versionsDoc = minecraftDoc.listFiles().find { it.name == "versions" }
-                ?: return null
-            val versionDir = versionsDoc.listFiles().find { it.name?.equals(Constants.TARGET_VERSION_DIR, ignoreCase = true) == true }
-                ?: return checkSimilar(versionsDoc)
-            val modsDir = versionDir.listFiles().find { it.name == Constants.MODS_DIR }
-                ?: versionDir.createDirectory(Constants.MODS_DIR)
-            val rawPath = modsDir.uri.path?.let {
-                it.substring(it.indexOf("/tree/") + 6).let { p ->
-                    "/storage/emulated/0/$p"
-                }
-            } ?: return null
-            val file = File(rawPath)
-            if (!file.exists()) file.mkdirs()
-            return Pair(file, false)
+            // .minecraft 或 minecraft 目录
+            val minecraftDoc = doc.findFile(".minecraft") ?: doc.findFile("minecraft") ?: return null
+            // versions 目录
+            val versionsDoc = minecraftDoc.listFiles().find { it.name == "versions" } ?: return null
+            // 精确匹配目标版本
+            val versionDir = versionsDoc.listFiles().find { 
+                it.name?.equals(Constants.TARGET_VERSION_DIR, ignoreCase = true) == true 
+            }
+            if (versionDir != null) {
+                val modsDir = versionDir.listFiles().find { it.name == Constants.MODS_DIR }
+                    ?: versionDir.createDirectory(Constants.MODS_DIR)
+                val rawPath = modsDir.uri.path?.let {
+                    it.substring(it.indexOf("/tree/") + 6).let { p ->
+                        "/storage/emulated/0/$p"
+                    }
+                } ?: return null
+                val file = File(rawPath)
+                if (!file.exists()) file.mkdirs()
+                return Pair(file, false)
+            } else {
+                // 检查相似文件夹
+                return checkSimilar(versionsDoc)
+            }
         } catch (e: Exception) {
             return null
         }
