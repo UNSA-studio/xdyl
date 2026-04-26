@@ -2,6 +2,7 @@ package www.xdyl.hygge.com
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -29,32 +30,67 @@ class MainActivity : AppCompatActivity() {
 
         requestPermissionsIfNeeded()
 
-        binding.btnSelectDir.setOnClickListener { selectDirectory() }
+        binding.btnSelectDir.setOnClickListener { showDirectorySelector() }
         binding.btnStartDownload.setOnClickListener { startUpdateProcess() }
         binding.btnSettings.setOnClickListener {
             Toast.makeText(this, "设置功能将在后续版本开放", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun requestPermissionsIfNeeded() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                val intent = Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                startActivity(intent)
+    private fun showDirectorySelector() {
+        // 列出支持 SAF 的常见第三方管理器
+        val managers = listOf(
+            "Solid Explorer" to "pl.solidexplorer2",
+            "FX File Explorer" to "nextapp.fx",
+            "Material Files" to "me.zhanghai.android.files"
+        )
+        val installed = managers.filter { isPackageInstalled(it.second) }
+
+        if (installed.isEmpty()) {
+            // 没有找到第三方管理器，直接启动系统选择器
+            selectDirectory(null)
+            return
+        }
+
+        // 构建底部选择菜单，优先使用第三方管理器
+        val items = installed.map { it.first }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("请选择文件管理器")
+            .setItems(items) { _, which ->
+                val packageName = installed[which].second
+                launchThirdPartyManager(packageName)
             }
-        } else {
-            requestPermissions(
-                arrayOf(
-                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ),
-                100
-            )
+            .setNeutralButton("系统默认") { _, _ ->
+                selectDirectory(null)
+            }
+            .show()
+    }
+
+    private fun isPackageInstalled(packageName: String): Boolean {
+        return try {
+            packageManager.getPackageInfo(packageName, 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
         }
     }
 
-    private fun selectDirectory() {
-        dirPickerLauncher.launch(null)
+    private fun launchThirdPartyManager(packageName: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setClassName(packageName, "com.android.documentsui.DocumentsActivity")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(intent)
+            Toast.makeText(this, "请在该管理器中手动导航至游戏目录", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "无法启动所选管理器，将使用系统默认", Toast.LENGTH_SHORT).show()
+            selectDirectory(null)
+        }
+    }
+
+    private fun selectDirectory(initialUri: Uri?) {
+        dirPickerLauncher.launch(initialUri)
     }
 
     private val dirPickerLauncher = registerForActivityResult(
@@ -70,7 +106,7 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     targetModsDir = dir
                     binding.btnStartDownload.isEnabled = true
-                    Toast.makeText(this, "已选择游戏目录，找到目标版本", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "已选择游戏目录", Toast.LENGTH_SHORT).show()
                 }
             } ?: run {
                 showError(Constants.ERROR01)
@@ -78,6 +114,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // --- 其余 findMinecraftVersionDir, startUpdateProcess 等方法保持不变 ---
     private fun findMinecraftVersionDir(baseUri: Uri): Pair<File, Boolean>? {
         try {
             val doc = DocumentFile.fromTreeUri(this, baseUri) ?: return null

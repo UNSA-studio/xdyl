@@ -7,12 +7,12 @@ object Constants {
     const val MODS_DIR = "mods"
     const val MINECRAFT_PATH = ".minecraft/versions/$TARGET_VERSION_DIR"
 
-    const val ERROR01 = "ERROR01:找不到目录"
-    const val ERROR02 = "ERROR02:没有文件权限"
-    const val ERROR03 = "ERROR03:网络超时"
-    const val ERROR04 = "ERROR04:RAR文件校验不通过"
-    const val ERROR05 = "ERROR05:模组文件校验不通过"
-    const val ERROR06 = "ERROR06:名字相似的文件夹,并非目标文件夹"
+    const val ERROR01 = "ERROR01"
+    const val ERROR02 = "ERROR02"
+    const val ERROR03 = "ERROR03"
+    const val ERROR04 = "ERROR04"
+    const val ERROR05 = "ERROR05"
+    const val ERROR06 = "ERROR06"
 
     const val EXPECTED_MD5 = "f5b2399b4a3d41f0c21a85c64f377615"
     const val EXPECTED_SHA256 = "f2338a562bd65752229decb3c9312294a001e13a3877584211872791cdcd7874"
