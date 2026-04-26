@@ -1,6 +1,7 @@
 package www.xdyl.hygge.com
 
 import android.app.AlertDialog
+import android.app.ActivityOptions
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -20,6 +21,7 @@ import www.xdyl.hygge.com.databinding.ActivityMainBinding
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.Semaphore
+import java.util.concurrent.atomic.AtomicInteger
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -52,18 +54,19 @@ class MainActivity : AppCompatActivity() {
             startUpdateProcess()
         }
         binding.btnSettings.setOnClickListener {
-            val options = android.app.ActivityOptions.makeSceneTransitionAnimation(this, binding.btnSettings, "settings_button").toBundle(); startActivity(Intent(this, SettingsActivity::class.java), options)
+            val options = ActivityOptions.makeSceneTransitionAnimation(
+                this, binding.btnSettings, "settings_button"
+            ).toBundle()
+            startActivity(Intent(this, SettingsActivity::class.java), options)
         }
     }
 
     override fun onResume() {
         super.onResume()
-        // 检查是否需要导出日志
         if (prefs.getBoolean("request_export_log", false)) {
             prefs.edit().putBoolean("request_export_log", false).apply()
             exportLogToFile()
         }
-        // 检查是否需要触发绿屏
         if (prefs.getBoolean("trigger_green", false)) {
             prefs.edit().putBoolean("trigger_green", false).apply()
             activateGreenScreen()
@@ -269,10 +272,8 @@ class MainActivity : AppCompatActivity() {
                             try {
                                 appendLog("下载 ${mod.fileName} (${mod.size} bytes)")
                                 val file = File(modsDir, mod.fileName)
-                                // 如果文件已存在且大小相同，可跳过（可选）
                                 val manager = DownloadManager(Constants.BASE_URL + mod.fileName, mod.size, 1)
-                                manager.download(file) { /* 单文件进度未展示 */ }
-                                // 校验
+                                manager.download(file) { progress -> /* 可选进度 */ }
                                 val verifier = FileVerifier()
                                 if (!verifier.verifyFile(file, mod.md5, mod.sha256)) {
                                     throw RuntimeException("校验失败: ${mod.fileName}")
@@ -338,10 +339,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun activateGreenScreen() {
         binding.greenOverlay.visibility = View.VISIBLE
-        // 禁用返回键
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                // 不处理，卡死
+                // 彻底屏蔽返回
             }
         })
         Toast.makeText(this, "你为啥要点呢？", Toast.LENGTH_LONG).show()
@@ -351,6 +351,4 @@ class MainActivity : AppCompatActivity() {
         job.cancel()
         super.onDestroy()
     }
-
-    private val AtomicInteger = java.util.concurrent.atomic.AtomicInteger
 }
