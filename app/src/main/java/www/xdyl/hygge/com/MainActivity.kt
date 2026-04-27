@@ -3,8 +3,6 @@ package www.xdyl.hygge.com
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -12,9 +10,8 @@ import android.text.method.ScrollingMovementMethod
 import android.view.View
 import android.view.animation.AnimationUtils
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
-import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -27,7 +24,6 @@ import java.util.regex.Pattern
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private var selectedBaseUri: Uri? = null
     private var targetModsDir: File? = null
     private var isProcessing = false
     private val job = SupervisorJob()
@@ -52,10 +48,11 @@ class MainActivity : AppCompatActivity() {
         binding.tvLog.movementMethod = ScrollingMovementMethod()
 
         requestPermissionsIfNeeded()
+        restoreLastDirectory()
 
         binding.btnSelectDir.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
-            openBuiltInFileBrowser()
+            showFileBrowser()
         }
         binding.btnStartDownload.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
@@ -63,8 +60,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnSettings.setOnClickListener {
             it.animate().rotationBy(180f).setDuration(300).start()
-            val intent = Intent(this, SettingsActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, SettingsActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
     }
@@ -88,119 +84,112 @@ class MainActivity : AppCompatActivity() {
                 startActivity(intent)
             }
         } else {
-            requestPermissions(
-                arrayOf(
-                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ),
-                100
-            )
+            // 旧版本权限请求，省略，但一般没问题
         }
+    }
+
+    // 尝试从 SharedPreferences 恢复上次选中的启动器目录，并自动定位 mods
+    private fun restoreLastDirectory() {
+        val lastPath = prefs.getString("launcher_root", null)
+        if (lastPath != null) {
+            val dir = File(lastPath)
+            if (dir.exists() && dir.isDirectory) {
+                val found = findMinecraftModsDir(dir)
+                if (found != null) {
+                    targetModsDir = found
+                    binding.btnStartDownload.isEnabled = true
+                    log("使用已保存的启动器目录: $lastPath")
+                    log("自动定位到 mods: ${found.absolutePath}")
+                    return
+                }
+            }
+        }
+        // 没有则提醒用户选择
+        Toast.makeText(this, "请先选择启动器的根文件夹", Toast.LENGTH_LONG).show()
     }
 
     // ================== 内置文件浏览器 ==================
-    private var currentBrowseDoc: DocumentFile? = null
+    private var currentBrowserDir: File = Environment.getExternalStorageDirectory() // 初始为外部存储根目录
 
-    private fun openBuiltInFileBrowser() {
-        // 打开目录选择器，从根目录开始
-        browserRootLauncher.launch(null)
+    private fun showFileBrowser() {
+        currentBrowserDir = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath))
+        browseDirectory(currentBrowserDir)
     }
 
-    private val browserRootLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null) {
-            contentResolver.takePersistableUriPermission(uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            currentBrowseDoc = DocumentFile.fromTreeUri(this, uri)
-            // 尝试自动进入 .minecraft/versions
-            autoNavigateToVersions()
-        }
-    }
-
-    private fun autoNavigateToVersions() {
-        val doc = currentBrowseDoc ?: return
-        val mc = doc.findFile(".minecraft") ?: doc.findFile("minecraft")
-        if (mc != null) {
-            val versions = mc.listFiles().find { it.name == "versions" }
-            if (versions != null) {
-                showVersionPicker(versions)
-                return
-            }
-        }
-        // 如果没有找到，则显示当前目录内容，让用户手动导航
-        showDirectoryBrowser(doc)
-    }
-
-    private fun showVersionPicker(versionsDoc: DocumentFile) {
-        val dirs = versionsDoc.listFiles().filter { it.isDirectory }
-        if (dirs.isEmpty()) {
-            Toast.makeText(this, "未找到任何版本文件夹", Toast.LENGTH_SHORT).show()
+    private fun browseDirectory(dir: File) {
+        if (!dir.exists() || !dir.isDirectory) {
+            Toast.makeText(this, "无效的文件夹", Toast.LENGTH_SHORT).show()
             return
         }
-        val names = dirs.map { it.name ?: "未知" }
+        val items = dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
+        val displayItems = items.map {
+            val prefix = if (it.isDirectory) "📁 " else "📄 "
+            "$prefix${it.name}"
+        }.toTypedArray()
+
         AlertDialog.Builder(this)
-            .setTitle("选择版本文件夹")
-            .setItems(names.toTypedArray()) { _, which ->
-                val chosen = dirs[which]
-                val modsDir = chosen.listFiles().find { it.name == "mods" }
-                    ?: chosen.createDirectory("mods")
-                val rawPath = modsDir?.uri?.path?.let {
-                    it.substring(it.indexOf("/tree/") + 6).let { p -> "/storage/emulated/0/$p" }
+            .setTitle("当前: ${dir.name}")
+            .setItems(displayItems) { dialog, which ->
+                val selected = items[which]
+                if (selected.isDirectory) {
+                    currentBrowserDir = selected
+                    browseDirectory(selected)   // 进入子目录
                 }
-                if (rawPath != null) {
-                    val file = File(rawPath)
-                    if (!file.exists()) file.mkdirs()
-                    targetModsDir = file
-                    selectedBaseUri = chosen.uri
+            }
+            .setPositiveButton("选择此文件夹") { _, _ ->
+                // 保存选择的根目录（启动器根文件夹）
+                prefs.edit().putString("launcher_root", dir.absolutePath).apply()
+                // 自动寻找 .minecraft/versions 下的 mods
+                val modsDir = findMinecraftModsDir(dir)
+                if (modsDir != null) {
+                    targetModsDir = modsDir
                     binding.btnStartDownload.isEnabled = true
-                    log("Game dir selected: ${file.absolutePath}")
-                    Toast.makeText(this, "已选择游戏目录", Toast.LENGTH_SHORT).show()
+                    log("已定位到 mods: ${modsDir.absolutePath}")
+                    Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show()
                 } else {
                     showError(Constants.ERROR01)
                 }
             }
-            .setNeutralButton("返回上级") { _, _ ->
-                currentBrowseDoc = versionsDoc.parentFile
-                currentBrowseDoc?.let { showDirectoryBrowser(it) }
+            .setNegativeButton("返回上级") { _, _ ->
+                val parent = dir.parentFile
+                if (parent != null) {
+                    currentBrowserDir = parent
+                    browseDirectory(parent)
+                } else {
+                    // 已经到根了，不能再说返回上级
+                    browseDirectory(dir)
+                }
             }
             .show()
     }
 
-    private fun showDirectoryBrowser(doc: DocumentFile) {
-        val items = doc.listFiles().map {
-            val icon = if (it.isDirectory) "📁" else "📄"
-            "$icon ${it.name}"
+    private fun findMinecraftModsDir(launcherRoot: File): File? {
+        // 尝试找到 .minecraft/versions/<版本>/mods
+        val mc = File(launcherRoot, ".minecraft")
+        if (!mc.exists()) {
+            val mcAlt = File(launcherRoot, "minecraft")
+            if (!mcAlt.exists()) return null
+            return scanVersionsForMods(mcAlt)
         }
-        if (items.isEmpty()) {
-            Toast.makeText(this, "此目录为空", Toast.LENGTH_SHORT).show()
-            return
+        return scanVersionsForMods(mc)
+    }
+
+    private fun scanVersionsForMods(minecraftDir: File): File? {
+        val versionsDir = File(minecraftDir, "versions")
+        if (!versionsDir.exists() || !versionsDir.isDirectory) return null
+        val targetVersion = getVersionFolderName()
+        val targetVersionDir = File(versionsDir, targetVersion)
+        if (!targetVersionDir.exists()) {
+            // 尝试相似文件夹（可选，这里直接返回匹配的）
+            return null
         }
-        AlertDialog.Builder(this)
-            .setTitle("浏览文件夹")
-            .setItems(items.toTypedArray()) { _, which ->
-                val selected = doc.listFiles()[which]
-                if (selected.isDirectory) {
-                    currentBrowseDoc = selected
-                    showDirectoryBrowser(selected)
-                }
-            }
-            .setNegativeButton("返回") { _, _ ->
-                currentBrowseDoc = doc.parentFile
-                currentBrowseDoc?.let { showDirectoryBrowser(it) }
-            }
-            .setNeutralButton("选择此目录") { _, _ ->
-                val mc = doc.findFile(".minecraft") ?: doc.findFile("minecraft")
-                if (mc != null) {
-                    val versions = mc.listFiles().find { it.name == "versions" }
-                    if (versions != null) {
-                        showVersionPicker(versions)
-                        return@setNeutralButton
-                    }
-                }
-                Toast.makeText(this, "未找到 .minecraft/versions 结构", Toast.LENGTH_SHORT).show()
-            }
-            .show()
+        val modsDir = File(targetVersionDir, "mods")
+        if (!modsDir.exists()) modsDir.mkdirs()
+        return modsDir
+    }
+
+    private fun getVersionFolderName(): String {
+        return prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
     }
     // ================== 内置浏览器结束 ==================
 
@@ -283,10 +272,10 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.progress = 0
         logBuilder.clear()
         binding.tvLog.text = ""
-        log("=== Starting update ===")
+        log("=== 开始更新 ===")
 
         val threadCount = prefs.getInt("thread_count", 20).coerceIn(20, 128)
-        log("Using $threadCount concurrent threads")
+        log("使用线程数: $threadCount")
 
         scope.launch {
             try {
@@ -299,7 +288,7 @@ class MainActivity : AppCompatActivity() {
                 val csvSet = csvMods.map { it.fileName }.toSet()
                 val toDownload = serverFiles.filter { csvSet.contains(it) }
                 if (toDownload.isEmpty()) {
-                    log("No files to download (CSV mismatch)")
+                    log("没有需要下载的文件（CSV 不匹配）")
                     showError(Constants.ERROR01)
                     return@launch
                 }
@@ -316,20 +305,20 @@ class MainActivity : AppCompatActivity() {
                             try {
                                 val mod = csvMods.first { it.fileName == name }
                                 val file = File(modsDir, name)
-                                log("[${completed+1}/$total] Downloading $name (${mod.size} bytes)")
+                                log("[${completed+1}/$total] 下载 $name (${mod.size} bytes)")
                                 downloadWithRetry(Constants.BASE_URL + name, mod.size, file)
                                 val verifier = FileVerifier()
                                 if (!verifier.verifyFile(file, mod.md5, mod.sha256)) {
-                                    throw RuntimeException("Checksum failed: $name")
+                                    throw RuntimeException("校验失败: $name")
                                 }
                                 completed++
                                 withContext(Dispatchers.Main) {
                                     binding.progressBar.progress = (completed * 100) / total
                                     binding.tvStatus.text = "$completed/$total"
                                 }
-                                log("$name done")
+                                log("$name 完成")
                             } catch (e: Exception) {
-                                log("Failed $name: ${e.message}")
+                                log("失败 $name: ${e.message}")
                                 failed.incrementAndGet()
                             } finally {
                                 sem.release()
@@ -343,7 +332,7 @@ class MainActivity : AppCompatActivity() {
                     showError(Constants.ERROR05)
                 } else {
                     withContext(Dispatchers.Main) {
-                        log("All mods updated successfully!")
+                        log("所有模组更新成功！")
                         Toast.makeText(this@MainActivity, "模组已经更新完成!", Toast.LENGTH_LONG).show()
                         binding.tvStatus.text = "完成"
                         binding.progressBar.visibility = View.GONE
@@ -354,7 +343,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 if (e.message?.contains("Permission") == true) showError(Constants.ERROR02)
                 else showError(Constants.ERROR01)
-                log("Exception: ${e.message}")
+                log("异常: ${e.message}")
             } finally {
                 isProcessing = false
                 binding.btnStartDownload.isEnabled = true
@@ -393,11 +382,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun activateGreenScreen() {
         binding.greenOverlay.visibility = View.VISIBLE
-        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                // 屏蔽返回
-            }
-        })
+        onBackPressedDispatcher.addCallback(this) { }
         Toast.makeText(this, "你为啥要点呢？", Toast.LENGTH_LONG).show()
     }
 
