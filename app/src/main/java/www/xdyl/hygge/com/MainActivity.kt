@@ -170,7 +170,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showFolderChoiceDialog(dirs: Array<File>) {
         val names = dirs.map { it.absolutePath }.toTypedArray()
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle("选择游戏版本 Mods 文件夹")
             .setItems(names) { _, i ->
                 setModsDir(dirs[i])
@@ -199,7 +199,7 @@ class MainActivity : AppCompatActivity() {
             val items = mutableListOf("[选择此文件夹]")
             items.addAll(subs.map { it.name })
             currentBrowseDir = dir
-            AlertDialog.Builder(this)
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                 .setTitle(dir.absolutePath)
                 .setItems(items.toTypedArray()) { _, which ->
                     if (which == 0) {
@@ -249,7 +249,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showError(errorCode: String) {
         log("Error: $errorCode")
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle("意外错误!")
             .setMessage("错误码: $errorCode\n请查看是否是您的问题,如不是,请联系开发者")
             .setPositiveButton("确定", null)
