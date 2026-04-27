@@ -103,7 +103,6 @@ class MainActivity : AppCompatActivity() {
     private var currentBrowseUri: Uri? = null
 
     private fun openBuiltInFileBrowser() {
-        // 首先请求 SAF 根权限（让用户选择 .minecraft 所在的根目录）
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         browserRootLauncher.launch(intent)
@@ -194,7 +193,6 @@ class MainActivity : AppCompatActivity() {
                 currentBrowseDoc?.let { showDirectoryBrowser(it) }
             }
             .setNeutralButton("选择此目录") { _, _ ->
-                // 尝试找到该目录下的 versions/xxx/mods
                 val mc = doc.findFile(".minecraft") ?: doc.findFile("minecraft")
                 if (mc != null) {
                     val versions = mc.listFiles().find { it.name == "versions" }
@@ -208,83 +206,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
     // ================== 内置浏览器结束 ==================
-
-    // 保留原有的目录选择器作为备用（可通过菜单触发，现在暂时不使用）
-    private fun selectDirectory(initialUri: Uri?) {
-        dirPickerLauncher.launch(initialUri)
-    }
-
-    private val dirPickerLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        uri?.let {
-            contentResolver.takePersistableUriPermission(it,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            selectedBaseUri = it
-            findMinecraftVersionDir(it)?.let { (dir, isSimilar) ->
-                if (isSimilar) {
-                    showError(Constants.ERROR06)
-                } else {
-                    targetModsDir = dir
-                    binding.btnStartDownload.isEnabled = true
-                    log("Game dir selected: ${dir.absolutePath}")
-                    Toast.makeText(this, "已选择游戏目录", Toast.LENGTH_SHORT).show()
-                }
-            } ?: run {
-                showError(Constants.ERROR01)
-            }
-        }
-    }
-
-    private fun findMinecraftVersionDir(baseUri: Uri): Pair<File, Boolean>? {
-        try {
-            val doc = DocumentFile.fromTreeUri(this, baseUri) ?: return null
-            val minecraftDoc = doc.findFile(".minecraft") ?: doc.findFile("minecraft") ?: return null
-            val versionsDoc = minecraftDoc.listFiles()?.find { it.name == "versions" } ?: return null
-            val targetVersion = getVersionFolderName()
-            val versionDir = versionsDoc.listFiles()?.find {
-                it.name?.equals(targetVersion, ignoreCase = true) == true
-            }
-            if (versionDir != null) {
-                val modsDir = versionDir.listFiles()?.find { it.name == Constants.MODS_DIR }
-                    ?: versionDir.createDirectory(Constants.MODS_DIR)
-                val rawPath = modsDir?.uri?.path?.let {
-                    it.substring(it.indexOf("/tree/") + 6).let { p ->
-                        "/storage/emulated/0/$p"
-                    }
-                } ?: return null
-                val file = File(rawPath)
-                if (!file.exists()) file.mkdirs()
-                return Pair(file, false)
-            } else {
-                return checkSimilar(versionsDoc)
-            }
-        } catch (e: Exception) {
-            return null
-        }
-    }
-
-    private fun getVersionFolderName(): String {
-        return prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
-    }
-
-    private fun checkSimilar(versionsDoc: DocumentFile): Pair<File, Boolean>? {
-        val targetPrefix = getVersionFolderName().substring(0, 5)
-        val similar = versionsDoc.listFiles()?.find {
-            it.name?.contains(targetPrefix) == true &&
-            it.name != getVersionFolderName()
-        }
-        if (similar != null) {
-            val modsDir = similar.listFiles()?.find { it.name == Constants.MODS_DIR }
-                ?: similar.createDirectory(Constants.MODS_DIR)
-            val rawPath = modsDir?.uri?.path?.let {
-                it.substring(it.indexOf("/tree/") + 6)
-            } ?: return null
-            val file = File("/storage/emulated/0/$rawPath")
-            return Pair(file, true)
-        }
-        return null
-    }
 
     private fun showError(errorCode: String) {
         log("Error: $errorCode")
