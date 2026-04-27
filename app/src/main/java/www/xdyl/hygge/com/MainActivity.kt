@@ -36,6 +36,55 @@ class MainActivity : AppCompatActivity() {
     private val logBuilder = StringBuilder()
     private val client = OkHttpClient()
 
+    private fun showDirectorySelector() {
+        val managers = listOf(
+            "Solid Explorer" to "pl.solidexplorer2",
+            "FX File Explorer" to "nextapp.fx",
+            "Material Files" to "me.zhanghai.android.files"
+        )
+        val installed = managers.filter { isPackageInstalled(it.second) }
+
+        if (installed.isEmpty()) {
+            selectDirectory(null)
+            return
+        }
+
+        val items = installed.map { it.first }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("请选择文件管理器")
+            .setItems(items) { _, which ->
+                val packageName = installed[which].second
+                launchThirdPartyManager(packageName)
+            }
+            .setNeutralButton("系统默认") { _, _ ->
+                selectDirectory(null)
+            }
+            .show()
+    }
+
+    private fun isPackageInstalled(packageName: String): Boolean {
+        return try {
+            packageManager.getPackageInfo(packageName, 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
+        }
+    }
+
+    private fun launchThirdPartyManager(packageName: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setClassName(packageName, "com.android.documentsui.DocumentsActivity")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(intent)
+            Toast.makeText(this, "请在该管理器中手动导航至游戏目录，然后返回本应用", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "无法启动所选管理器，将使用系统默认", Toast.LENGTH_SHORT).show()
+            selectDirectory(null)
+        }
+    }
+
     companion object {
         var instance: MainActivity? = null
     }
