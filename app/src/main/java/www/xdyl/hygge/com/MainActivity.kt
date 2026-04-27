@@ -100,12 +100,10 @@ class MainActivity : AppCompatActivity() {
 
     // ================== 内置文件浏览器 ==================
     private var currentBrowseDoc: DocumentFile? = null
-    private var currentBrowseUri: Uri? = null
 
     private fun openBuiltInFileBrowser() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        browserRootLauncher.launch(intent)
+        // 打开目录选择器，从根目录开始
+        browserRootLauncher.launch(null)
     }
 
     private val browserRootLauncher = registerForActivityResult(
@@ -114,7 +112,6 @@ class MainActivity : AppCompatActivity() {
         if (uri != null) {
             contentResolver.takePersistableUriPermission(uri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            currentBrowseUri = uri
             currentBrowseDoc = DocumentFile.fromTreeUri(this, uri)
             // 尝试自动进入 .minecraft/versions
             autoNavigateToVersions()
