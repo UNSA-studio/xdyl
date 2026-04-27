@@ -3,16 +3,18 @@ package www.xdyl.hygge.com
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.text.method.ScrollingMovementMethod
 import android.view.View
-import android.widget.EditText
+import android.view.animation.AnimationUtils
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -25,6 +27,7 @@ import java.util.regex.Pattern
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private var selectedBaseUri: Uri? = null
     private var targetModsDir: File? = null
     private var isProcessing = false
     private val job = SupervisorJob()
@@ -48,48 +51,26 @@ class MainActivity : AppCompatActivity() {
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         binding.tvLog.movementMethod = ScrollingMovementMethod()
 
-        if (!hasStoragePermission()) {
-            requestStoragePermission()
-        } else {
-            initAfterPermission()
-        }
-    }
+        requestPermissionsIfNeeded()
 
-    private fun hasStoragePermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Environment.isExternalStorageManager()
-        } else {
-            checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        binding.btnSelectDir.setOnClickListener {
+            it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
+            showDirectorySelector()
         }
-    }
-
-    private fun requestStoragePermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val intent = Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+        binding.btnStartDownload.setOnClickListener {
+            it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
+            startUpdateProcess()
+        }
+        binding.btnSettings.setOnClickListener {
+            it.animate().rotationBy(180f).setDuration(300).start()
+            val intent = Intent(this, SettingsActivity::class.java)
             startActivity(intent)
-            Toast.makeText(this, "请授予“所有文件访问权限”后重启应用", Toast.LENGTH_LONG).show()
-        } else {
-            requestPermissions(
-                arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE, android.Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                100
-            )
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 100 && grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            initAfterPermission()
-        } else {
-            Toast.makeText(this, "需要存储权限才能运行", Toast.LENGTH_LONG).show()
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
     }
 
     override fun onResume() {
         super.onResume()
-        if (hasStoragePermission() && targetModsDir == null) {
-            initAfterPermission()
-        }
         if (prefs.getBoolean("request_export_log", false)) {
             prefs.edit().putBoolean("request_export_log", false).apply()
             exportLogToFile()
@@ -100,151 +81,146 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun initAfterPermission() {
-        if (!hasStoragePermission()) return
-
-        binding.btnSelectDir.setOnClickListener { showManualBrowser() }
-        binding.btnStartDownload.setOnClickListener { startUpdateProcess() }
-        binding.btnSettings.setOnClickListener {
-            it.animate().rotationBy(180f).setDuration(300).start()
-            startActivity(Intent(this, SettingsActivity::class.java))
-            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
-        }
-
-        // 尝试自动搜索或从持久化路径加载
-        val savedPath = prefs.getString("mods_dir_path", null)
-        if (savedPath != null) {
-            val dir = File(savedPath)
-            if (dir.exists() && dir.isDirectory) {
-                targetModsDir = dir
-                binding.btnStartDownload.isEnabled = true
-                log("Loaded previous mods dir: ${dir.absolutePath}")
-                return
+    private fun requestPermissionsIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                val intent = Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                startActivity(intent)
             }
-        }
-
-        autoSearchGameDir()
-    }
-
-    private fun autoSearchGameDir() {
-        scope.launch(Dispatchers.IO) {
-            val possibleBases = listOf(
-                "/storage/emulated/0",
-                "/storage/emulated/0/Android/data",
-                "/storage/emulated/0/games",
-                "/storage/emulated/0/Download"
+        } else {
+            requestPermissions(
+                arrayOf(
+                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ),
+                100
             )
-            val patterns = listOf(
-                ".minecraft/versions/%s/mods",
-                "games/.minecraft/versions/%s/mods",
-                "Android/data/com.mojang.minecraftpe/files/games/com.mojang/.minecraft/versions/%s/mods"
-            )
-            val versionFolder = getVersionFolderName()
-            val found = mutableListOf<File>()
-
-            for (base in possibleBases) {
-                for (pattern in patterns) {
-                    val full = File(base, pattern.replace("%s", versionFolder))
-                    if (full.exists() && full.isDirectory) {
-                        found.add(full)
-                    }
-                }
-                // 也直接搜索 .minecraft 目录
-                val dirs = File(base).listFiles { f -> f.isDirectory && f.name == ".minecraft" }
-                dirs?.forEach { mc ->
-                    val ver = File(mc, "versions/$versionFolder/mods")
-                    if (ver.exists() && ver.isDirectory) found.add(ver)
-                }
-            }
-
-            withContext(Dispatchers.Main) {
-                if (found.isNotEmpty()) {
-                    showFolderChoiceDialog(found.distinct().toTypedArray())
-                } else {
-                    Toast.makeText(this@MainActivity, "未自动找到游戏目录，请手动浏览", Toast.LENGTH_LONG).show()
-                    showManualBrowser()
-                }
-            }
         }
     }
 
-    private fun showFolderChoiceDialog(dirs: Array<File>) {
-        val names = dirs.map { it.absolutePath }.toTypedArray()
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle("选择游戏版本 Mods 文件夹")
-            .setItems(names) { _, i ->
-                setModsDir(dirs[i])
+    private fun showDirectorySelector() {
+        val managers = listOf(
+            "Solid Explorer" to "pl.solidexplorer2",
+            "FX File Explorer" to "nextapp.fx",
+            "Material Files" to "me.zhanghai.android.files"
+        )
+        val installed = managers.filter { isPackageInstalled(it.second) }
+
+        if (installed.isEmpty()) {
+            selectDirectory(null)
+            return
+        }
+
+        val items = installed.map { it.first }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("请选择文件管理器")
+            .setItems(items) { _, which ->
+                val packageName = installed[which].second
+                launchThirdPartyManager(packageName)
             }
-            .setNegativeButton("手动浏览") { _, _ -> showManualBrowser() }
+            .setNeutralButton("系统默认") { _, _ ->
+                selectDirectory(null)
+            }
             .show()
     }
 
-    private fun setModsDir(dir: File) {
-        targetModsDir = dir
-        prefs.edit().putString("mods_dir_path", dir.absolutePath).apply()
-        binding.btnStartDownload.isEnabled = true
-        log("Mods directory set to: ${dir.absolutePath}")
-        Toast.makeText(this, "已设置目录", Toast.LENGTH_SHORT).show()
+    private fun isPackageInstalled(packageName: String): Boolean {
+        return try {
+            packageManager.getPackageInfo(packageName, 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
+        }
     }
 
-    // 手动文件夹浏览器
-    private var currentBrowseDir = Environment.getExternalStorageDirectory()
-    private fun showManualBrowser() {
-        browseDir(currentBrowseDir)
-    }
-
-    private fun browseDir(dir: File) {
+    private fun launchThirdPartyManager(packageName: String) {
         try {
-            val subs = dir.listFiles { f -> f.isDirectory } ?: emptyArray()
-            val items = mutableListOf("[选择此文件夹]")
-            items.addAll(subs.map { it.name })
-            currentBrowseDir = dir
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                .setTitle(dir.absolutePath)
-                .setItems(items.toTypedArray()) { _, which ->
-                    if (which == 0) {
-                        // 用户选择当前文件夹作为游戏根目录或直接识别
-                        handleSelectedFolder(dir)
-                    } else {
-                        val selected = subs[which - 1]
-                        browseDir(selected)
-                    }
-                }
-                .setNegativeButton("返回上级") { _, _ ->
-                    val parent = dir.parentFile
-                    if (parent != null && parent.canRead()) {
-                        browseDir(parent)
-                    }
-                }
-                .setPositiveButton("取消", null)
-                .show()
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setClassName(packageName, "com.android.documentsui.DocumentsActivity")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(intent)
+            Toast.makeText(this, "请在该管理器中手动导航至游戏目录，然后返回本应用", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
-            Toast.makeText(this, "无法访问此文件夹", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "无法启动所选管理器，将使用系统默认", Toast.LENGTH_SHORT).show()
+            selectDirectory(null)
         }
     }
 
-    private fun handleSelectedFolder(dir: File) {
-        // 如果选的文件夹里面直接有 mods 子文件夹，且其父级看起来像版本文件夹，则直接使用
-        val modsDir = File(dir, "mods")
-        if (modsDir.exists() && modsDir.isDirectory) {
-            setModsDir(modsDir)
-            return
-        }
-        // 否则尝试寻找 versions/xxx/mods
-        val versionFolder = getVersionFolderName()
-        val possible = File(dir, "versions/$versionFolder/mods")
-        if (possible.exists() && possible.isDirectory) {
-            setModsDir(possible)
-            return
-        }
-        // 如果都没找到，就让用户继续浏览
-        Toast.makeText(this, "未找到目标 mods 文件夹，请继续浏览或选择 .minecraft 文件夹", Toast.LENGTH_LONG).show()
-        browseDir(dir)
+    private fun selectDirectory(initialUri: Uri?) {
+        dirPickerLauncher.launch(initialUri)
     }
 
-    // 下载相关函数（保持不变）
+    private val dirPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri?.let {
+            contentResolver.takePersistableUriPermission(it,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            selectedBaseUri = it
+            findMinecraftVersionDir(it)?.let { (dir, isSimilar) ->
+                if (isSimilar) {
+                    showError(Constants.ERROR06)
+                } else {
+                    targetModsDir = dir
+                    binding.btnStartDownload.isEnabled = true
+                    log("Game dir selected: ${dir.absolutePath}")
+                    Toast.makeText(this, "已选择游戏目录", Toast.LENGTH_SHORT).show()
+                }
+            } ?: run {
+                showError(Constants.ERROR01)
+            }
+        }
+    }
+
+    private fun findMinecraftVersionDir(baseUri: Uri): Pair<File, Boolean>? {
+        try {
+            val doc = DocumentFile.fromTreeUri(this, baseUri) ?: return null
+            val minecraftDoc = doc.findFile(".minecraft") ?: doc.findFile("minecraft") ?: return null
+            val versionsDoc = minecraftDoc.listFiles()?.find { it.name == "versions" } ?: return null
+            val targetVersion = getVersionFolderName()
+            val versionDir = versionsDoc.listFiles()?.find {
+                it.name?.equals(targetVersion, ignoreCase = true) == true
+            }
+            if (versionDir != null) {
+                val modsDir = versionDir.listFiles()?.find { it.name == Constants.MODS_DIR }
+                    ?: versionDir.createDirectory(Constants.MODS_DIR)
+                val rawPath = modsDir?.uri?.path?.let {
+                    it.substring(it.indexOf("/tree/") + 6).let { p ->
+                        "/storage/emulated/0/$p"
+                    }
+                } ?: return null
+                val file = File(rawPath)
+                if (!file.exists()) file.mkdirs()
+                return Pair(file, false)
+            } else {
+                return checkSimilar(versionsDoc)
+            }
+        } catch (e: Exception) {
+            return null
+        }
+    }
+
     private fun getVersionFolderName(): String {
         return prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
+    }
+
+    private fun checkSimilar(versionsDoc: DocumentFile): Pair<File, Boolean>? {
+        val targetPrefix = getVersionFolderName().substring(0, 5)
+        val similar = versionsDoc.listFiles()?.find {
+            it.name?.contains(targetPrefix) == true &&
+            it.name != getVersionFolderName()
+        }
+        if (similar != null) {
+            val modsDir = similar.listFiles()?.find { it.name == Constants.MODS_DIR }
+                ?: similar.createDirectory(Constants.MODS_DIR)
+            val rawPath = modsDir?.uri?.path?.let {
+                it.substring(it.indexOf("/tree/") + 6)
+            } ?: return null
+            val file = File("/storage/emulated/0/$rawPath")
+            return Pair(file, true)
+        }
+        return null
     }
 
     private fun showError(errorCode: String) {
@@ -294,18 +270,18 @@ class MainActivity : AppCompatActivity() {
         url: String,
         size: Long,
         destFile: File,
-        maxRetries: Int = 3
+        maxRetries: Int = 5
     ) {
         var lastException: Exception? = null
         for (attempt in 1..maxRetries) {
             try {
                 val manager = DownloadManager(url, size, 1, useRange = false)
-                manager.download(destFile) { /* optional progress */ }
+                manager.download(destFile) { /* progress handled by caller */ }
                 return
             } catch (e: Exception) {
                 lastException = e
                 log("Retry $attempt/$maxRetries for ${destFile.name}: ${e.message}")
-                delay(500)
+                delay((1000L * attempt).coerceAtMost(5000))
             }
         }
         throw lastException ?: RuntimeException("Download failed after $maxRetries retries")
@@ -326,9 +302,10 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.progress = 0
         logBuilder.clear()
         binding.tvLog.text = ""
-        log("Fetching server file list...")
+        log("=== Starting update ===")
 
         val threadCount = prefs.getInt("thread_count", 20).coerceIn(20, 128)
+        log("Using $threadCount concurrent threads")
 
         scope.launch {
             try {
@@ -358,7 +335,7 @@ class MainActivity : AppCompatActivity() {
                             try {
                                 val mod = csvMods.first { it.fileName == name }
                                 val file = File(modsDir, name)
-                                log("Downloading $name (${mod.size} bytes)")
+                                log("[${completed+1}/$total] Downloading $name (${mod.size} bytes)")
                                 downloadWithRetry(Constants.BASE_URL + name, mod.size, file)
                                 val verifier = FileVerifier()
                                 if (!verifier.verifyFile(file, mod.md5, mod.sha256)) {

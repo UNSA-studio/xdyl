@@ -95,20 +95,25 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun formatPingOutput(raw: String, address: String): String {
-        val lines = raw.trim().lines()
-        val stats = lines.lastOrNull() ?: ""
-        val packetLoss = Regex("(\\d+)% packet loss").find(stats)?.groupValues?.get(1) ?: "?"
-        val rtt = Regex("min/avg/max/.* = (\\d+\\.\\d+)/(\\d+\\.\\d+)/(\\d+\\.\\d+)/.*").find(raw)
-        return buildString {
-            append("目标: $address\n")
-            append("丢包率: $packetLoss%\n")
-            if (rtt != null) {
-                append("最小延迟: ${rtt.groupValues[1]} ms\n")
-                append("平均延迟: ${rtt.groupValues[2]} ms\n")
-                append("最大延迟: ${rtt.groupValues[3]} ms\n")
+        // 提取丢包率（兼容多种格式）
+        val lossPattern = Regex("(\\d+)% packet loss")
+        val loss = lossPattern.find(raw)?.groupValues?.get(1) ?: "?"
+        // 提取RTT信息（通常最后一行）
+        val rttPattern = Regex("min/avg/max/mdev = (\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)")
+        val rttMatch = rttPattern.find(raw)
+
+        val result = buildString {
+            appendLine("目标: $address")
+            appendLine("丢包率: $loss%")
+            if (rttMatch != null) {
+                appendLine("最小/平均/最大/mdev: ${rttMatch.groupValues[1]}/${rttMatch.groupValues[2]}/${rttMatch.groupValues[3]}/${rttMatch.groupValues[4]} ms")
+            } else {
+                appendLine("延迟: 无法解析")
             }
-            append("详细输出:\n$raw")
+            appendLine("--- 详细输出 ---")
+            append(raw.trim())
         }
+        return result
     }
 
     override fun onDestroy() {
