@@ -55,7 +55,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnSelectDir.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
-            openBuiltInFileBrowser()
+            showDirectorySelector()
         }
         binding.btnStartDownload.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
@@ -98,118 +98,55 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ================== 内置文件浏览器 ==================
-    private var currentBrowseDoc: DocumentFile? = null
-    private var currentBrowseUri: Uri? = null
+    private fun showDirectorySelector() {
+        val managers = listOf(
+            "Solid Explorer" to "pl.solidexplorer2",
+            "FX File Explorer" to "nextapp.fx",
+            "Material Files" to "me.zhanghai.android.files"
+        )
+        val installed = managers.filter { isPackageInstalled(it.second) }
 
-    private fun openBuiltInFileBrowser() {
-        // 首先请求 SAF 根权限（让用户选择 .minecraft 所在的根目录）
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        browserRootLauncher.launch(intent)
-    }
-
-    private val browserRootLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null) {
-            contentResolver.takePersistableUriPermission(uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            currentBrowseUri = uri
-            currentBrowseDoc = DocumentFile.fromTreeUri(this, uri)
-            // 尝试自动进入 .minecraft/versions
-            autoNavigateToVersions()
-        }
-    }
-
-    private fun autoNavigateToVersions() {
-        val doc = currentBrowseDoc ?: return
-        val mc = doc.findFile(".minecraft") ?: doc.findFile("minecraft")
-        if (mc != null) {
-            val versions = mc.listFiles().find { it.name == "versions" }
-            if (versions != null) {
-                showVersionPicker(versions)
-                return
-            }
-        }
-        // 如果没有找到，则显示当前目录内容，让用户手动导航
-        showDirectoryBrowser(doc)
-    }
-
-    private fun showVersionPicker(versionsDoc: DocumentFile) {
-        val dirs = versionsDoc.listFiles().filter { it.isDirectory }
-        if (dirs.isEmpty()) {
-            Toast.makeText(this, "未找到任何版本文件夹", Toast.LENGTH_SHORT).show()
+        if (installed.isEmpty()) {
+            selectDirectory(null)
             return
         }
-        val names = dirs.map { it.name ?: "未知" }
+
+        val items = installed.map { it.first }.toTypedArray()
         AlertDialog.Builder(this)
-            .setTitle("选择版本文件夹")
-            .setItems(names.toTypedArray()) { _, which ->
-                val chosen = dirs[which]
-                val modsDir = chosen.listFiles().find { it.name == "mods" }
-                    ?: chosen.createDirectory("mods")
-                val rawPath = modsDir?.uri?.path?.let {
-                    it.substring(it.indexOf("/tree/") + 6).let { p -> "/storage/emulated/0/$p" }
-                }
-                if (rawPath != null) {
-                    val file = File(rawPath)
-                    if (!file.exists()) file.mkdirs()
-                    targetModsDir = file
-                    selectedBaseUri = chosen.uri
-                    binding.btnStartDownload.isEnabled = true
-                    log("Game dir selected: ${file.absolutePath}")
-                    Toast.makeText(this, "已选择游戏目录", Toast.LENGTH_SHORT).show()
-                } else {
-                    showError(Constants.ERROR01)
-                }
+            .setTitle("请选择文件管理器")
+            .setItems(items) { _, which ->
+                val packageName = installed[which].second
+                launchThirdPartyManager(packageName)
             }
-            .setNeutralButton("返回上级") { _, _ ->
-                currentBrowseDoc = versionsDoc.parentFile
-                currentBrowseDoc?.let { showDirectoryBrowser(it) }
+            .setNeutralButton("系统默认") { _, _ ->
+                selectDirectory(null)
             }
             .show()
     }
 
-    private fun showDirectoryBrowser(doc: DocumentFile) {
-        val items = doc.listFiles().map {
-            val icon = if (it.isDirectory) "📁" else "📄"
-            "$icon ${it.name}"
+    private fun isPackageInstalled(packageName: String): Boolean {
+        return try {
+            packageManager.getPackageInfo(packageName, 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
         }
-        if (items.isEmpty()) {
-            Toast.makeText(this, "此目录为空", Toast.LENGTH_SHORT).show()
-            return
-        }
-        AlertDialog.Builder(this)
-            .setTitle("浏览文件夹")
-            .setItems(items.toTypedArray()) { _, which ->
-                val selected = doc.listFiles()[which]
-                if (selected.isDirectory) {
-                    currentBrowseDoc = selected
-                    showDirectoryBrowser(selected)
-                }
-            }
-            .setNegativeButton("返回") { _, _ ->
-                currentBrowseDoc = doc.parentFile
-                currentBrowseDoc?.let { showDirectoryBrowser(it) }
-            }
-            .setNeutralButton("选择此目录") { _, _ ->
-                // 尝试找到该目录下的 versions/xxx/mods
-                val mc = doc.findFile(".minecraft") ?: doc.findFile("minecraft")
-                if (mc != null) {
-                    val versions = mc.listFiles().find { it.name == "versions" }
-                    if (versions != null) {
-                        showVersionPicker(versions)
-                        return@setNeutralButton
-                    }
-                }
-                Toast.makeText(this, "未找到 .minecraft/versions 结构", Toast.LENGTH_SHORT).show()
-            }
-            .show()
     }
-    // ================== 内置浏览器结束 ==================
 
-    // 保留原有的目录选择器作为备用（可通过菜单触发，现在暂时不使用）
+    private fun launchThirdPartyManager(packageName: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setClassName(packageName, "com.android.documentsui.DocumentsActivity")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(intent)
+            Toast.makeText(this, "请在该管理器中手动导航至游戏目录，然后返回本应用", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "无法启动所选管理器，将使用系统默认", Toast.LENGTH_SHORT).show()
+            selectDirectory(null)
+        }
+    }
+
     private fun selectDirectory(initialUri: Uri?) {
         dirPickerLauncher.launch(initialUri)
     }
