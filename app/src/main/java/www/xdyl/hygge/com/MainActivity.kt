@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.Main + job)
     private lateinit var prefs: SharedPreferences
-    private val logBuilder = StringBuilder()  // 仅用于主页显示
+    private val logBuilder = StringBuilder()
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
@@ -106,7 +106,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 文件浏览器（BottomSheet + Fragment 容器）
     private fun showFolderBrowser() {
         val dialog = BottomSheetDialog(this)
         val containerView = layoutInflater.inflate(R.layout.folder_browser_container, null)
@@ -115,7 +114,7 @@ class MainActivity : AppCompatActivity() {
             arguments = Bundle().apply {
                 putString("startDir", prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath))
             }
-            setOnFolderSelectedListener { selectedDir ->
+            onFolderSelectedListener = { selectedDir ->
                 dialog.dismiss()
                 prefs.edit().putString("launcher_root", selectedDir.absolutePath).apply()
                 val modsDir = findMinecraftModsDir(selectedDir)
@@ -124,7 +123,7 @@ class MainActivity : AppCompatActivity() {
                     binding.btnStartDownload.isEnabled = true
                     logGlobal("Mods directory set to ${modsDir.absolutePath}")
                     appendLog("Game directory selected")
-                    Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, "游戏目录已选择", Toast.LENGTH_SHORT).show()
                 } else {
                     showError(Constants.ERROR01)
                 }
@@ -136,7 +135,6 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    // 可复用的寻找 mods 方法
     private fun findMinecraftModsDir(launcherRoot: File): File? {
         val mc = File(launcherRoot, ".minecraft")
         val mcAlt = File(launcherRoot, "minecraft")
@@ -287,7 +285,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 主页日志窗口只显示下载简短信息
     fun appendLog(msg: String) {
         logBuilder.appendLine(msg)
         runOnUiThread {
@@ -296,7 +293,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 全局详细日志（不显示在主界面，仅导出用）
     private fun logGlobal(msg: String) {
         LogManager.log(msg)
     }
