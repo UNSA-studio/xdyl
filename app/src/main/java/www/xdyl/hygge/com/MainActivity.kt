@@ -11,7 +11,7 @@ import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextPaint
 import android.text.method.LinkMovementMethod
-import android.text.style.ClickableSpan
+import android.text.method.ScrollingMovementMethod
 import android.view.View
 import android.view.animation.AnimationUtils
 import android.widget.Toast
@@ -41,10 +41,9 @@ class MainActivity : AppCompatActivity() {
         .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
-    // 彩蛋计数器
     private var easterEggCounter = 0
     private var lastClickTime = 0L
-    private val CLICK_INTERVAL = 500L // 500ms 内连续点击才计数
+    private val CLICK_INTERVAL = 500L
 
     companion object {
         var instance: MainActivity? = null
@@ -64,7 +63,6 @@ class MainActivity : AppCompatActivity() {
         requestPermissionsIfNeeded()
         restoreLastDirectory()
 
-        // 设置标题中的“Android”为可点击
         setupEasterEggTitle()
 
         binding.btnSelectDir.setOnClickListener {
@@ -88,7 +86,6 @@ class MainActivity : AppCompatActivity() {
             prefs.edit().putBoolean("request_export_log", false).apply()
             exportLogToFile()
         }
-        // 移除绿屏触发检查
     }
 
     private fun requestPermissionsIfNeeded() {
@@ -115,7 +112,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ================== 彩蛋标题设置 ==================
     private fun setupEasterEggTitle() {
         val fullText = "更新器-Android"
         val spannable = SpannableString(fullText)
@@ -147,7 +143,7 @@ class MainActivity : AppCompatActivity() {
 
         if (easterEggCounter == 7) {
             Toast.makeText(this, "你不会以为真有开发者模式吧?", Toast.LENGTH_SHORT).show()
-            easterEggCounter = 0 // 重置，避免重复提示
+            easterEggCounter = 0
         } else if (easterEggCounter >= 15) {
             Toast.makeText(this, "开发者模式已打开!", Toast.LENGTH_SHORT).show()
             easterEggCounter = 0
@@ -155,9 +151,7 @@ class MainActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
     }
-    // ================== 彩蛋结束 ==================
 
-    // ================== 文件浏览器 (AlertDialog) ==================
     private var currentBrowseDir: File = Environment.getExternalStorageDirectory()
 
     private fun showFileBrowser() {
@@ -170,7 +164,6 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "无效的文件夹", Toast.LENGTH_SHORT).show()
             return
         }
-
         val files = dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
         val names = files.map { it.name }.toTypedArray()
 
@@ -230,7 +223,6 @@ class MainActivity : AppCompatActivity() {
         if (!modsDir.exists()) modsDir.mkdirs()
         return modsDir
     }
-    // ================== 文件浏览器结束 ==================
 
     private fun showError(errorCode: String) {
         logGlobal("Error: $errorCode")

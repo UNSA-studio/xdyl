@@ -34,11 +34,6 @@ class SettingsActivity : AppCompatActivity() {
             finish()
         }
 
-        binding.btnGreenScreen.setOnClickListener {
-            prefs.edit().putBoolean("trigger_green", true).apply()
-            finish()
-        }
-
         binding.btnPingServer.setOnClickListener { startPing("8.129.236.213", "Server") }
         binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", "WiFi") }
     }
@@ -85,8 +80,24 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadPrefs() { /* 同前 */ }
-    private fun savePrefs() { /* 同前 */ }
+    private fun loadPrefs() {
+        binding.etVersionName.setText(
+            prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
+        )
+        binding.etThreadCount.setText(
+            prefs.getInt("thread_count", 20).toString()
+        )
+    }
+
+    private fun savePrefs() {
+        val version = binding.etVersionName.text.toString().ifBlank { Constants.TARGET_VERSION_DIR }
+        val threads = binding.etThreadCount.text.toString().toIntOrNull() ?: 20
+        val threadCount = threads.coerceIn(20, 128)
+        prefs.edit()
+            .putString("version_folder", version)
+            .putInt("thread_count", threadCount)
+            .apply()
+    }
 
     override fun onDestroy() {
         scope.cancel()
