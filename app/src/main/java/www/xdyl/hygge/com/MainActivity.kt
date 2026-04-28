@@ -1,23 +1,16 @@
 package www.xdyl.hygge.com
 
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.text.method.ScrollingMovementMethod
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.view.animation.AnimationUtils
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
@@ -111,99 +104,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ================== 稳定内置文件浏览器（无Fragment） ==================
-    private var currentDir: File = Environment.getExternalStorageDirectory()
-
     private fun showFolderBrowser() {
-        currentDir = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath))
-        showBottomSheetForDir(currentDir)
-    }
-
-    private fun showBottomSheetForDir(dir: File) {
-        val dialog = BottomSheetDialog(this)
-        val view = layoutInflater.inflate(R.layout.dialog_file_browser, null)
-        val tvPath = view.findViewById<TextView>(R.id.tvPath)
-        val recycler = view.findViewById<RecyclerView>(R.id.recyclerView)
-        tvPath.text = dir.absolutePath
-
-        val files = dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
-        recycler.layoutManager = LinearLayoutManager(this)
-        recycler.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-                val tv = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false) as TextView
-                tv.setBackgroundColor(0xFF1E1E1E.toInt())
-                tv.setTextColor(0xFFFFFFFF.toInt())
-                return object : RecyclerView.ViewHolder(tv) {}
+        val fragment = FolderBrowserFragment().apply {
+            arguments = Bundle().apply {
+                putString("startDir", prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath))
             }
-            override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-                val file = files[position]
-                val tv = holder.itemView as TextView
-                tv.text = file.name
-                holder.itemView.setOnClickListener {
-                    if (file.isDirectory) {
-                        currentDir = file
-                        updateRecyclerForDir(dialog, recycler, tvPath, file)
-                    }
-                }
-                holder.itemView.setOnLongClickListener {
-                    // 长按选择当前文件夹
-                    dialog.dismiss()
-                    prefs.edit().putString("launcher_root", dir.absolutePath).apply()
-                    handleSelectedFolder(dir)
-                    true
+            onFolderSelected = { selectedDir ->
+                prefs.edit().putString("launcher_root", selectedDir.absolutePath).apply()
+                val modsDir = findMinecraftModsDir(selectedDir)
+                if (modsDir != null) {
+                    targetModsDir = modsDir
+                    binding.btnStartDownload.isEnabled = true
+                    logGlobal("Mods directory set to ${modsDir.absolutePath}")
+                    Toast.makeText(this@MainActivity, "游戏目录已选择", Toast.LENGTH_SHORT).show()
+                } else {
+                    showError(Constants.ERROR01)
                 }
             }
-            override fun getItemCount(): Int = files.size
         }
-
-        dialog.setContentView(view)
-        dialog.show()
-    }
-
-    private fun updateRecyclerForDir(dialog: BottomSheetDialog, recycler: RecyclerView, tvPath: TextView, newDir: File) {
-        tvPath.text = newDir.absolutePath
-        val files = newDir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
-        (recycler.adapter as? RecyclerView.Adapter<*>)?.let { adapter ->
-            // 简单刷新，无动画
-            recycler.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-                override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-                    val tv = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false) as TextView
-                    tv.setBackgroundColor(0xFF1E1E1E.toInt())
-                    tv.setTextColor(0xFFFFFFFF.toInt())
-                    return object : RecyclerView.ViewHolder(tv) {}
-                }
-                override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-                    val file = files[position]
-                    val tv = holder.itemView as TextView
-                    tv.text = file.name
-                    holder.itemView.setOnClickListener {
-                        if (file.isDirectory) {
-                            currentDir = file
-                            updateRecyclerForDir(dialog, recycler, tvPath, file)
-                        }
-                    }
-                    holder.itemView.setOnLongClickListener {
-                        dialog.dismiss()
-                        prefs.edit().putString("launcher_root", newDir.absolutePath).apply()
-                        handleSelectedFolder(newDir)
-                        true
-                    }
-                }
-                override fun getItemCount(): Int = files.size
-            }
-        }
-    }
-
-    private fun handleSelectedFolder(folder: File) {
-        val modsDir = findMinecraftModsDir(folder)
-        if (modsDir != null) {
-            targetModsDir = modsDir
-            binding.btnStartDownload.isEnabled = true
-            logGlobal("Mods directory set to ${modsDir.absolutePath}")
-            Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show()
-        } else {
-            showError(Constants.ERROR01)
-        }
+        fragment.show(supportFragmentManager, "folder_browser")
     }
 
     private fun findMinecraftModsDir(launcherRoot: File): File? {
@@ -223,10 +142,6 @@ class MainActivity : AppCompatActivity() {
         if (!modsDir.exists()) modsDir.mkdirs()
         return modsDir
     }
-    // ================== 内置浏览器结束 ==================
-
-    // 其余部分与原来一致（showError, download, log, export, greenScreen等）
-    // 为节省篇幅，这里省略，但实际文件必须包含以下方法：
 
     private fun showError(errorCode: String) {
         logGlobal("Error: $errorCode")
