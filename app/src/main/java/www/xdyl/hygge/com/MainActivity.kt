@@ -12,6 +12,7 @@ import android.view.animation.AnimationUtils
 import android.widget.Toast
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -83,12 +84,9 @@ class MainActivity : AppCompatActivity() {
                 val intent = Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
                 startActivity(intent)
             }
-        } else {
-            // 旧版本权限请求，省略，但一般没问题
         }
     }
 
-    // 尝试从 SharedPreferences 恢复上次选中的启动器目录，并自动定位 mods
     private fun restoreLastDirectory() {
         val lastPath = prefs.getString("launcher_root", null)
         if (lastPath != null) {
@@ -98,18 +96,17 @@ class MainActivity : AppCompatActivity() {
                 if (found != null) {
                     targetModsDir = found
                     binding.btnStartDownload.isEnabled = true
-                    log("使用已保存的启动器目录: $lastPath")
+                    log("已保存的启动器目录: $lastPath")
                     log("自动定位到 mods: ${found.absolutePath}")
                     return
                 }
             }
         }
-        // 没有则提醒用户选择
         Toast.makeText(this, "请先选择启动器的根文件夹", Toast.LENGTH_LONG).show()
     }
 
-    // ================== 内置文件浏览器 ==================
-    private var currentBrowserDir: File = Environment.getExternalStorageDirectory() // 初始为外部存储根目录
+    // ================== 内置文件浏览器（无SAF，纯File） ==================
+    private var currentBrowserDir: File = Environment.getExternalStorageDirectory()
 
     private fun showFileBrowser() {
         currentBrowserDir = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath))
@@ -121,25 +118,21 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "无效的文件夹", Toast.LENGTH_SHORT).show()
             return
         }
-        val items = dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
-        val displayItems = items.map {
-            val prefix = if (it.isDirectory) "📁 " else "📄 "
-            "$prefix${it.name}"
-        }.toTypedArray()
 
-        AlertDialog.Builder(this)
-            .setTitle("当前: ${dir.name}")
-            .setItems(displayItems) { dialog, which ->
+        val items = dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
+        val displayItems = items.map { it.name }.toTypedArray()
+
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle(dir.name)
+            .setItems(displayItems) { _, which ->
                 val selected = items[which]
                 if (selected.isDirectory) {
                     currentBrowserDir = selected
-                    browseDirectory(selected)   // 进入子目录
+                    browseDirectory(selected)
                 }
             }
             .setPositiveButton("选择此文件夹") { _, _ ->
-                // 保存选择的根目录（启动器根文件夹）
                 prefs.edit().putString("launcher_root", dir.absolutePath).apply()
-                // 自动寻找 .minecraft/versions 下的 mods
                 val modsDir = findMinecraftModsDir(dir)
                 if (modsDir != null) {
                     targetModsDir = modsDir
@@ -150,39 +143,32 @@ class MainActivity : AppCompatActivity() {
                     showError(Constants.ERROR01)
                 }
             }
-            .setNegativeButton("返回上级") { _, _ ->
+
+        // 只有当前不在外部存储根目录时才显示“返回上级”
+        val rootDir = Environment.getExternalStorageDirectory()
+        if (dir.absolutePath != rootDir.absolutePath) {
+            builder.setNegativeButton("返回上级") { _, _ ->
                 val parent = dir.parentFile
                 if (parent != null) {
                     currentBrowserDir = parent
                     browseDirectory(parent)
-                } else {
-                    // 已经到根了，不能再说返回上级
-                    browseDirectory(dir)
                 }
             }
-            .show()
+        }
+
+        val dialog = builder.create()
+        dialog.window?.setWindowAnimations(R.style.DialogAnimation)
+        dialog.show()
     }
 
     private fun findMinecraftModsDir(launcherRoot: File): File? {
-        // 尝试找到 .minecraft/versions/<版本>/mods
         val mc = File(launcherRoot, ".minecraft")
-        if (!mc.exists()) {
-            val mcAlt = File(launcherRoot, "minecraft")
-            if (!mcAlt.exists()) return null
-            return scanVersionsForMods(mcAlt)
-        }
-        return scanVersionsForMods(mc)
-    }
-
-    private fun scanVersionsForMods(minecraftDir: File): File? {
-        val versionsDir = File(minecraftDir, "versions")
-        if (!versionsDir.exists() || !versionsDir.isDirectory) return null
+        val mcAlt = File(launcherRoot, "minecraft")
+        val versionsDir = if (mc.exists()) File(mc, "versions") else if (mcAlt.exists()) File(mcAlt, "versions") else return null
+        if (!versionsDir.exists()) return null
         val targetVersion = getVersionFolderName()
         val targetVersionDir = File(versionsDir, targetVersion)
-        if (!targetVersionDir.exists()) {
-            // 尝试相似文件夹（可选，这里直接返回匹配的）
-            return null
-        }
+        if (!targetVersionDir.exists()) return null
         val modsDir = File(targetVersionDir, "mods")
         if (!modsDir.exists()) modsDir.mkdirs()
         return modsDir
@@ -195,7 +181,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showError(errorCode: String) {
         log("Error: $errorCode")
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("意外错误!")
             .setMessage("错误码: $errorCode\n请查看是否是您的问题,如不是,请联系开发者")
             .setPositiveButton("确定", null)
@@ -382,7 +368,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun activateGreenScreen() {
         binding.greenOverlay.visibility = View.VISIBLE
-        onBackPressedDispatcher.addCallback(this) { }
+        onBackPressedDispatcher.addCallback(this) {
+            // 屏蔽返回键
+        }
         Toast.makeText(this, "你为啥要点呢？", Toast.LENGTH_LONG).show()
     }
 

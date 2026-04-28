@@ -11,7 +11,11 @@
         <item name="android:navigationBarColor">@color/background_dark</item>
         <item name="android:fontFamily">@font/silver</item>
         <item name="android:windowActivityTransitions">false</item>
-        <!-- 全局基础字号增大到 22sp -->
-        <item name="android:textSize">22sp</item>
+        <item name="android:textSize">18sp</item>
+    </style>
+
+    <style name="DialogAnimation" parent="Animation.AppCompat.Dialog">
+        <item name="android:windowEnterAnimation">@anim/dialog_slide_in_bottom</item>
+        <item name="android:windowExitAnimation">@anim/dialog_slide_out_bottom</item>
     </style>
 </resources>
