@@ -31,7 +31,10 @@ class MainActivity : AppCompatActivity() {
     private val scope = CoroutineScope(Dispatchers.Main + job)
     private lateinit var prefs: SharedPreferences
     private val logBuilder = StringBuilder()
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
 
     companion object {
         var instance: MainActivity? = null
@@ -99,17 +102,32 @@ class MainActivity : AppCompatActivity() {
                     log("已保存的启动器目录: $lastPath")
                     log("自动定位到 mods: ${found.absolutePath}")
                     return
+                } else {
+                    log("上次选择的启动器目录中未找到目标版本文件夹")
                 }
+            } else {
+                log("上次保存的路径无效: $lastPath")
             }
         }
-        Toast.makeText(this, "请先选择启动器的根文件夹", Toast.LENGTH_LONG).show()
+        // 不弹 Toast，等待用户手动选择
     }
 
-    // ================== 内置文件浏览器（无SAF，纯File） ==================
+    // ================== 内置文件浏览器 (无SAF) ==================
     private var currentBrowserDir: File = Environment.getExternalStorageDirectory()
 
     private fun showFileBrowser() {
-        currentBrowserDir = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath))
+        // 尝试用上次保存的路径，如果无效则默认外部存储根目录
+        val savedPath = prefs.getString("launcher_root", null)
+        if (savedPath != null) {
+            val savedDir = File(savedPath)
+            if (savedDir.exists() && savedDir.isDirectory) {
+                currentBrowserDir = savedDir
+            } else {
+                currentBrowserDir = Environment.getExternalStorageDirectory()
+            }
+        } else {
+            currentBrowserDir = Environment.getExternalStorageDirectory()
+        }
         browseDirectory(currentBrowserDir)
     }
 
@@ -144,7 +162,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-        // 只有当前不在外部存储根目录时才显示“返回上级”
         val rootDir = Environment.getExternalStorageDirectory()
         if (dir.absolutePath != rootDir.absolutePath) {
             builder.setNegativeButton("返回上级") { _, _ ->
@@ -164,11 +181,15 @@ class MainActivity : AppCompatActivity() {
     private fun findMinecraftModsDir(launcherRoot: File): File? {
         val mc = File(launcherRoot, ".minecraft")
         val mcAlt = File(launcherRoot, "minecraft")
-        val versionsDir = if (mc.exists()) File(mc, "versions") else if (mcAlt.exists()) File(mcAlt, "versions") else return null
+        val minecraftDir = if (mc.exists()) mc else if (mcAlt.exists()) mcAlt else return null
+        val versionsDir = File(minecraftDir, "versions")
         if (!versionsDir.exists()) return null
         val targetVersion = getVersionFolderName()
         val targetVersionDir = File(versionsDir, targetVersion)
-        if (!targetVersionDir.exists()) return null
+        if (!targetVersionDir.exists()) {
+            // 可以列出所有版本文件夹让用户选？这里暂时返回 null
+            return null
+        }
         val modsDir = File(targetVersionDir, "mods")
         if (!modsDir.exists()) modsDir.mkdirs()
         return modsDir
@@ -190,8 +211,16 @@ class MainActivity : AppCompatActivity() {
 
     private suspend fun fetchServerFileList(): List<String> = withContext(Dispatchers.IO) {
         try {
+            val startTime = System.currentTimeMillis()
             val request = Request.Builder().url(Constants.BASE_URL).build()
             val response = client.newCall(request).execute()
+            val code = response.code
+            val elapsed = System.currentTimeMillis() - startTime
+            log("服务器响应状态码: $code, 耗时: ${elapsed}ms")
+            if (!response.isSuccessful) {
+                log("服务器返回错误: $code")
+                return@withContext emptyList()
+            }
             val html = response.body?.string() ?: return@withContext emptyList()
             val pattern = Pattern.compile("<a href=\"([^\"]+)\">")
             val matcher = pattern.matcher(html)
@@ -202,10 +231,10 @@ class MainActivity : AppCompatActivity() {
                     files.add(link)
                 }
             }
-            log("Server file count: ${files.size}")
+            log("服务器文件列表获取成功，共 ${files.size} 个文件")
             files
         } catch (e: Exception) {
-            log("Failed to fetch server file list: ${e.message}")
+            log("获取服务器文件列表失败: ${e.message}")
             emptyList()
         }
     }
@@ -231,12 +260,16 @@ class MainActivity : AppCompatActivity() {
         var lastException: Exception? = null
         for (attempt in 1..maxRetries) {
             try {
+                val startTime = System.currentTimeMillis()
                 val manager = DownloadManager(url, size, 1, useRange = false)
                 manager.download(destFile) { /* progress handled by caller */ }
+                val elapsed = System.currentTimeMillis() - startTime
+                val speed = if (elapsed > 0) size.toDouble() / elapsed * 1000 else 0.0
+                log("  ${destFile.name} 下载成功: ${elapsed}ms, 平均速度 ${"%.1f".format(speed)} B/s")
                 return
             } catch (e: Exception) {
                 lastException = e
-                log("Retry $attempt/$maxRetries for ${destFile.name}: ${e.message}")
+                log("  ${destFile.name} 第 $attempt/$maxRetries 次尝试失败: ${e.message}")
                 delay((1000L * attempt).coerceAtMost(5000))
             }
         }
@@ -278,6 +311,7 @@ class MainActivity : AppCompatActivity() {
                     showError(Constants.ERROR01)
                     return@launch
                 }
+                log("需要下载的文件数: ${toDownload.size}")
 
                 val sem = Semaphore(threadCount)
                 val failed = AtomicInteger(0)
@@ -294,15 +328,16 @@ class MainActivity : AppCompatActivity() {
                                 log("[${completed+1}/$total] 下载 $name (${mod.size} bytes)")
                                 downloadWithRetry(Constants.BASE_URL + name, mod.size, file)
                                 val verifier = FileVerifier()
-                                if (!verifier.verifyFile(file, mod.md5, mod.sha256)) {
-                                    throw RuntimeException("校验失败: $name")
-                                }
+                                val checkStart = System.currentTimeMillis()
+                                val ok = verifier.verifyFile(file, mod.md5, mod.sha256)
+                                val checkTime = System.currentTimeMillis() - checkStart
+                                if (!ok) throw RuntimeException("校验失败 (耗时${checkTime}ms)")
+                                log("    ${name} 校验通过 (${checkTime}ms)")
                                 completed++
                                 withContext(Dispatchers.Main) {
                                     binding.progressBar.progress = (completed * 100) / total
                                     binding.tvStatus.text = "$completed/$total"
                                 }
-                                log("$name 完成")
                             } catch (e: Exception) {
                                 log("失败 $name: ${e.message}")
                                 failed.incrementAndGet()
@@ -325,11 +360,16 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             } catch (e: java.net.SocketTimeoutException) {
+                log("网络超时")
                 showError(Constants.ERROR03)
             } catch (e: Exception) {
-                if (e.message?.contains("Permission") == true) showError(Constants.ERROR02)
-                else showError(Constants.ERROR01)
-                log("异常: ${e.message}")
+                if (e.message?.contains("Permission") == true) {
+                    log("权限错误: ${e.message}")
+                    showError(Constants.ERROR02)
+                } else {
+                    log("未预期错误: ${e.message}")
+                    showError(Constants.ERROR01)
+                }
             } finally {
                 isProcessing = false
                 binding.btnStartDownload.isEnabled = true
