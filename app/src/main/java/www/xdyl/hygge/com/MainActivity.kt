@@ -90,46 +90,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // 启动时尝试用上次保存的启动器根目录自动定位 mods，失败则仅记录日志
     private fun restoreLastDirectory() {
         val lastPath = prefs.getString("launcher_root", null)
         if (lastPath != null) {
             val dir = File(lastPath)
+            log("尝试使用保存的启动器目录: $lastPath")
             if (dir.exists() && dir.isDirectory) {
-                val found = findMinecraftModsDir(dir)
+                val found = findMinecraftModsDir(dir, logToPrefs = false)
                 if (found != null) {
                     targetModsDir = found
                     binding.btnStartDownload.isEnabled = true
-                    log("已保存的启动器目录: $lastPath")
-                    log("自动定位到 mods: ${found.absolutePath}")
+                    log("自动定位成功: ${found.absolutePath}")
                     return
                 } else {
-                    log("上次选择的启动器目录中未找到目标版本文件夹")
+                    log("在 $lastPath 下未找到目标版本文件夹，需要重新选择")
                 }
             } else {
-                log("上次保存的路径无效: $lastPath")
-            }
-        }
-        // 不弹 Toast，等待用户手动选择
-    }
-
-    // ================== 内置文件浏览器 (无SAF) ==================
-    private var currentBrowserDir: File = Environment.getExternalStorageDirectory()
-
-    private fun showFileBrowser() {
-        // 尝试用上次保存的路径，如果无效则默认外部存储根目录
-        val savedPath = prefs.getString("launcher_root", null)
-        if (savedPath != null) {
-            val savedDir = File(savedPath)
-            if (savedDir.exists() && savedDir.isDirectory) {
-                currentBrowserDir = savedDir
-            } else {
-                currentBrowserDir = Environment.getExternalStorageDirectory()
+                log("保存的路径无效或不可访问")
             }
         } else {
-            currentBrowserDir = Environment.getExternalStorageDirectory()
+            log("尚未选择启动器目录")
         }
-        browseDirectory(currentBrowserDir)
     }
+
+    // ================== 内置文件浏览器 (纯 File) ==================
+    private fun showFileBrowser() {
+        // 每次打开都强制从 /storage/emulated/0 开始，不记忆上一次进度
+        val rootDir = Environment.getExternalStorageDirectory()
+        currentBrowserDir = rootDir
+        browseDirectory(rootDir)
+    }
+
+    private var currentBrowserDir: File = Environment.getExternalStorageDirectory()
 
     private fun browseDirectory(dir: File) {
         if (!dir.exists() || !dir.isDirectory) {
@@ -137,7 +130,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val items = dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
+        val items = dir.listFiles()?.toList()
+            ?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
         val displayItems = items.map { it.name }.toTypedArray()
 
         val builder = MaterialAlertDialogBuilder(this)
@@ -150,12 +144,13 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             .setPositiveButton("选择此文件夹") { _, _ ->
+                log("用户选择了启动器文件夹: ${dir.absolutePath}")
                 prefs.edit().putString("launcher_root", dir.absolutePath).apply()
-                val modsDir = findMinecraftModsDir(dir)
+                val modsDir = findMinecraftModsDir(dir, logToPrefs = true)
                 if (modsDir != null) {
                     targetModsDir = modsDir
                     binding.btnStartDownload.isEnabled = true
-                    log("已定位到 mods: ${modsDir.absolutePath}")
+                    log("成功定位到 mods: ${modsDir.absolutePath}")
                     Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show()
                 } else {
                     showError(Constants.ERROR01)
@@ -178,20 +173,41 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun findMinecraftModsDir(launcherRoot: File): File? {
+    // 寻找 .minecraft/versions/<目标版本>/mods
+    private fun findMinecraftModsDir(launcherRoot: File, logToPrefs: Boolean): File? {
         val mc = File(launcherRoot, ".minecraft")
         val mcAlt = File(launcherRoot, "minecraft")
-        val minecraftDir = if (mc.exists()) mc else if (mcAlt.exists()) mcAlt else return null
+        val minecraftDir = when {
+            mc.exists() -> mc
+            mcAlt.exists() -> mcAlt
+            else -> {
+                log("未找到 .minecraft 或 minecraft 目录")
+                return null
+            }
+        }
+
         val versionsDir = File(minecraftDir, "versions")
-        if (!versionsDir.exists()) return null
-        val targetVersion = getVersionFolderName()
-        val targetVersionDir = File(versionsDir, targetVersion)
-        if (!targetVersionDir.exists()) {
-            // 可以列出所有版本文件夹让用户选？这里暂时返回 null
+        if (!versionsDir.exists() || !versionsDir.isDirectory) {
+            log("未找到 versions 目录")
             return null
         }
-        val modsDir = File(targetVersionDir, "mods")
-        if (!modsDir.exists()) modsDir.mkdirs()
+
+        val targetVersion = getVersionFolderName()
+        val targetDir = File(versionsDir, targetVersion)
+        if (!targetDir.exists() || !targetDir.isDirectory) {
+            log("未找到版本文件夹: $targetVersion")
+            return null
+        }
+
+        val modsDir = File(targetDir, "mods")
+        if (!modsDir.exists()) {
+            if (!modsDir.mkdirs()) {
+                log("无法创建 mods 文件夹")
+                return null
+            }
+            log("已创建 mods 文件夹")
+        }
+        log("找到目标 mods 目录: ${modsDir.absolutePath}")
         return modsDir
     }
 
@@ -201,7 +217,7 @@ class MainActivity : AppCompatActivity() {
     // ================== 内置浏览器结束 ==================
 
     private fun showError(errorCode: String) {
-        log("Error: $errorCode")
+        log("错误: $errorCode")
         MaterialAlertDialogBuilder(this)
             .setTitle("意外错误!")
             .setMessage("错误码: $errorCode\n请查看是否是您的问题,如不是,请联系开发者")
@@ -216,14 +232,14 @@ class MainActivity : AppCompatActivity() {
             val response = client.newCall(request).execute()
             val code = response.code
             val elapsed = System.currentTimeMillis() - startTime
-            log("服务器响应状态码: $code, 耗时: ${elapsed}ms")
-            if (!response.isSuccessful) {
-                log("服务器返回错误: $code")
+            log("服务器响应: HTTP $code (${elapsed}ms)")
+            val body = response.body?.string() ?: ""
+            if (code != 200) {
+                log("服务器返回错误，前 200 字节: ${body.take(200)}")
                 return@withContext emptyList()
             }
-            val html = response.body?.string() ?: return@withContext emptyList()
             val pattern = Pattern.compile("<a href=\"([^\"]+)\">")
-            val matcher = pattern.matcher(html)
+            val matcher = pattern.matcher(body)
             val files = mutableListOf<String>()
             while (matcher.find()) {
                 val link = matcher.group(1)
@@ -231,10 +247,10 @@ class MainActivity : AppCompatActivity() {
                     files.add(link)
                 }
             }
-            log("服务器文件列表获取成功，共 ${files.size} 个文件")
+            log("获取到 ${files.size} 个 .jar 文件")
             files
         } catch (e: Exception) {
-            log("获取服务器文件列表失败: ${e.message}")
+            log("获取文件列表异常: ${e.message}")
             emptyList()
         }
     }
@@ -262,18 +278,18 @@ class MainActivity : AppCompatActivity() {
             try {
                 val startTime = System.currentTimeMillis()
                 val manager = DownloadManager(url, size, 1, useRange = false)
-                manager.download(destFile) { /* progress handled by caller */ }
+                manager.download(destFile) { /* progress ignored */ }
                 val elapsed = System.currentTimeMillis() - startTime
                 val speed = if (elapsed > 0) size.toDouble() / elapsed * 1000 else 0.0
-                log("  ${destFile.name} 下载成功: ${elapsed}ms, 平均速度 ${"%.1f".format(speed)} B/s")
+                log("  -> ${destFile.name} 完成 (${elapsed}ms, ${"%.1f".format(speed)} B/s)")
                 return
             } catch (e: Exception) {
                 lastException = e
-                log("  ${destFile.name} 第 $attempt/$maxRetries 次尝试失败: ${e.message}")
+                log("  -> ${destFile.name} 第 $attempt/$maxRetries 次失败: ${e.message?.substringBefore("\n")}")
                 delay((1000L * attempt).coerceAtMost(5000))
             }
         }
-        throw lastException ?: RuntimeException("Download failed after $maxRetries retries")
+        throw lastException!! 
     }
 
     private fun startUpdateProcess() {
@@ -307,7 +323,7 @@ class MainActivity : AppCompatActivity() {
                 val csvSet = csvMods.map { it.fileName }.toSet()
                 val toDownload = serverFiles.filter { csvSet.contains(it) }
                 if (toDownload.isEmpty()) {
-                    log("没有需要下载的文件（CSV 不匹配）")
+                    log("CSV 中的文件都不在服务器上，请检查 CSV 是否更新。")
                     showError(Constants.ERROR01)
                     return@launch
                 }
@@ -331,15 +347,15 @@ class MainActivity : AppCompatActivity() {
                                 val checkStart = System.currentTimeMillis()
                                 val ok = verifier.verifyFile(file, mod.md5, mod.sha256)
                                 val checkTime = System.currentTimeMillis() - checkStart
-                                if (!ok) throw RuntimeException("校验失败 (耗时${checkTime}ms)")
-                                log("    ${name} 校验通过 (${checkTime}ms)")
+                                if (!ok) throw RuntimeException("校验失败 (${checkTime}ms)")
+                                log("    校验通过 (${checkTime}ms)")
                                 completed++
                                 withContext(Dispatchers.Main) {
                                     binding.progressBar.progress = (completed * 100) / total
                                     binding.tvStatus.text = "$completed/$total"
                                 }
                             } catch (e: Exception) {
-                                log("失败 $name: ${e.message}")
+                                log("  失败: $name - ${e.message}")
                                 failed.incrementAndGet()
                             } finally {
                                 sem.release()
@@ -363,13 +379,9 @@ class MainActivity : AppCompatActivity() {
                 log("网络超时")
                 showError(Constants.ERROR03)
             } catch (e: Exception) {
-                if (e.message?.contains("Permission") == true) {
-                    log("权限错误: ${e.message}")
-                    showError(Constants.ERROR02)
-                } else {
-                    log("未预期错误: ${e.message}")
-                    showError(Constants.ERROR01)
-                }
+                log("异常: ${e.message}")
+                if (e.message?.contains("Permission") == true) showError(Constants.ERROR02)
+                else showError(Constants.ERROR01)
             } finally {
                 isProcessing = false
                 binding.btnStartDownload.isEnabled = true
