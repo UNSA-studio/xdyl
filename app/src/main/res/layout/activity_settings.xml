@@ -22,7 +22,6 @@
             android:textStyle="bold"
             android:layout_marginBottom="24dp"/>
 
-        <!-- 版本名、线程数等略，与之前相同 -->
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -112,16 +111,5 @@
             android:backgroundTint="@color/primary_light_blue"
             android:layout_marginTop="24dp"
             android:textSize="16sp"/>
-
-        <Button
-            android:id="@+id/btnGreenScreen"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="千万别点!"
-            android:textColor="#FFFF0000"
-            android:backgroundTint="#FF333333"
-            android:layout_marginTop="12dp"
-            android:textSize="16sp"
-            android:textStyle="bold"/>
     </LinearLayout>
 </ScrollView>

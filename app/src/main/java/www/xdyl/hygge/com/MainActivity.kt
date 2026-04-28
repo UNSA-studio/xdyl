@@ -3,10 +3,15 @@ package www.xdyl.hygge.com
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.text.method.ScrollingMovementMethod
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.TextPaint
+import android.text.method.LinkMovementMethod
+import android.text.style.ClickableSpan
 import android.view.View
 import android.view.animation.AnimationUtils
 import android.widget.Toast
@@ -36,6 +41,11 @@ class MainActivity : AppCompatActivity() {
         .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
+    // 彩蛋计数器
+    private var easterEggCounter = 0
+    private var lastClickTime = 0L
+    private val CLICK_INTERVAL = 500L // 500ms 内连续点击才计数
+
     companion object {
         var instance: MainActivity? = null
     }
@@ -53,6 +63,9 @@ class MainActivity : AppCompatActivity() {
 
         requestPermissionsIfNeeded()
         restoreLastDirectory()
+
+        // 设置标题中的“Android”为可点击
+        setupEasterEggTitle()
 
         binding.btnSelectDir.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
@@ -75,10 +88,7 @@ class MainActivity : AppCompatActivity() {
             prefs.edit().putBoolean("request_export_log", false).apply()
             exportLogToFile()
         }
-        if (prefs.getBoolean("trigger_green", false)) {
-            prefs.edit().putBoolean("trigger_green", false).apply()
-            activateGreenScreen()
-        }
+        // 移除绿屏触发检查
     }
 
     private fun requestPermissionsIfNeeded() {
@@ -105,7 +115,49 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ================== 稳定内置文件浏览器 (AlertDialog) ==================
+    // ================== 彩蛋标题设置 ==================
+    private fun setupEasterEggTitle() {
+        val fullText = "更新器-Android"
+        val spannable = SpannableString(fullText)
+        val index = fullText.indexOf("Android")
+        if (index != -1) {
+            val clickableSpan = object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    handleEasterEggClick()
+                }
+                override fun updateDrawState(ds: TextPaint) {
+                    ds.color = binding.tvTitle.currentTextColor
+                    ds.isUnderlineText = false
+                }
+            }
+            spannable.setSpan(clickableSpan, index, index + "Android".length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        binding.tvTitle.text = spannable
+        binding.tvTitle.movementMethod = LinkMovementMethod.getInstance()
+    }
+
+    private fun handleEasterEggClick() {
+        val now = System.currentTimeMillis()
+        if (now - lastClickTime < CLICK_INTERVAL) {
+            easterEggCounter++
+        } else {
+            easterEggCounter = 1
+        }
+        lastClickTime = now
+
+        if (easterEggCounter == 7) {
+            Toast.makeText(this, "你不会以为真有开发者模式吧?", Toast.LENGTH_SHORT).show()
+            easterEggCounter = 0 // 重置，避免重复提示
+        } else if (easterEggCounter >= 15) {
+            Toast.makeText(this, "开发者模式已打开!", Toast.LENGTH_SHORT).show()
+            easterEggCounter = 0
+            startActivity(Intent(this, EasterEggActivity::class.java))
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+        }
+    }
+    // ================== 彩蛋结束 ==================
+
+    // ================== 文件浏览器 (AlertDialog) ==================
     private var currentBrowseDir: File = Environment.getExternalStorageDirectory()
 
     private fun showFileBrowser() {
@@ -136,7 +188,6 @@ class MainActivity : AppCompatActivity() {
                 handleSelectedFolder(dir)
             }
 
-        // 只有不在根目录时才显示返回上级
         val root = Environment.getExternalStorageDirectory()
         if (dir.absolutePath != root.absolutePath) {
             builder.setNegativeButton("返回上级") { _, _ ->
@@ -146,11 +197,7 @@ class MainActivity : AppCompatActivity() {
                     browseDirectory(parent)
                 }
             }
-        } else {
-            // 不显示返回按钮但可以设置一个取消
-            builder.setNegativeButton("取消", null)
         }
-
         builder.show()
     }
 
@@ -189,7 +236,7 @@ class MainActivity : AppCompatActivity() {
         logGlobal("Error: $errorCode")
         MaterialAlertDialogBuilder(this)
             .setTitle("Error")
-            .setMessage("Error code: $errorCode\nPlease check your settings or contact developer.")
+            .setMessage("Error code: $errorCode")
             .setPositiveButton("OK", null)
             .show()
     }
@@ -340,11 +387,6 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Toast.makeText(this, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
         }
-    }
-
-    private fun activateGreenScreen() {
-        binding.greenOverlay.visibility = View.VISIBLE
-        onBackPressedDispatcher.addCallback(this) { }
     }
 
     override fun onDestroy() {

@@ -27,6 +27,14 @@
             android:name="www.xdyl.hygge.com.SettingsActivity"
             android:label="设置"
             android:parentActivityName="www.xdyl.hygge.com.MainActivity" />
+        <activity
+            android:name="www.xdyl.hygge.com.EasterEggActivity"
+            android:label="扩展页面"
+            android:theme="@style/Theme.Xdyl" />
+        <activity
+            android:name="www.xdyl.hygge.com.AchievementActivity"
+            android:label="成就"
+            android:theme="@style/Theme.Xdyl" />
     </application>
 
 </manifest>

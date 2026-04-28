@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_dark">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/contentLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="彩蛋页面"
+                android:textColor="@color/primary_light_blue"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp"/>
+
+            <TextView
+                android:id="@+id/tvThreadLimit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="线程数上限: 256"
+                android:textColor="@android:color/white"
+                android:textSize="20sp"
+                android:padding="8dp"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <Button
+                android:id="@+id/btnDownloadUrl"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="自定义下载地址"
+                android:textColor="@android:color/black"
+                android:backgroundTint="@color/primary_light_blue"
+                android:layout_marginTop="16dp"/>
+
+            <Button
+                android:id="@+id/btnAchievements"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="成就"
+                android:textColor="@android:color/black"
+                android:backgroundTint="@color/primary_light_blue"
+                android:layout_marginTop="16dp"/>
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>
