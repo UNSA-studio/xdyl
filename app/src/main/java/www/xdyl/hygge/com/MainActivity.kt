@@ -1,5 +1,6 @@
 package www.xdyl.hygge.com
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
@@ -55,7 +56,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnSelectDir.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
-            showFolderBrowser()
+            showFileBrowser()
         }
         binding.btnStartDownload.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
@@ -104,25 +105,65 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showFolderBrowser() {
-        val fragment = FolderBrowserFragment().apply {
-            arguments = Bundle().apply {
-                putString("startDir", prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath))
-            }
-            onFolderSelected = { selectedDir ->
-                prefs.edit().putString("launcher_root", selectedDir.absolutePath).apply()
-                val modsDir = findMinecraftModsDir(selectedDir)
-                if (modsDir != null) {
-                    targetModsDir = modsDir
-                    binding.btnStartDownload.isEnabled = true
-                    logGlobal("Mods directory set to ${modsDir.absolutePath}")
-                    Toast.makeText(this@MainActivity, "游戏目录已选择", Toast.LENGTH_SHORT).show()
-                } else {
-                    showError(Constants.ERROR01)
+    // ================== 稳定内置文件浏览器 (AlertDialog) ==================
+    private var currentBrowseDir: File = Environment.getExternalStorageDirectory()
+
+    private fun showFileBrowser() {
+        currentBrowseDir = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath))
+        browseDirectory(currentBrowseDir)
+    }
+
+    private fun browseDirectory(dir: File) {
+        if (!dir.exists() || !dir.isDirectory) {
+            Toast.makeText(this, "无效的文件夹", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val files = dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
+        val names = files.map { it.name }.toTypedArray()
+
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle(dir.absolutePath)
+            .setItems(names) { _, which ->
+                val selected = files[which]
+                if (selected.isDirectory) {
+                    currentBrowseDir = selected
+                    browseDirectory(selected)
                 }
             }
+            .setPositiveButton("选择此文件夹") { _, _ ->
+                prefs.edit().putString("launcher_root", dir.absolutePath).apply()
+                handleSelectedFolder(dir)
+            }
+
+        // 只有不在根目录时才显示返回上级
+        val root = Environment.getExternalStorageDirectory()
+        if (dir.absolutePath != root.absolutePath) {
+            builder.setNegativeButton("返回上级") { _, _ ->
+                val parent = dir.parentFile
+                if (parent != null) {
+                    currentBrowseDir = parent
+                    browseDirectory(parent)
+                }
+            }
+        } else {
+            // 不显示返回按钮但可以设置一个取消
+            builder.setNegativeButton("取消", null)
         }
-        fragment.show(supportFragmentManager, "folder_browser")
+
+        builder.show()
+    }
+
+    private fun handleSelectedFolder(folder: File) {
+        val modsDir = findMinecraftModsDir(folder)
+        if (modsDir != null) {
+            targetModsDir = modsDir
+            binding.btnStartDownload.isEnabled = true
+            logGlobal("Mods directory set to ${modsDir.absolutePath}")
+            Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show()
+        } else {
+            showError(Constants.ERROR01)
+        }
     }
 
     private fun findMinecraftModsDir(launcherRoot: File): File? {
@@ -142,6 +183,7 @@ class MainActivity : AppCompatActivity() {
         if (!modsDir.exists()) modsDir.mkdirs()
         return modsDir
     }
+    // ================== 文件浏览器结束 ==================
 
     private fun showError(errorCode: String) {
         logGlobal("Error: $errorCode")
