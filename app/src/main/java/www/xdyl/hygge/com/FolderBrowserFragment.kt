@@ -16,6 +16,8 @@ class FolderBrowserFragment : BottomSheetDialogFragment() {
     private var currentDir: File = Environment.getExternalStorageDirectory()
     private lateinit var adapter: FileAdapter
     var onFolderSelected: ((File) -> Unit)? = null
+    private var tvPath: TextView? = null
+    private var recyclerView: RecyclerView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,37 +34,43 @@ class FolderBrowserFragment : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val tvPath = view.findViewById<TextView>(R.id.tvPath)
-        val recycler = view.findViewById<RecyclerView>(R.id.recyclerView)
+        tvPath = view.findViewById(R.id.tvPath)
+        recyclerView = view.findViewById(R.id.recyclerView)
 
         adapter = FileAdapter { file ->
             if (file.isDirectory) {
-                // 进入子文件夹，替换自身并添加动画
-                parentFragmentManager.beginTransaction()
-                    .setCustomAnimations(
-                        R.anim.slide_in_right, R.anim.slide_out_left,
-                        R.anim.slide_in_left, R.anim.slide_out_right
-                    )
-                    .replace(R.id.fragment_container, FolderBrowserFragment().apply {
-                        arguments = Bundle().apply {
-                            putString("startDir", file.absolutePath)
-                        }
-                        onFolderSelected = this@FolderBrowserFragment.onFolderSelected
-                    })
-                    .addToBackStack(null)
-                    .commit()
+                navigateToDirectory(file)
             }
         }
-
         adapter.onFolderSelected = { file ->
             onFolderSelected?.invoke(file)
             dismiss()
         }
 
-        recycler.layoutManager = LinearLayoutManager(requireContext())
-        recycler.adapter = adapter
-        tvPath.text = currentDir.absolutePath
+        recyclerView!!.layoutManager = LinearLayoutManager(requireContext())
+        recyclerView!!.adapter = adapter
+        tvPath!!.text = currentDir.absolutePath
         loadFiles()
+    }
+
+    private fun navigateToDirectory(dir: File) {
+        val recycler = recyclerView ?: return
+        // 向右滑出当前列表
+        recycler.animate()
+            .translationX(recycler.width.toFloat())
+            .setDuration(250)
+            .withEndAction {
+                currentDir = dir
+                tvPath!!.text = currentDir.absolutePath
+                loadFiles()
+                // 从左侧滑入新列表
+                recycler.translationX = -recycler.width.toFloat()
+                recycler.animate()
+                    .translationX(0f)
+                    .setDuration(250)
+                    .start()
+            }
+            .start()
     }
 
     private fun loadFiles() {
