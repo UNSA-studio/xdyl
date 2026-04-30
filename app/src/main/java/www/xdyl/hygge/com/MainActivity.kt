@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     private var easterEggCounter = 0
     private var lastClickTime = 0L
     private val CLICK_INTERVAL = 500L
+    private var lastToast: Toast? = null
 
     companion object {
         var instance: MainActivity? = null
@@ -60,7 +61,6 @@ class MainActivity : AppCompatActivity() {
 
         requestPermissionsIfNeeded()
         restoreLastDirectory()
-
         setupEasterEggTitle()
 
         binding.btnSelectDir.setOnClickListener {
@@ -69,6 +69,10 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnStartDownload.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
+            if (!prefs.getBoolean("neoforge_verified", false)) {
+                Toast.makeText(this, "请在扩展页面验证Neoforge版本", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             startUpdateProcess()
         }
         binding.btnSettings.setOnClickListener {
@@ -128,6 +132,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.tvTitle.text = spannable
         binding.tvTitle.movementMethod = LinkMovementMethod.getInstance()
+        binding.tvTitle.highlightColor = android.R.color.transparent
     }
 
     private fun handleEasterEggClick() {
@@ -139,11 +144,14 @@ class MainActivity : AppCompatActivity() {
         }
         lastClickTime = now
 
+        lastToast?.cancel()
         if (easterEggCounter == 7) {
-            Toast.makeText(this, "你不会以为真有开发者模式吧?", Toast.LENGTH_SHORT).show()
+            lastToast = Toast.makeText(this, "你不会以为真有开发者模式吧?", Toast.LENGTH_SHORT)
+            lastToast?.show()
             easterEggCounter = 0
         } else if (easterEggCounter >= 15) {
-            Toast.makeText(this, "开发者模式已打开!", Toast.LENGTH_SHORT).show()
+            lastToast = Toast.makeText(this, "开发者模式已打开!", Toast.LENGTH_SHORT)
+            lastToast?.show()
             easterEggCounter = 0
             startActivity(Intent(this, EasterEggActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)

@@ -37,6 +37,15 @@
                 android:focusable="true" />
 
             <Button
+                android:id="@+id/btnCheckNeoforge"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="检查 NeoForge 版本"
+                android:textColor="@android:color/black"
+                android:backgroundTint="@color/primary_light_blue"
+                android:layout_marginTop="16dp"/>
+
+            <Button
                 android:id="@+id/btnDownloadUrl"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
