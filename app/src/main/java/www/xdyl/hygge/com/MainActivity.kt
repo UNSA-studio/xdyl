@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.Main + job)
     private lateinit var prefs: SharedPreferences
-    private val logBuilder = StringBuilder()
+    private val logBuilder = StringBuilder()   // 仅用于主界面显示
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
@@ -41,7 +41,7 @@ class MainActivity : AppCompatActivity() {
 
     private var easterEggCounter = 0
     private var lastClickTime = 0L
-    private val CLICK_INTERVAL = 500L
+    private val CLICK_INTERVAL = 600L
     private var lastToast: Toast? = null
 
     companion object {
@@ -52,6 +52,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        LogManager.log("MainActivity onCreate start")
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         instance = this
@@ -64,26 +65,32 @@ class MainActivity : AppCompatActivity() {
         setupEasterEggTitle()
 
         binding.btnSelectDir.setOnClickListener {
+            LogManager.log("User tapped 'Select Game Directory'")
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
             showFileBrowser()
         }
         binding.btnStartDownload.setOnClickListener {
+            LogManager.log("User tapped 'Start Download'")
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
             if (!prefs.getBoolean("neoforge_verified", false)) {
                 Toast.makeText(this, "请在扩展页面验证Neoforge版本", Toast.LENGTH_SHORT).show()
+                LogManager.log("Download blocked: Neoforge not verified")
                 return@setOnClickListener
             }
             startUpdateProcess()
         }
         binding.btnSettings.setOnClickListener {
+            LogManager.log("User tapped Settings button")
             it.animate().rotationBy(180f).setDuration(300).start()
             startActivity(Intent(this, SettingsActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
+        LogManager.log("MainActivity onCreate completed")
     }
 
     override fun onResume() {
         super.onResume()
+        LogManager.log("MainActivity onResume")
         if (prefs.getBoolean("request_export_log", false)) {
             prefs.edit().putBoolean("request_export_log", false).apply()
             exportLogToFile()
@@ -93,6 +100,7 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissionsIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
+                LogManager.log("Requesting MANAGE_EXTERNAL_STORAGE permission")
                 startActivity(Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
             }
         }
@@ -101,17 +109,19 @@ class MainActivity : AppCompatActivity() {
     private fun restoreLastDirectory() {
         val lastPath = prefs.getString("launcher_root", null)
         if (lastPath != null) {
+            LogManager.log("Attempting to restore launcher root: $lastPath")
             val dir = File(lastPath)
             if (dir.exists() && dir.isDirectory) {
                 val found = findMinecraftModsDir(dir)
                 if (found != null) {
                     targetModsDir = found
                     binding.btnStartDownload.isEnabled = true
-                    logGlobal("Auto-located mods: ${found.absolutePath}")
+                    LogManager.log("Auto-located mods directory: ${found.absolutePath}")
                     return
                 }
             }
         }
+        LogManager.log("No valid launcher root restored, user must select manually")
     }
 
     private fun setupEasterEggTitle() {
@@ -133,6 +143,7 @@ class MainActivity : AppCompatActivity() {
         binding.tvTitle.text = spannable
         binding.tvTitle.movementMethod = LinkMovementMethod.getInstance()
         binding.tvTitle.highlightColor = android.R.color.transparent
+        LogManager.log("Easter egg title set up")
     }
 
     private fun handleEasterEggClick() {
@@ -144,24 +155,29 @@ class MainActivity : AppCompatActivity() {
         }
         lastClickTime = now
 
+        LogManager.log("Easter egg clicked, counter = $easterEggCounter")
         lastToast?.cancel()
         if (easterEggCounter == 7) {
             lastToast = Toast.makeText(this, "你不会以为真有开发者模式吧?", Toast.LENGTH_SHORT)
             lastToast?.show()
+            LogManager.log("Easter egg hint displayed")
             easterEggCounter = 0
         } else if (easterEggCounter >= 15) {
             lastToast = Toast.makeText(this, "开发者模式已打开!", Toast.LENGTH_SHORT)
             lastToast?.show()
+            LogManager.log("Easter egg activated, opening EasterEggActivity")
             easterEggCounter = 0
             startActivity(Intent(this, EasterEggActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
     }
 
+    // ===== 文件浏览器 =====
     private var currentBrowseDir: File = Environment.getExternalStorageDirectory()
 
     private fun showFileBrowser() {
         currentBrowseDir = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath))
+        LogManager.log("Opening file browser at ${currentBrowseDir.absolutePath}")
         browseDirectory(currentBrowseDir)
     }
 
@@ -178,11 +194,13 @@ class MainActivity : AppCompatActivity() {
             .setItems(names) { _, which ->
                 val selected = files[which]
                 if (selected.isDirectory) {
+                    LogManager.log("Navigated into: ${selected.name}")
                     currentBrowseDir = selected
                     browseDirectory(selected)
                 }
             }
             .setPositiveButton("选择此文件夹") { _, _ ->
+                LogManager.log("User selected launcher root: ${dir.absolutePath}")
                 prefs.edit().putString("launcher_root", dir.absolutePath).apply()
                 handleSelectedFolder(dir)
             }
@@ -192,6 +210,7 @@ class MainActivity : AppCompatActivity() {
             builder.setNegativeButton("返回上级") { _, _ ->
                 val parent = dir.parentFile
                 if (parent != null) {
+                    LogManager.log("Navigated up to: ${parent.name}")
                     currentBrowseDir = parent
                     browseDirectory(parent)
                 }
@@ -205,9 +224,10 @@ class MainActivity : AppCompatActivity() {
         if (modsDir != null) {
             targetModsDir = modsDir
             binding.btnStartDownload.isEnabled = true
-            logGlobal("Mods directory set to ${modsDir.absolutePath}")
+            LogManager.log("Game directory set to ${modsDir.absolutePath}")
             Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show()
         } else {
+            LogManager.log("Failed to find mods directory in selected folder")
             showError(Constants.ERROR01)
         }
     }
@@ -231,7 +251,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showError(errorCode: String) {
-        logGlobal("Error: $errorCode")
+        LogManager.log("Error shown: $errorCode")
         MaterialAlertDialogBuilder(this)
             .setTitle("Error")
             .setMessage("Error code: $errorCode")
@@ -239,12 +259,13 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    // ===== 网络与下载 =====
     private suspend fun fetchServerFileList(): List<String> = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder().url(Constants.BASE_URL).build()
             val response = client.newCall(request).execute()
             val body = response.body?.string() ?: ""
-            logGlobal("Server response: HTTP ${response.code}")
+            LogManager.log("Server response: HTTP ${response.code}")
             if (response.code != 200) return@withContext emptyList()
             val pattern = Pattern.compile("<a href=\"([^\"]+)\">")
             val matcher = pattern.matcher(body)
@@ -253,10 +274,10 @@ class MainActivity : AppCompatActivity() {
                 val link = matcher.group(1)
                 if (link != null && link.endsWith(".jar")) files.add(link)
             }
-            logGlobal("Found ${files.size} .jar files on server")
+            LogManager.log("Found ${files.size} .jar files on server")
             files
         } catch (e: Exception) {
-            logGlobal("Failed to fetch server file list: ${e.message}")
+            LogManager.log("Failed to fetch server file list: ${e.message}")
             emptyList()
         }
     }
@@ -280,11 +301,11 @@ class MainActivity : AppCompatActivity() {
                 val start = System.currentTimeMillis()
                 DownloadManager(url, size, 1, useRange = false).download(destFile) { }
                 val elapsed = System.currentTimeMillis() - start
-                logGlobal("${destFile.name} downloaded in ${elapsed}ms")
+                LogManager.log("${destFile.name} downloaded in ${elapsed}ms")
                 return
             } catch (e: Exception) {
                 lastEx = e
-                logGlobal("${destFile.name} attempt $attempt failed: ${e.message}")
+                LogManager.log("${destFile.name} attempt $attempt failed: ${e.message}")
                 delay((1000L * attempt).coerceAtMost(5000))
             }
         }
@@ -303,6 +324,7 @@ class MainActivity : AppCompatActivity() {
         appendLog("Starting download...")
 
         val threadCount = prefs.getInt("thread_count", 20).coerceIn(20, 128)
+        LogManager.log("Update started with $threadCount threads")
         scope.launch {
             try {
                 val serverFiles = fetchServerFileList()
@@ -334,7 +356,7 @@ class MainActivity : AppCompatActivity() {
                                     binding.tvStatus.text = "$completed/$total"
                                 }
                             } catch (e: Exception) {
-                                logGlobal("Failed $name: ${e.message}")
+                                LogManager.log("Failed $name: ${e.message}")
                                 failed.incrementAndGet()
                             } finally {
                                 sem.release()
@@ -347,6 +369,7 @@ class MainActivity : AppCompatActivity() {
                     showError(Constants.ERROR05)
                 } else {
                     appendLog("All mods updated!")
+                    LogManager.log("Update finished successfully")
                     Toast.makeText(this@MainActivity, "Update completed!", Toast.LENGTH_LONG).show()
                     binding.progressBar.visibility = View.GONE
                 }
@@ -359,16 +382,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // 仅用于主界面日志显示，不写入内部详细日志
     fun appendLog(msg: String) {
         logBuilder.appendLine(msg)
         runOnUiThread {
             binding.tvLog.text = logBuilder.toString()
             binding.logScroll.post { binding.logScroll.fullScroll(View.FOCUS_DOWN) }
         }
-    }
-
-    private fun logGlobal(msg: String) {
-        LogManager.log(msg)
     }
 
     private fun exportLogToFile() {
@@ -381,6 +401,7 @@ class MainActivity : AppCompatActivity() {
             val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             val file = File(downloadsDir, "mod_update_log_${System.currentTimeMillis()}.txt")
             FileOutputStream(file).use { it.write(log.toByteArray()) }
+            LogManager.log("Log exported to ${file.absolutePath}")
             Toast.makeText(this, "Log exported to ${file.absolutePath}", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             Toast.makeText(this, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
@@ -388,6 +409,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        LogManager.log("MainActivity onDestroy")
         instance = null
         job.cancel()
         super.onDestroy()
