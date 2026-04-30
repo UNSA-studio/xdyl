@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        LogManager.log("MainActivity onCreate start")
+        LogManager.log("MainActivity onCreate")
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         instance = this
@@ -72,12 +72,20 @@ class MainActivity : AppCompatActivity() {
         binding.btnStartDownload.setOnClickListener {
             LogManager.log("User tapped 'Start Download'")
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
-            if (!prefs.getBoolean("neoforge_verified", false)) {
-                Toast.makeText(this, "请在扩展页面验证Neoforge版本", Toast.LENGTH_SHORT).show()
-                LogManager.log("Download blocked: Neoforge not verified")
-                return@setOnClickListener
+            if (prefs.getBoolean("neoforge_check_enabled", false)) {
+                verifyNeoforgeVersion { verified ->
+                    if (verified) startUpdateProcess()
+                    else {
+                        MaterialAlertDialogBuilder(this)
+                            .setTitle("NeoForge 版本过低")
+                            .setMessage("需要更新 NeoForge 驱动至 21.1.227 或更高版本。")
+                            .setPositiveButton("确定", null)
+                            .show()
+                    }
+                }
+            } else {
+                startUpdateProcess()
             }
-            startUpdateProcess()
         }
         binding.btnSettings.setOnClickListener {
             LogManager.log("User tapped Settings button")
@@ -85,7 +93,6 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
-        LogManager.log("MainActivity onCreate completed")
     }
 
     override fun onResume() {
@@ -259,6 +266,52 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    // ===== NeoForge 版本检查 =====
+    private fun verifyNeoforgeVersion(callback: (Boolean) -> Unit) {
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                try {
+                    val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
+                    val launcherRoot = prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath)
+                    val mc = findMinecraftDir(File(launcherRoot)) ?: return@withContext false
+                    val versionsDir = File(mc, "versions")
+                    val versionDir = File(versionsDir, targetVersion)
+                    if (!versionDir.exists()) return@withContext false
+                    val neoforgeJars = versionDir.listFiles()?.filter { it.nameWithoutExtension.startsWith("neoforge-", true) } ?: emptyList()
+                    val versionPattern = Regex("neoforge-(\\d+\\.\\d+\\.\\d+)")
+                    var installedVersion = ""
+                    for (jar in neoforgeJars) {
+                        val match = versionPattern.find(jar.name)
+                        if (match != null) { installedVersion = match.groupValues[1]; break }
+                    }
+                    if (installedVersion.isEmpty()) return@withContext false
+                    compareVersion(installedVersion, "21.1.227") >= 0
+                } catch (e: Exception) {
+                    false
+                }
+            }
+            callback(result)
+        }
+    }
+
+    private fun findMinecraftDir(start: File): File? {
+        val mc = File(start, ".minecraft")
+        if (mc.exists()) return mc
+        val mcAlt = File(start, "minecraft")
+        return if (mcAlt.exists()) mcAlt else null
+    }
+
+    private fun compareVersion(v1: String, v2: String): Int {
+        val parts1 = v1.split(".").map { it.toIntOrNull() ?: 0 }
+        val parts2 = v2.split(".").map { it.toIntOrNull() ?: 0 }
+        for (i in 0 until maxOf(parts1.size, parts2.size)) {
+            val a = parts1.getOrElse(i) { 0 }
+            val b = parts2.getOrElse(i) { 0 }
+            if (a != b) return a - b
+        }
+        return 0
+    }
+
     // ===== 网络与下载 =====
     private suspend fun fetchServerFileList(): List<String> = withContext(Dispatchers.IO) {
         try {
@@ -323,7 +376,8 @@ class MainActivity : AppCompatActivity() {
         binding.tvLog.text = ""
         appendLog("Starting download...")
 
-        val threadCount = prefs.getInt("thread_count", 20).coerceIn(20, 128)
+        // 线程数优先扩展页设置，否则设置页，默认 256
+        val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
         LogManager.log("Update started with $threadCount threads")
         scope.launch {
             try {
@@ -382,7 +436,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 仅用于主界面日志显示，不写入内部详细日志
     fun appendLog(msg: String) {
         logBuilder.appendLine(msg)
         runOnUiThread {

@@ -25,25 +25,35 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="16dp"/>
 
-            <TextView
-                android:id="@+id/tvThreadLimit"
+            <!-- 线程数输入框 -->
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="线程数上限: 256"
-                android:textColor="@android:color/white"
-                android:textSize="20sp"
-                android:padding="8dp"
-                android:clickable="true"
-                android:focusable="true" />
+                android:hint="线程数上限 (128-1024)"
+                android:textColorHint="#AAFFFFFF"
+                app:hintTextColor="@color/primary_light_blue"
+                app:boxStrokeColor="@color/primary_light_blue"
+                app:boxBackgroundColor="#2A2A2A">
 
-            <Button
-                android:id="@+id/btnCheckNeoforge"
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etThreadLimit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="256"
+                    android:textColor="@android:color/white"
+                    android:inputType="number"
+                    android:singleLine="true"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- NeoForge 检查开关 -->
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/swNeoforgeCheck"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="检查 NeoForge 版本"
-                android:textColor="@android:color/black"
-                android:backgroundTint="@color/primary_light_blue"
-                android:layout_marginTop="16dp"/>
+                android:layout_height="wrap_content"
+                android:text="开启 NeoForge 版本检查"
+                android:textColor="@android:color/white"
+                android:layout_marginTop="16dp"
+                android:checked="false"/>
 
             <Button
                 android:id="@+id/btnDownloadUrl"
