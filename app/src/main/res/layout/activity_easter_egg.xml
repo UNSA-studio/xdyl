@@ -20,7 +20,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="彩蛋页面"
+                android:text="扩展页面"
                 android:textColor="@color/primary_light_blue"
                 android:textSize="28sp"
                 android:textStyle="bold"

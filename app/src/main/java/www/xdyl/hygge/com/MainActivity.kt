@@ -5,12 +5,7 @@ import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.TextPaint
-import android.text.method.LinkMovementMethod
 import android.text.method.ScrollingMovementMethod
-import android.text.style.ClickableSpan
 import android.view.View
 import android.view.animation.AnimationUtils
 import android.widget.Toast
@@ -33,7 +28,7 @@ class MainActivity : AppCompatActivity() {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.Main + job)
     private lateinit var prefs: SharedPreferences
-    private val logBuilder = StringBuilder()   // 仅用于主界面显示
+    private val logBuilder = StringBuilder()
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
@@ -62,7 +57,7 @@ class MainActivity : AppCompatActivity() {
 
         requestPermissionsIfNeeded()
         restoreLastDirectory()
-        setupEasterEggTitle()
+        setupEasterEggTrigger()
 
         binding.btnSelectDir.setOnClickListener {
             LogManager.log("User tapped 'Select Game Directory'")
@@ -131,26 +126,11 @@ class MainActivity : AppCompatActivity() {
         LogManager.log("No valid launcher root restored, user must select manually")
     }
 
-    private fun setupEasterEggTitle() {
-        val fullText = "更新器-Android"
-        val spannable = SpannableString(fullText)
-        val index = fullText.indexOf("Android")
-        if (index != -1) {
-            val clickableSpan = object : ClickableSpan() {
-                override fun onClick(widget: View) {
-                    handleEasterEggClick()
-                }
-                override fun updateDrawState(ds: TextPaint) {
-                    ds.color = binding.tvTitle.currentTextColor
-                    ds.isUnderlineText = false
-                }
-            }
-            spannable.setSpan(clickableSpan, index, index + "Android".length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    private fun setupEasterEggTrigger() {
+        binding.tvTitleSuffix.setOnClickListener {
+            handleEasterEggClick()
         }
-        binding.tvTitle.text = spannable
-        binding.tvTitle.movementMethod = LinkMovementMethod.getInstance()
-        binding.tvTitle.highlightColor = android.R.color.transparent
-        LogManager.log("Easter egg title set up")
+        LogManager.log("Easter egg trigger set on 'Android' text")
     }
 
     private fun handleEasterEggClick() {
@@ -172,7 +152,7 @@ class MainActivity : AppCompatActivity() {
         } else if (easterEggCounter >= 15) {
             lastToast = Toast.makeText(this, "开发者模式已打开!", Toast.LENGTH_SHORT)
             lastToast?.show()
-            LogManager.log("Easter egg activated, opening EasterEggActivity")
+            LogManager.log("Opening extension page")
             easterEggCounter = 0
             startActivity(Intent(this, EasterEggActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -376,7 +356,6 @@ class MainActivity : AppCompatActivity() {
         binding.tvLog.text = ""
         appendLog("Starting download...")
 
-        // 线程数优先扩展页设置，否则设置页，默认 256
         val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
         LogManager.log("Update started with $threadCount threads")
         scope.launch {

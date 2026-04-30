@@ -6,20 +6,38 @@
     android:background="@color/background_dark"
     android:padding="16dp">
 
-    <TextView
-        android:id="@+id/tvTitle"
+    <!-- 将原标题拆分为两个并排的 TextView -->
+    <LinearLayout
+        android:id="@+id/titleContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/update_title"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:textColor="@color/primary_light_blue"
-        android:letterSpacing="0.05"
+        android:orientation="horizontal"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginTop="8dp" />
+        android:layout_marginTop="8dp">
 
-    <ImageButton android:transitionName="settings_button"
+        <TextView
+            android:id="@+id/tvTitlePrefix"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="更新器-"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="@color/primary_light_blue"
+            android:letterSpacing="0.05" />
+
+        <TextView
+            android:id="@+id/tvTitleSuffix"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Android"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="@color/primary_light_blue"
+            android:letterSpacing="0.05" />
+    </LinearLayout>
+
+    <ImageButton
         android:id="@+id/btnSettings"
         android:layout_width="48dp"
         android:layout_height="48dp"
@@ -73,6 +91,7 @@
             android:layout_height="56dp"
             android:text="@string/btn_start_download"
             android:enabled="false"
+            android:textColor="@android:color/black"
             app:backgroundTint="@color/primary_light_blue"
             app:cornerRadius="24dp"
             android:stateListAnimator="@null" />
