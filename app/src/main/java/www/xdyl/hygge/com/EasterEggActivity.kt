@@ -20,7 +20,6 @@ class EasterEggActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_easter_egg)
 
-        // 使所有文字和按钮可掉落
         val root = findViewById<FrameLayout>(R.id.rootLayout)
         val content = findViewById<LinearLayout>(R.id.contentLayout)
         setupFallingViews(content)
@@ -45,7 +44,7 @@ class EasterEggActivity : AppCompatActivity() {
                 child.setOnClickListener { view ->
                     performFallAnimation(view)
                 }
-                setupFallingViews(child) // 递归
+                setupFallingViews(child)
             }
         }
     }
