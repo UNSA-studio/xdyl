@@ -91,11 +91,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnSettings.setOnClickListener {
             it.animate().rotationBy(180f).setDuration(300).start()
-            if (prefs.getBoolean("extension_mode", false)) {
-                startActivity(Intent(this, EasterEggActivity::class.java))
-            } else {
-                startActivity(Intent(this, SettingsActivity::class.java))
-            }
+            startActivity(Intent(this, SettingsActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
     }
@@ -248,7 +244,7 @@ class MainActivity : AppCompatActivity() {
             targetModsDir = modsDir
             binding.btnStartDownload.isEnabled = true
             LogManager.log("Selected mods directory: ${modsDir.absolutePath}")
-            Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Game directory selected", Toast.LENGTH_SHORT).show()
         } else {
             showError(Constants.ERROR01)
         }

@@ -11,8 +11,8 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import java.io.File
+import com.google.android.material.switchmaterial.SwitchMaterial
+import com.google.android.material.textfield.TextInputEditText
 import java.util.Random
 
 class EasterEggActivity : AppCompatActivity() {
@@ -27,37 +27,31 @@ class EasterEggActivity : AppCompatActivity() {
         val content = findViewById<LinearLayout>(R.id.contentLayout)
         setupFallingViews(content)
 
-        // 读取保存的设置
-        val editThreadLimit = findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.etThreadLimit)
+        val editThreadLimit = findViewById<TextInputEditText>(R.id.etThreadLimit)
         editThreadLimit.setText(prefs.getInt("thread_limit", 256).toString())
-
-        val switchNeoforge = findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.swNeoforgeCheck)
-        switchNeoforge.isChecked = prefs.getBoolean("neoforge_check_enabled", false)
-
-        // 保存按钮（退出时自动保存，或添加一个保存按钮？为了简单，我们监听变化并即时保存）
         editThreadLimit.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) {
                 val value = editThreadLimit.text.toString().toIntOrNull()?.coerceIn(128, 1024) ?: 256
                 prefs.edit().putInt("thread_limit", value).apply()
-                Toast.makeText(this, "线程上限已设为 $value", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Thread limit set to $value", Toast.LENGTH_SHORT).show()
             }
         }
 
+        val switchNeoforge = findViewById<SwitchMaterial>(R.id.swNeoforgeCheck)
+        switchNeoforge.isChecked = prefs.getBoolean("neoforge_check_enabled", false)
         switchNeoforge.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("neoforge_check_enabled", isChecked).apply()
-            Toast.makeText(this, if (isChecked) "NeoForge 版本检查已开启" else "NeoForge 版本检查已关闭", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if (isChecked) "NeoForge check enabled" else "NeoForge check disabled", Toast.LENGTH_SHORT).show()
         }
 
         findViewById<Button>(R.id.btnAchievements).setOnClickListener {
             startActivity(Intent(this, AchievementActivity::class.java))
         }
-
         findViewById<Button>(R.id.btnDownloadUrl).setOnClickListener {
-            Toast.makeText(this, "自定义下载地址功能暂未实现", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Custom download URL not implemented", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // ... 掉落动画函数保持不变 ...
     private fun setupFallingViews(parent: View) {
         if (parent is android.view.ViewGroup) {
             for (i in 0 until parent.childCount) {
