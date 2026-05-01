@@ -14,6 +14,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONObject
 import www.xdyl.hygge.com.databinding.ActivityMainBinding
 import java.io.File
 import java.io.FileOutputStream
@@ -253,7 +254,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ===== NeoForge 版本检查（修复版） =====
+    // ===== NeoForge 版本检查（通过 JSON 文件） =====
     private fun verifyNeoforgeVersion(callback: (Boolean) -> Unit) {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
@@ -261,6 +262,7 @@ class MainActivity : AppCompatActivity() {
                     val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
                     val launcherRoot = prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath)
                     LogManager.log("NeoForge check: targetVersion=$targetVersion, launcherRoot=$launcherRoot")
+
                     val mc = findMinecraftDir(File(launcherRoot))
                     if (mc == null) {
                         LogManager.log("NeoForge check: .minecraft not found")
@@ -272,33 +274,45 @@ class MainActivity : AppCompatActivity() {
                         LogManager.log("NeoForge check: version dir not found: ${versionDir.absolutePath}")
                         return@withContext false
                     }
-                    // 查找包含 "neoforge" 的 jar 文件
-                    val jarFiles = versionDir.listFiles()?.filter { it.extension.equals("jar", true) } ?: emptyList()
-                    val neoforgeJars = jarFiles.filter {
-                        it.nameWithoutExtension.contains("neoforge", ignoreCase = true)
-                    }
-                    LogManager.log("NeoForge check: found ${neoforgeJars.size} possible NeoForge jars: ${neoforgeJars.map { it.name }}")
-                    if (neoforgeJars.isEmpty()) {
-                        LogManager.log("NeoForge check: no neoforge jar found")
+
+                    // 寻找 json 文件
+                    val jsonFile = File(versionDir, "$targetVersion.json")
+                    if (!jsonFile.exists()) {
+                        LogManager.log("NeoForge check: json file not found: ${jsonFile.absolutePath}")
                         return@withContext false
                     }
-                    val versionPattern = Regex("neoforge-(\\d+\\.\\d+\\.\\d+)", RegexOption.IGNORE_CASE)
-                    var installedVersion = ""
-                    for (jar in neoforgeJars) {
-                        val match = versionPattern.find(jar.name)
-                        if (match != null) {
-                            installedVersion = match.groupValues[1]
-                            LogManager.log("NeoForge check: extracted version $installedVersion from ${jar.name}")
-                            break
+
+                    val jsonContent = jsonFile.readText()
+                    LogManager.log("NeoForge check: JSON content length = ${jsonContent.length}")
+
+                    val jsonObject = JSONObject(jsonContent)
+                    // 尝试从多个可能字段中提取版本号
+                    var neoVersion: String? = null
+                    if (jsonObject.has("inheritsFrom")) {
+                        // NeoForge 通常继承自某个版本，且存在 "version" 字段
+                        if (jsonObject.has("version")) {
+                            neoVersion = jsonObject.getString("version")
                         }
                     }
-                    if (installedVersion.isEmpty()) {
-                        LogManager.log("NeoForge check: could not extract version")
+                    // 如果上面没找到，尝试 "id" 或 "neoforge" 等字段
+                    if (neoVersion.isNullOrEmpty() && jsonObject.has("neoforge")) {
+                        val neoforgeObj = jsonObject.getJSONObject("neoforge")
+                        if (neoforgeObj.has("version")) {
+                            neoVersion = neoforgeObj.getString("version")
+                        }
+                    }
+                    if (neoVersion.isNullOrEmpty()) {
+                        LogManager.log("NeoForge check: could not find version field in JSON")
                         return@withContext false
                     }
+
+                    LogManager.log("NeoForge check: extracted version $neoVersion from JSON")
+
+                    // 去掉前面的 "forge-" 前缀如果有
+                    val cleanedVersion = neoVersion.removePrefix("neoforge-").removePrefix("forge-")
                     val required = "21.1.227"
-                    val comparison = compareVersion(installedVersion, required)
-                    LogManager.log("NeoForge check: installed=$installedVersion, required=$required, comparison=$comparison")
+                    val comparison = compareVersion(cleanedVersion, required)
+                    LogManager.log("NeoForge check: installed=$cleanedVersion, required=$required, comparison=$comparison")
                     comparison >= 0
                 } catch (e: Exception) {
                     LogManager.log("NeoForge check exception: ${e.message}")
