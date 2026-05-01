@@ -6,7 +6,6 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.switchmaterial.SwitchMaterial
 import kotlinx.coroutines.*
 import www.xdyl.hygge.com.databinding.ActivitySettingsBinding
 import java.io.BufferedReader
@@ -25,42 +24,37 @@ class SettingsActivity : AppCompatActivity() {
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         loadPrefs()
 
-        binding.btnSave.setOnClickListener {
-            savePrefs()
-            Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show()
-            finish()
-        }
-
         binding.btnExportLog.setOnClickListener {
             prefs.edit().putBoolean("request_export_log", true).apply()
             finish()
         }
 
-        binding.btnPingServer.setOnClickListener { startPing("8.129.236.213", "Server") }
-        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", "WiFi") }
+        binding.btnPingServer.setOnClickListener { startPing("8.129.236.213", binding.tvPingServerResult, "Server") }
+        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", binding.tvPingWifiResult, "WiFi") }
 
-        // 扩展模式开关
         binding.swExtensionMode.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                // 显示警告对话框
                 MaterialAlertDialogBuilder(this)
                     .setTitle("警告!")
                     .setMessage("您正在开启扩展模式，这个模式里面的内容允许您使用一些Beta内容，可能不稳定，您确定吗？")
-                    .setPositiveButton("开启") { dialog, _ ->
+                    .setPositiveButton("开启") { _, _ ->
                         prefs.edit().putBoolean("extension_mode", true).apply()
                         binding.swExtensionMode.isChecked = true
-                        dialog.dismiss()
                     }
-                    .setNegativeButton("不开启") { dialog, _ ->
+                    .setNegativeButton("不开启") { _, _ ->
                         prefs.edit().putBoolean("extension_mode", false).apply()
                         binding.swExtensionMode.isChecked = false
-                        dialog.dismiss()
                     }
                     .show()
             } else {
                 prefs.edit().putBoolean("extension_mode", false).apply()
             }
         }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        savePrefs()
     }
 
     private fun loadPrefs() {
@@ -83,15 +77,12 @@ class SettingsActivity : AppCompatActivity() {
             .apply()
     }
 
-    // Ping 功能保留不变
-    private fun startPing(address: String, label: String) {
-        binding.tvPingResult.alpha = 0f
-        binding.tvPingResult.visibility = View.VISIBLE
-        binding.tvPingResult.animate().alpha(1f).setDuration(300).start()
-        binding.tvPingResult.text = "Pinging $label..."
+    private fun startPing(address: String, textView: TextView, label: String) {
+        textView.visibility = View.VISIBLE
+        textView.text = "Pinging $label..."
         scope.launch {
             val result = withContext(Dispatchers.IO) { executePing(address) }
-            binding.tvPingResult.text = result
+            textView.text = result
         }
     }
 
@@ -115,7 +106,6 @@ class SettingsActivity : AppCompatActivity() {
         val loss = lossPattern.find(raw)?.groupValues?.get(1) ?: "N/A"
         val rttPattern = Regex("min/avg/max/mdev = (\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)")
         val rttMatch = rttPattern.find(raw)
-
         return buildString {
             append("Target: $address\n")
             append("Packet loss: $loss%\n")

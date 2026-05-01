@@ -13,7 +13,6 @@
         android:animateLayoutChanges="true">
 
         <TextView
-            android:transitionName="settings_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="设置"
@@ -60,15 +59,49 @@
                 android:singleLine="true"/>
         </com.google.android.material.textfield.TextInputLayout>
 
+        <!-- Ping(Server) 区域 -->
         <Button
-            android:id="@+id/btnSave"
+            android:id="@+id/btnPingServer"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:text="保存设置"
+            android:text="Ping (Server)"
             android:textColor="@android:color/black"
             android:backgroundTint="@color/primary_light_blue"
             android:layout_marginTop="24dp"
             android:textSize="16sp"/>
+        <TextView
+            android:id="@+id/tvPingServerResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/primary_light_blue"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            android:background="#1E1E1E"
+            android:padding="8dp"
+            android:visibility="gone"/>
+
+        <!-- Ping(WiFi) 区域 -->
+        <Button
+            android:id="@+id/btnPingWifi"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="Ping (WiFi)"
+            android:textColor="@android:color/black"
+            android:backgroundTint="@color/primary_light_blue"
+            android:layout_marginTop="16dp"
+            android:textSize="16sp"/>
+        <TextView
+            android:id="@+id/tvPingWifiResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/primary_light_blue"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            android:background="#1E1E1E"
+            android:padding="8dp"
+            android:visibility="gone"/>
 
         <!-- 扩展模式开关 -->
         <com.google.android.material.switchmaterial.SwitchMaterial
@@ -79,38 +112,6 @@
             android:textColor="@android:color/white"
             android:layout_marginTop="24dp"
             android:checked="false"/>
-
-        <Button
-            android:id="@+id/btnPingServer"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="Ping (Server)"
-            android:textColor="@android:color/black"
-            android:backgroundTint="@color/primary_light_blue"
-            android:layout_marginTop="12dp"
-            android:textSize="16sp"/>
-
-        <Button
-            android:id="@+id/btnPingWifi"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="Ping (WiFi)"
-            android:textColor="@android:color/black"
-            android:backgroundTint="@color/primary_light_blue"
-            android:layout_marginTop="12dp"
-            android:textSize="16sp"/>
-
-        <TextView
-            android:id="@+id/tvPingResult"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:textColor="@color/primary_light_blue"
-            android:textSize="14sp"
-            android:fontFamily="monospace"
-            android:background="#1E1E1E"
-            android:padding="12dp"
-            android:visibility="gone"/>
 
         <Button
             android:id="@+id/btnExportLog"

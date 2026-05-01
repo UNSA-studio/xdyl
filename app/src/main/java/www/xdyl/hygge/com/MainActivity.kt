@@ -68,12 +68,10 @@ class MainActivity : AppCompatActivity() {
         restoreLastDirectory()
 
         binding.btnSelectDir.setOnClickListener {
-            LogManager.log("User tapped 'Select Game Directory'")
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
             showFileBrowser()
         }
         binding.btnStartDownload.setOnClickListener {
-            LogManager.log("User tapped 'Start Download'")
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
             if (prefs.getBoolean("neoforge_check_enabled", false)) {
                 verifyNeoforgeVersion { verified ->
@@ -91,21 +89,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
         binding.btnSettings.setOnClickListener {
-            LogManager.log("User tapped Settings button")
             it.animate().rotationBy(180f).setDuration(300).start()
             if (prefs.getBoolean("extension_mode", false)) {
                 startActivity(Intent(this, EasterEggActivity::class.java))
-                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
             } else {
                 startActivity(Intent(this, SettingsActivity::class.java))
-                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
             }
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
     }
 
     override fun onResume() {
         super.onResume()
-        LogManager.log("MainActivity onResume")
         if (prefs.getBoolean("request_export_log", false)) {
             prefs.edit().putBoolean("request_export_log", false).apply()
             exportLogToFile()
@@ -115,7 +110,6 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissionsIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
-                LogManager.log("Requesting MANAGE_EXTERNAL_STORAGE permission")
                 startActivity(Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
             }
         }
@@ -124,7 +118,6 @@ class MainActivity : AppCompatActivity() {
     private fun restoreLastDirectory() {
         val lastPath = prefs.getString("launcher_root", null)
         if (lastPath != null) {
-            LogManager.log("Attempting to restore launcher root: $lastPath")
             val dir = File(lastPath)
             if (dir.exists() && dir.isDirectory) {
                 val found = findMinecraftModsDir(dir)
@@ -136,11 +129,10 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        LogManager.log("No valid launcher root restored, user must select manually")
     }
 
-    // ===== 文件浏览器 =====
-    private class FileAdapter(private val files: List<File>, private val onItemClick: (File) -> Unit) :
+    // ===== 文件浏览器（异步+动画） =====
+    private class FileAdapter(private var files: List<File>, private val onItemClick: (File) -> Unit) :
         RecyclerView.Adapter<FileAdapter.VH>() {
         class VH(val tv: TextView) : RecyclerView.ViewHolder(tv)
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
@@ -155,6 +147,10 @@ class MainActivity : AppCompatActivity() {
             holder.itemView.setOnClickListener { onItemClick(files[position]) }
         }
         override fun getItemCount() = files.size
+        fun setFiles(newFiles: List<File>) {
+            files = newFiles
+            notifyDataSetChanged()
+        }
     }
 
     private fun showFileBrowser() {
@@ -163,38 +159,37 @@ class MainActivity : AppCompatActivity() {
         tvPath = view.findViewById(R.id.tvPath)
         recyclerView = view.findViewById(R.id.recyclerView)
         recyclerView!!.layoutManager = LinearLayoutManager(this)
-        loadDirectory(currentBrowseDir)
+        recyclerView!!.itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator()
 
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(view)
             .setPositiveButton("选择此文件夹") { _, _ ->
-                LogManager.log("User selected launcher root: ${currentBrowseDir.absolutePath}")
                 prefs.edit().putString("launcher_root", currentBrowseDir.absolutePath).apply()
                 handleSelectedFolder(currentBrowseDir)
             }
-            .setNegativeButton("返回上级", null) // null 占位，稍后自定义点击
+            .setNegativeButton("返回上级", null)
             .create()
 
-        dialog.show()
-
-        // 自定义“返回上级”按钮点击事件，阻止默认关闭对话框
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
-            navigateUp()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener { navigateUp() }
+            loadDirectory(currentBrowseDir)
         }
-
         fileBrowserDialog = dialog
-        updateUpButtonState()
+        dialog.show()
     }
 
     private fun loadDirectory(dir: File) {
-        val files = dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
-        fileAdapter = FileAdapter(files) { file ->
-            if (file.isDirectory) {
-                navigateToDirectory(file)
+        scope.launch {
+            val files = withContext(Dispatchers.IO) {
+                dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
             }
+            fileAdapter = FileAdapter(files) { file ->
+                if (file.isDirectory) navigateToDirectory(file)
+            }
+            recyclerView!!.adapter = fileAdapter
+            tvPath!!.text = dir.absolutePath
+            updateUpButtonState()
         }
-        recyclerView!!.adapter = fileAdapter
-        tvPath!!.text = dir.absolutePath
     }
 
     private fun navigateToDirectory(dir: File) {
@@ -211,7 +206,6 @@ class MainActivity : AppCompatActivity() {
                         .setDuration(250)
                         .setListener(null)
                         .start()
-                    updateUpButtonState()
                 }
             })
     }
@@ -231,7 +225,6 @@ class MainActivity : AppCompatActivity() {
                         .setDuration(250)
                         .setListener(null)
                         .start()
-                    updateUpButtonState()
                 }
             })
     }
@@ -256,7 +249,6 @@ class MainActivity : AppCompatActivity() {
             LogManager.log("Game directory set to ${modsDir.absolutePath}")
             Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show()
         } else {
-            LogManager.log("Failed to find mods directory in selected folder")
             showError(Constants.ERROR01)
         }
         fileBrowserDialog?.dismiss()
@@ -281,7 +273,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showError(errorCode: String) {
-        LogManager.log("Error shown: $errorCode")
+        LogManager.log("Error: $errorCode")
         MaterialAlertDialogBuilder(this)
             .setTitle("Error")
             .setMessage("Error code: $errorCode")
@@ -289,41 +281,24 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ===== NeoForge 版本检查 =====
+    // ===== NeoForge 检查 =====
     private fun verifyNeoforgeVersion(callback: (Boolean) -> Unit) {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 try {
                     val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
                     val launcherRoot = prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath)
-                    LogManager.log("NeoForge check: targetVersion=$targetVersion, launcherRoot=$launcherRoot")
-                    val mc = findMinecraftDir(File(launcherRoot)) ?: run {
-                        LogManager.log("NeoForge check: .minecraft not found")
-                        return@withContext false
-                    }
-                    val versionsDir = File(mc, "versions")
-                    val versionDir = File(versionsDir, targetVersion)
-                    if (!versionDir.exists()) {
-                        LogManager.log("NeoForge check: version dir not found")
-                        return@withContext false
-                    }
+                    val mc = findMinecraftDir(File(launcherRoot)) ?: return@withContext false
+                    val versionDir = File(File(mc, "versions"), targetVersion)
+                    if (!versionDir.exists()) return@withContext false
                     val jsonFile = File(versionDir, "$targetVersion.json")
-                    if (!jsonFile.exists()) {
-                        LogManager.log("NeoForge check: json file not found")
-                        return@withContext false
-                    }
+                    if (!jsonFile.exists()) return@withContext false
                     val jsonContent = jsonFile.readText()
                     val versionPattern = Regex("\"--fml\\.neoForgeVersion\",\\s*\"(\\d+\\.\\d+\\.\\d+)\"")
-                    val match = versionPattern.find(jsonContent) ?: run {
-                        LogManager.log("NeoForge check: version pattern not found")
-                        return@withContext false
-                    }
+                    val match = versionPattern.find(jsonContent) ?: return@withContext false
                     val installedVersion = match.groupValues[1]
-                    LogManager.log("NeoForge check: installed=$installedVersion")
                     val required = "21.1.227"
-                    val comparison = compareVersion(installedVersion, required)
-                    LogManager.log("NeoForge check: comparison=$comparison")
-                    comparison >= 0
+                    compareVersion(installedVersion, required) >= 0
                 } catch (e: Exception) {
                     LogManager.log("NeoForge check exception: ${e.message}")
                     false
@@ -351,13 +326,12 @@ class MainActivity : AppCompatActivity() {
         return 0
     }
 
-    // ===== 网络与下载 =====
+    // ===== 下载（保持不变） =====
     private suspend fun fetchServerFileList(): List<String> = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder().url(Constants.BASE_URL).build()
             val response = client.newCall(request).execute()
             val body = response.body?.string() ?: ""
-            LogManager.log("Server response: HTTP ${response.code}")
             if (response.code != 200) return@withContext emptyList()
             val pattern = Pattern.compile("<a href=\"([^\"]+)\">")
             val matcher = pattern.matcher(body)
@@ -377,12 +351,7 @@ class MainActivity : AppCompatActivity() {
     private fun parseCsvMods(csv: String): List<ModInfo> {
         return csv.lines().drop(1).filter { it.isNotBlank() }.map { line ->
             val parts = line.split(",")
-            ModInfo(
-                fileName = parts[0].trim('"').removePrefix("./"),
-                size = parts[2].toLong(),
-                md5 = parts[3].trim('"'),
-                sha256 = parts[4].trim('"')
-            )
+            ModInfo(parts[0].trim('"').removePrefix("./"), parts[2].toLong(), parts[3].trim('"'), parts[4].trim('"'))
         }
     }
 
@@ -392,8 +361,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 val start = System.currentTimeMillis()
                 DownloadManager(url, size, 1, useRange = false).download(destFile) { }
-                val elapsed = System.currentTimeMillis() - start
-                LogManager.log("${destFile.name} downloaded in ${elapsed}ms")
+                LogManager.log("${destFile.name} downloaded in ${System.currentTimeMillis() - start}ms")
                 return
             } catch (e: Exception) {
                 lastEx = e
@@ -414,7 +382,6 @@ class MainActivity : AppCompatActivity() {
         logBuilder.clear()
         binding.tvLog.text = ""
         appendLog("开始下载...")
-
         val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
         LogManager.log("Update started with $threadCount threads")
         scope.launch {
@@ -461,7 +428,6 @@ class MainActivity : AppCompatActivity() {
                     showError(Constants.ERROR05)
                 } else {
                     appendLog("所有模组更新完成！")
-                    LogManager.log("Update finished successfully")
                     Toast.makeText(this@MainActivity, "Update completed!", Toast.LENGTH_LONG).show()
                     binding.progressBar.visibility = View.GONE
                 }
@@ -500,7 +466,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        LogManager.log("MainActivity onDestroy")
         instance = null
         job.cancel()
         super.onDestroy()
