@@ -25,6 +25,7 @@ import okhttp3.Request
 import www.xdyl.hygge.com.databinding.ActivityMainBinding
 import java.io.File
 import java.io.FileOutputStream
+import java.security.MessageDigest
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
@@ -131,7 +132,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ===== 文件浏览器（异步+动画） =====
+    // ===== 文件浏览器 =====
     private class FileAdapter(private var files: List<File>, private val onItemClick: (File) -> Unit) :
         RecyclerView.Adapter<FileAdapter.VH>() {
         class VH(val tv: TextView) : RecyclerView.ViewHolder(tv)
@@ -179,16 +180,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadDirectory(dir: File) {
-        scope.launch {
-            val files = withContext(Dispatchers.IO) {
-                dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
+        scope.launch(Dispatchers.IO) {
+            val files = dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
+            withContext(Dispatchers.Main) {
+                fileAdapter = FileAdapter(files) { file ->
+                    if (file.isDirectory) navigateToDirectory(file)
+                }
+                recyclerView!!.adapter = fileAdapter
+                tvPath!!.text = dir.absolutePath
+                updateUpButtonState()
             }
-            fileAdapter = FileAdapter(files) { file ->
-                if (file.isDirectory) navigateToDirectory(file)
-            }
-            recyclerView!!.adapter = fileAdapter
-            tvPath!!.text = dir.absolutePath
-            updateUpButtonState()
         }
     }
 
@@ -326,7 +327,49 @@ class MainActivity : AppCompatActivity() {
         return 0
     }
 
-    // ===== 下载（保持不变） =====
+    // ===== 智能更新逻辑 =====
+    private suspend fun filterOutUnchangedMods(modsDir: File, csvMods: List<ModInfo>): List<ModInfo> = withContext(Dispatchers.IO) {
+        val unchanged = mutableListOf<ModInfo>()
+        val toDownload = mutableListOf<ModInfo>()
+
+        // 并发冲突小，直接串行，也可以并行，但为了简单，串行
+        for (mod in csvMods) {
+            val localFile = File(modsDir, mod.fileName)
+            if (!localFile.exists() || localFile.length() != mod.size) {
+                toDownload.add(mod)
+            } else {
+                // 校验 MD5
+                val localMd5 = calculateMD5(localFile)
+                if (localMd5 != null && localMd5.equals(mod.md5, true)) {
+                    LogManager.log("Skipping ${mod.fileName} (already up to date)")
+                    unchanged.add(mod)
+                } else {
+                    toDownload.add(mod)
+                }
+            }
+        }
+        LogManager.log("Smart update: ${unchanged.size} unchanged, ${toDownload.size} to download")
+        toDownload
+    }
+
+    private fun calculateMD5(file: File): String? {
+        try {
+            val digest = MessageDigest.getInstance("MD5")
+            file.inputStream().use { fis ->
+                val buffer = ByteArray(8192)
+                var bytesRead: Int
+                while (fis.read(buffer).also { bytesRead = it } != -1) {
+                    digest.update(buffer, 0, bytesRead)
+                }
+            }
+            return digest.digest().joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            LogManager.log("MD5 calculation failed for ${file.name}: ${e.message}")
+            return null
+        }
+    }
+
+    // ===== 网络与下载 =====
     private suspend fun fetchServerFileList(): List<String> = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder().url(Constants.BASE_URL).build()
@@ -381,7 +424,8 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.progress = 0
         logBuilder.clear()
         binding.tvLog.text = ""
-        appendLog("开始下载...")
+        appendLog("开始检查已有模组...")
+
         val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
         LogManager.log("Update started with $threadCount threads")
         scope.launch {
@@ -390,23 +434,33 @@ class MainActivity : AppCompatActivity() {
                 if (serverFiles.isEmpty()) { showError(Constants.ERROR01); return@launch }
                 val csvMods = parseCsvMods(Constants.CSV_CONTENT)
                 val csvSet = csvMods.map { it.fileName }.toSet()
-                val toDownload = serverFiles.filter { csvSet.contains(it) }
-                if (toDownload.isEmpty()) { showError(Constants.ERROR01); return@launch }
+                val allServerMods = serverFiles.filter { csvSet.contains(it) }
 
+                // 智能过滤
+                val toDownload = filterOutUnchangedMods(modsDir, csvMods.filter { it.fileName in allServerMods })
+                if (toDownload.isEmpty()) {
+                    appendLog("所有模组均为最新版本！")
+                    Toast.makeText(this@MainActivity, "Nothing to update", Toast.LENGTH_SHORT).show()
+                    binding.progressBar.visibility = View.GONE
+                    isProcessing = false
+                    binding.btnStartDownload.isEnabled = true
+                    return@launch
+                }
+
+                appendLog("开始下载 ${toDownload.size} 个模组...")
                 val sem = Semaphore(threadCount)
                 val failed = AtomicInteger(0)
                 var completed = 0
                 val total = toDownload.size
 
                 withContext(Dispatchers.IO) {
-                    toDownload.map { name ->
+                    toDownload.map { mod ->
                         launch {
                             sem.acquire()
                             try {
-                                val mod = csvMods.first { it.fileName == name }
-                                val file = File(modsDir, name)
-                                appendLog("[${completed+1}/$total] $name")
-                                downloadWithRetry(Constants.BASE_URL + name, mod.size, file)
+                                val file = File(modsDir, mod.fileName)
+                                appendLog("[${completed+1}/$total] ${mod.fileName}")
+                                downloadWithRetry(Constants.BASE_URL + mod.fileName, mod.size, file)
                                 if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256))
                                     throw RuntimeException("Checksum mismatch")
                                 completed++
@@ -415,7 +469,7 @@ class MainActivity : AppCompatActivity() {
                                     binding.tvStatus.text = "$completed/$total"
                                 }
                             } catch (e: Exception) {
-                                LogManager.log("Failed $name: ${e.message}")
+                                LogManager.log("Failed ${mod.fileName}: ${e.message}")
                                 failed.incrementAndGet()
                             } finally {
                                 sem.release()
@@ -427,7 +481,7 @@ class MainActivity : AppCompatActivity() {
                 if (failed.get() > 0) {
                     showError(Constants.ERROR05)
                 } else {
-                    appendLog("所有模组更新完成！")
+                    appendLog("更新完成！")
                     Toast.makeText(this@MainActivity, "Update completed!", Toast.LENGTH_LONG).show()
                     binding.progressBar.visibility = View.GONE
                 }

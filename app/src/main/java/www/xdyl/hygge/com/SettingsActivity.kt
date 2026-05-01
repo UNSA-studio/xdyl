@@ -3,6 +3,7 @@ package www.xdyl.hygge.com
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -29,8 +30,11 @@ class SettingsActivity : AppCompatActivity() {
             finish()
         }
 
-        binding.btnPingServer.setOnClickListener { startPing("8.129.236.213", binding.tvPingServerResult, "Server") }
-        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", binding.tvPingWifiResult, "WiFi") }
+        val tvPingServerResult = findViewById<TextView>(R.id.tvPingServerResult)
+        val tvPingWifiResult = findViewById<TextView>(R.id.tvPingWifiResult)
+
+        binding.btnPingServer.setOnClickListener { startPing("8.129.236.213", tvPingServerResult, "Server") }
+        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", tvPingWifiResult, "WiFi") }
 
         binding.swExtensionMode.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
