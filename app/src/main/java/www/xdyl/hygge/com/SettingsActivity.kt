@@ -1,6 +1,5 @@
 package www.xdyl.hygge.com
 
-import android.animation.LayoutTransition
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.View
@@ -28,7 +27,7 @@ class SettingsActivity : AppCompatActivity() {
         loadPrefs()
 
         // 启用过渡动画（自动应用于布局变化）
-        binding.settingsRoot.layoutTransition.enableTransitionType(LayoutTransition.CHANGING)
+        
 
         binding.btnExportLog.setOnClickListener {
             prefs.edit().putBoolean("request_export_log", true).apply()
@@ -101,7 +100,7 @@ class SettingsActivity : AppCompatActivity() {
         textView.visibility = View.VISIBLE
         textView.text = "Pinging $label..."
         // 触发动画
-        binding.settingsRoot.layoutTransition.enableTransitionType(LayoutTransition.CHANGING)
+        
         scope.launch {
             val result = withContext(Dispatchers.IO) { executePing(address) }
             textView.text = result
