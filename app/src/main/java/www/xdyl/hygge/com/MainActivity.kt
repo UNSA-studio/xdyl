@@ -172,12 +172,17 @@ class MainActivity : AppCompatActivity() {
                 prefs.edit().putString("launcher_root", currentBrowseDir.absolutePath).apply()
                 handleSelectedFolder(currentBrowseDir)
             }
-            .setNegativeButton("返回上级") { _, _ ->
-                navigateUp()
-            }
+            .setNegativeButton("返回上级", null) // null 占位，稍后自定义点击
             .create()
-        fileBrowserDialog = dialog
+
         dialog.show()
+
+        // 自定义“返回上级”按钮点击事件，阻止默认关闭对话框
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
+            navigateUp()
+        }
+
+        fileBrowserDialog = dialog
         updateUpButtonState()
     }
 
@@ -233,15 +238,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateUpButtonState() {
         val root = Environment.getExternalStorageDirectory()
-        val btn = fileBrowserDialog?.getButton(AlertDialog.BUTTON_NEGATIVE)
-        if (btn != null) {
-            if (currentBrowseDir.absolutePath == root.absolutePath) {
-                btn.isEnabled = false
-                btn.alpha = 0.5f
-            } else {
-                btn.isEnabled = true
-                btn.alpha = 1.0f
-            }
+        val btn = fileBrowserDialog?.getButton(AlertDialog.BUTTON_NEGATIVE) ?: return
+        if (currentBrowseDir.absolutePath == root.absolutePath) {
+            btn.isEnabled = false
+            btn.alpha = 0.5f
+        } else {
+            btn.isEnabled = true
+            btn.alpha = 1.0f
         }
     }
 
