@@ -4,6 +4,7 @@ import android.animation.LayoutTransition
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.os.Process
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
@@ -42,15 +43,15 @@ class SettingsActivity : AppCompatActivity() {
         binding.swExtensionMode.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 MaterialAlertDialogBuilder(this)
-                    .setTitle("Warning!")
-                    .setMessage("Enabling extension mode will give access to beta content.\nAfter enabling, the app must restart.\nProceed?")
-                    .setPositiveButton("Enable") { _, _ ->
-                        prefs.edit().putBoolean("extension_mode", true).apply()
+                    .setTitle("警告!")
+                    .setMessage("您正在开启扩展模式，这个模式里面的内容允许您使用一些Beta内容，可能不稳定，重启后生效。")
+                    .setPositiveButton("开启并重启") { _, _ ->
+                        prefs.edit().putBoolean("extension_mode", true).commit()  // 同步保存
                         finishAffinity()
-                        System.exit(0)
+                        Process.killProcess(Process.myPid())  // 杀掉进程，确保写入
                     }
-                    .setNegativeButton("Cancel") { _, _ ->
-                        prefs.edit().putBoolean("extension_mode", false).apply()
+                    .setNegativeButton("取消") { _, _ ->
+                        prefs.edit().putBoolean("extension_mode", false).commit()
                         binding.swExtensionMode.isChecked = false
                     }
                     .show()

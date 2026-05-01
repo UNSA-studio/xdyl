@@ -79,9 +79,9 @@ class MainActivity : AppCompatActivity() {
                     if (verified) startUpdateProcess()
                     else {
                         MaterialAlertDialogBuilder(this)
-                            .setTitle("NeoForge version too low")
-                            .setMessage("NeoForge driver 21.1.227 or higher required.")
-                            .setPositiveButton("OK", null)
+                            .setTitle("NeoForge 版本过低")
+                            .setMessage("需要更新 NeoForge 驱动至 21.1.227 或更高版本。")
+                            .setPositiveButton("确定", null)
                             .show()
                     }
                 }
@@ -160,11 +160,11 @@ class MainActivity : AppCompatActivity() {
 
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(view)
-            .setPositiveButton("Select") { _, _ ->
+            .setPositiveButton("选择此文件夹") { _, _ ->
                 prefs.edit().putString("launcher_root", currentBrowseDir.absolutePath).apply()
                 handleSelectedFolder(currentBrowseDir)
             }
-            .setNegativeButton("Back", null)
+            .setNegativeButton("返回上级", null)
             .create()
 
         dialog.setOnShowListener {
@@ -244,7 +244,7 @@ class MainActivity : AppCompatActivity() {
             targetModsDir = modsDir
             binding.btnStartDownload.isEnabled = true
             LogManager.log("Selected mods directory: ${modsDir.absolutePath}")
-            Toast.makeText(this, "Game directory selected", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show()
         } else {
             showError(Constants.ERROR01)
         }
@@ -272,9 +272,9 @@ class MainActivity : AppCompatActivity() {
     private fun showError(errorCode: String) {
         LogManager.log("Error: $errorCode")
         MaterialAlertDialogBuilder(this)
-            .setTitle("Error")
-            .setMessage("Error code: $errorCode")
-            .setPositiveButton("OK", null)
+            .setTitle("意外错误!")
+            .setMessage("错误码: $errorCode\n请查看是否是您的问题,如不是,请联系开发者")
+            .setPositiveButton("确定", null)
             .show()
     }
 
@@ -415,7 +415,7 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.progress = 0
         logBuilder.clear()
         binding.tvLog.text = ""
-        appendLog("Checking existing mods...")
+        appendLog("开始检查已有模组...")
 
         val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
         scope.launch {
@@ -428,15 +428,15 @@ class MainActivity : AppCompatActivity() {
 
                 val toDownload = filterOutUnchangedMods(modsDir, csvMods.filter { it.fileName in allServerMods })
                 if (toDownload.isEmpty()) {
-                    appendLog("All mods up-to-date.")
-                    Toast.makeText(this@MainActivity, "Nothing to update", Toast.LENGTH_SHORT).show()
+                    appendLog("所有模组均为最新版本！")
+                    Toast.makeText(this@MainActivity, "没有需要更新的文件", Toast.LENGTH_SHORT).show()
                     binding.progressBar.visibility = View.GONE
                     isProcessing = false
                     binding.btnStartDownload.isEnabled = true
                     return@launch
                 }
 
-                appendLog("Downloading ${toDownload.size} mods...")
+                appendLog("开始下载 ${toDownload.size} 个模组...")
                 val sem = Semaphore(threadCount)
                 val failed = AtomicInteger(0)
                 var completed = 0
@@ -451,7 +451,7 @@ class MainActivity : AppCompatActivity() {
                                 appendLog("[${completed+1}/$total] ${mod.fileName}")
                                 downloadWithRetry(Constants.BASE_URL + mod.fileName, mod.size, file)
                                 if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256))
-                                    throw RuntimeException("Checksum mismatch")
+                                    throw RuntimeException("校验失败")
                                 completed++
                                 withContext(Dispatchers.Main) {
                                     binding.progressBar.progress = (completed * 100) / total
@@ -470,8 +470,8 @@ class MainActivity : AppCompatActivity() {
                 if (failed.get() > 0) {
                     showError(Constants.ERROR05)
                 } else {
-                    appendLog("Update completed.")
-                    Toast.makeText(this@MainActivity, "Update completed!", Toast.LENGTH_LONG).show()
+                    appendLog("更新完成！")
+                    Toast.makeText(this@MainActivity, "模组已经更新完成!", Toast.LENGTH_LONG).show()
                     binding.progressBar.visibility = View.GONE
                 }
             } catch (e: Exception) {
@@ -495,16 +495,16 @@ class MainActivity : AppCompatActivity() {
         try {
             val log = LogManager.getFullLog()
             if (log.isEmpty()) {
-                Toast.makeText(this, "No log to export", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "暂无日志可导出", Toast.LENGTH_SHORT).show()
                 return
             }
             val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             val file = File(downloadsDir, "mod_update_log_${System.currentTimeMillis()}.txt")
             FileOutputStream(file).use { it.write(log.toByteArray()) }
             LogManager.log("Log exported to ${file.absolutePath}")
-            Toast.makeText(this, "Log exported", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "日志已导出至 ${file.absolutePath}", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
-            Toast.makeText(this, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "导出失败: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 

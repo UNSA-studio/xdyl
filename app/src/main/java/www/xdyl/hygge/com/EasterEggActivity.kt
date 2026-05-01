@@ -5,14 +5,14 @@ import android.animation.ValueAnimator
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
-import android.widget.Button
-import android.widget.FrameLayout
-import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
+import java.io.File
 import java.util.Random
 
 class EasterEggActivity : AppCompatActivity() {
@@ -29,26 +29,29 @@ class EasterEggActivity : AppCompatActivity() {
 
         val editThreadLimit = findViewById<TextInputEditText>(R.id.etThreadLimit)
         editThreadLimit.setText(prefs.getInt("thread_limit", 256).toString())
-        editThreadLimit.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val value = editThreadLimit.text.toString().toIntOrNull()?.coerceIn(128, 1024) ?: 256
+
+        // 自动保存：文本变化后立刻写入
+        editThreadLimit.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                val value = s?.toString()?.toIntOrNull()?.coerceIn(128, 1024) ?: 256
                 prefs.edit().putInt("thread_limit", value).apply()
-                Toast.makeText(this, "Thread limit set to $value", Toast.LENGTH_SHORT).show()
             }
-        }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
 
         val switchNeoforge = findViewById<SwitchMaterial>(R.id.swNeoforgeCheck)
         switchNeoforge.isChecked = prefs.getBoolean("neoforge_check_enabled", false)
         switchNeoforge.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("neoforge_check_enabled", isChecked).apply()
-            Toast.makeText(this, if (isChecked) "NeoForge check enabled" else "NeoForge check disabled", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if (isChecked) "NeoForge 检查已开启" else "NeoForge 检查已关闭", Toast.LENGTH_SHORT).show()
         }
 
         findViewById<Button>(R.id.btnAchievements).setOnClickListener {
             startActivity(Intent(this, AchievementActivity::class.java))
         }
         findViewById<Button>(R.id.btnDownloadUrl).setOnClickListener {
-            Toast.makeText(this, "Custom download URL not implemented", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "自定义下载地址暂未实现", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -57,9 +60,7 @@ class EasterEggActivity : AppCompatActivity() {
             for (i in 0 until parent.childCount) {
                 val child = parent.getChildAt(i)
                 child.isClickable = true
-                child.setOnClickListener { view ->
-                    performFallAnimation(view)
-                }
+                child.setOnClickListener { view -> performFallAnimation(view) }
                 setupFallingViews(child)
             }
         }
@@ -68,7 +69,6 @@ class EasterEggActivity : AppCompatActivity() {
     private fun performFallAnimation(view: View) {
         val parent = view.parent as? FrameLayout ?: return
         val targetY = parent.height.toFloat()
-
         val animator = ValueAnimator.ofFloat(0f, 1f)
         animator.addUpdateListener { animation ->
             val fraction = animation.animatedFraction
