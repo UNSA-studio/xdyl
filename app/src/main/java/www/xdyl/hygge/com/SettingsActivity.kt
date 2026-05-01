@@ -1,5 +1,7 @@
 package www.xdyl.hygge.com
 
+import android.animation.LayoutTransition
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.View
@@ -26,9 +28,6 @@ class SettingsActivity : AppCompatActivity() {
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         loadPrefs()
 
-        // 启用过渡动画（自动应用于布局变化）
-        
-
         binding.btnExportLog.setOnClickListener {
             prefs.edit().putBoolean("request_export_log", true).apply()
             finish()
@@ -47,9 +46,7 @@ class SettingsActivity : AppCompatActivity() {
                     .setMessage("Enabling extension mode will give access to beta content.\nAfter enabling, the app must restart.\nProceed?")
                     .setPositiveButton("Enable") { _, _ ->
                         prefs.edit().putBoolean("extension_mode", true).apply()
-                        // 强制重启：结束所有 Activity
                         finishAffinity()
-                        // 退出进程，用户需手动重新打开应用
                         System.exit(0)
                     }
                     .setNegativeButton("Cancel") { _, _ ->
@@ -64,7 +61,6 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         binding.btnExtensionPage.setOnClickListener {
-            // 进入扩展页面（已在 AndroidManifest 中注册）
             startActivity(Intent(this, EasterEggActivity::class.java))
         }
     }
@@ -99,8 +95,6 @@ class SettingsActivity : AppCompatActivity() {
     private fun startPing(address: String, textView: TextView, label: String) {
         textView.visibility = View.VISIBLE
         textView.text = "Pinging $label..."
-        // 触发动画
-        
         scope.launch {
             val result = withContext(Dispatchers.IO) { executePing(address) }
             textView.text = result
