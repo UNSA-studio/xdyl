@@ -42,7 +42,6 @@ class MainActivity : AppCompatActivity() {
         .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
-    // 文件浏览器成员 - 修正类型
     private var fileBrowserDialog: AlertDialog? = null
     private var currentBrowseDir: File = Environment.getExternalStorageDirectory()
     private var fileAdapter: FileAdapter? = null
@@ -140,7 +139,7 @@ class MainActivity : AppCompatActivity() {
         LogManager.log("No valid launcher root restored, user must select manually")
     }
 
-    // ===== 文件浏览器（单对话框 + 滑动动画） =====
+    // ===== 文件浏览器 =====
     private class FileAdapter(private val files: List<File>, private val onItemClick: (File) -> Unit) :
         RecyclerView.Adapter<FileAdapter.VH>() {
         class VH(val tv: TextView) : RecyclerView.ViewHolder(tv)
@@ -179,7 +178,7 @@ class MainActivity : AppCompatActivity() {
             .create()
         fileBrowserDialog = dialog
         dialog.show()
-        updateUpButtonVisibility()
+        updateUpButtonState()
     }
 
     private fun loadDirectory(dir: File) {
@@ -207,7 +206,7 @@ class MainActivity : AppCompatActivity() {
                         .setDuration(250)
                         .setListener(null)
                         .start()
-                    updateUpButtonVisibility()
+                    updateUpButtonState()
                 }
             })
     }
@@ -227,15 +226,23 @@ class MainActivity : AppCompatActivity() {
                         .setDuration(250)
                         .setListener(null)
                         .start()
-                    updateUpButtonVisibility()
+                    updateUpButtonState()
                 }
             })
     }
 
-    private fun updateUpButtonVisibility() {
+    private fun updateUpButtonState() {
         val root = Environment.getExternalStorageDirectory()
         val btn = fileBrowserDialog?.getButton(AlertDialog.BUTTON_NEGATIVE)
-        btn?.visibility = if (currentBrowseDir.absolutePath == root.absolutePath) View.GONE else View.VISIBLE
+        if (btn != null) {
+            if (currentBrowseDir.absolutePath == root.absolutePath) {
+                btn.isEnabled = false
+                btn.alpha = 0.5f
+            } else {
+                btn.isEnabled = true
+                btn.alpha = 1.0f
+            }
+        }
     }
 
     private fun handleSelectedFolder(folder: File) {
