@@ -70,6 +70,16 @@
             android:layout_marginTop="24dp"
             android:textSize="16sp"/>
 
+        <!-- 扩展模式开关 -->
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swExtensionMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="扩展模式"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="24dp"
+            android:checked="false"/>
+
         <Button
             android:id="@+id/btnPingServer"
             android:layout_width="match_parent"

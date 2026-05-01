@@ -5,6 +5,8 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.switchmaterial.SwitchMaterial
 import kotlinx.coroutines.*
 import www.xdyl.hygge.com.databinding.ActivitySettingsBinding
 import java.io.BufferedReader
@@ -36,8 +38,52 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.btnPingServer.setOnClickListener { startPing("8.129.236.213", "Server") }
         binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", "WiFi") }
+
+        // 扩展模式开关
+        binding.swExtensionMode.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                // 显示警告对话框
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("警告!")
+                    .setMessage("您正在开启扩展模式，这个模式里面的内容允许您使用一些Beta内容，可能不稳定，您确定吗？")
+                    .setPositiveButton("开启") { dialog, _ ->
+                        prefs.edit().putBoolean("extension_mode", true).apply()
+                        binding.swExtensionMode.isChecked = true
+                        dialog.dismiss()
+                    }
+                    .setNegativeButton("不开启") { dialog, _ ->
+                        prefs.edit().putBoolean("extension_mode", false).apply()
+                        binding.swExtensionMode.isChecked = false
+                        dialog.dismiss()
+                    }
+                    .show()
+            } else {
+                prefs.edit().putBoolean("extension_mode", false).apply()
+            }
+        }
     }
 
+    private fun loadPrefs() {
+        binding.etVersionName.setText(
+            prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
+        )
+        binding.etThreadCount.setText(
+            prefs.getInt("thread_count", 20).toString()
+        )
+        binding.swExtensionMode.isChecked = prefs.getBoolean("extension_mode", false)
+    }
+
+    private fun savePrefs() {
+        val version = binding.etVersionName.text.toString().ifBlank { Constants.TARGET_VERSION_DIR }
+        val threads = binding.etThreadCount.text.toString().toIntOrNull() ?: 20
+        val threadCount = threads.coerceIn(20, 128)
+        prefs.edit()
+            .putString("version_folder", version)
+            .putInt("thread_count", threadCount)
+            .apply()
+    }
+
+    // Ping 功能保留不变
     private fun startPing(address: String, label: String) {
         binding.tvPingResult.alpha = 0f
         binding.tvPingResult.visibility = View.VISIBLE
@@ -78,25 +124,6 @@ class SettingsActivity : AppCompatActivity() {
             }
             append("Raw:\n$raw")
         }
-    }
-
-    private fun loadPrefs() {
-        binding.etVersionName.setText(
-            prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
-        )
-        binding.etThreadCount.setText(
-            prefs.getInt("thread_count", 20).toString()
-        )
-    }
-
-    private fun savePrefs() {
-        val version = binding.etVersionName.text.toString().ifBlank { Constants.TARGET_VERSION_DIR }
-        val threads = binding.etThreadCount.text.toString().toIntOrNull() ?: 20
-        val threadCount = threads.coerceIn(20, 128)
-        prefs.edit()
-            .putString("version_folder", version)
-            .putInt("thread_count", threadCount)
-            .apply()
     }
 
     override fun onDestroy() {

@@ -1,20 +1,27 @@
 package www.xdyl.hygge.com
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.text.method.ScrollingMovementMethod
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.AnimationUtils
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONObject
 import www.xdyl.hygge.com.databinding.ActivityMainBinding
 import java.io.File
 import java.io.FileOutputStream
@@ -35,10 +42,12 @@ class MainActivity : AppCompatActivity() {
         .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
-    private var easterEggCounter = 0
-    private var lastClickTime = 0L
-    private val CLICK_INTERVAL = 600L
-    private var lastToast: Toast? = null
+    // 文件浏览器成员
+    private var fileBrowserDialog: AlertDialog? = null
+    private var currentBrowseDir: File = Environment.getExternalStorageDirectory()
+    private var fileAdapter: FileAdapter? = null
+    private var tvPath: TextView? = null
+    private var recyclerView: RecyclerView? = null
 
     companion object {
         var instance: MainActivity? = null
@@ -58,7 +67,6 @@ class MainActivity : AppCompatActivity() {
 
         requestPermissionsIfNeeded()
         restoreLastDirectory()
-        setupEasterEggTrigger()
 
         binding.btnSelectDir.setOnClickListener {
             LogManager.log("User tapped 'Select Game Directory'")
@@ -86,8 +94,14 @@ class MainActivity : AppCompatActivity() {
         binding.btnSettings.setOnClickListener {
             LogManager.log("User tapped Settings button")
             it.animate().rotationBy(180f).setDuration(300).start()
-            startActivity(Intent(this, SettingsActivity::class.java))
-            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+            if (prefs.getBoolean("extension_mode", false)) {
+                // 扩展模式开启，进入扩展页面
+                startActivity(Intent(this, EasterEggActivity::class.java))
+                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+            } else {
+                startActivity(Intent(this, SettingsActivity::class.java))
+                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+            }
         }
     }
 
@@ -127,91 +141,106 @@ class MainActivity : AppCompatActivity() {
         LogManager.log("No valid launcher root restored, user must select manually")
     }
 
-    private fun setupEasterEggTrigger() {
-        binding.tvTitleSuffix.setOnClickListener {
-            handleEasterEggClick()
+    // ===== 全新文件浏览器（单对话框 + 滑动动画） =====
+    private class FileAdapter(private val files: List<File>, private val onItemClick: (File) -> Unit) :
+        RecyclerView.Adapter<FileAdapter.VH>() {
+        class VH(val tv: TextView) : RecyclerView.ViewHolder(tv)
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
+            val tv = LayoutInflater.from(parent.context)
+                .inflate(android.R.layout.simple_list_item_1, parent, false) as TextView
+            tv.setBackgroundColor(0xFF1E1E1E.toInt())
+            tv.setTextColor(0xFFFFFFFF.toInt())
+            return VH(tv)
         }
-        LogManager.log("Easter egg trigger set on 'Android' text")
+        override fun onBindViewHolder(holder: VH, position: Int) {
+            holder.tv.text = files[position].name
+            holder.itemView.setOnClickListener { onItemClick(files[position]) }
+        }
+        override fun getItemCount() = files.size
     }
-
-    private fun handleEasterEggClick() {
-        val now = System.currentTimeMillis()
-        if (now - lastClickTime < CLICK_INTERVAL) {
-            easterEggCounter++
-        } else {
-            easterEggCounter = 1
-        }
-        lastClickTime = now
-
-        LogManager.log("Easter egg clicked, counter = $easterEggCounter")
-        lastToast?.cancel()
-        if (easterEggCounter == 7) {
-            lastToast = Toast.makeText(this, "你不会以为真有开发者模式吧?", Toast.LENGTH_SHORT)
-            lastToast?.show()
-            LogManager.log("Easter egg hint displayed")
-            easterEggCounter = 0
-        } else if (easterEggCounter >= 15) {
-            lastToast = Toast.makeText(this, "开发者模式已打开!", Toast.LENGTH_SHORT)
-            lastToast?.show()
-            LogManager.log("Attempting to open extension page")
-            try {
-                startActivity(Intent(this, EasterEggActivity::class.java))
-                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
-                LogManager.log("EasterEggActivity started successfully")
-            } catch (e: Exception) {
-                LogManager.log("Failed to start EasterEggActivity: ${e.message}")
-                Toast.makeText(this, "无法打开扩展页面", Toast.LENGTH_SHORT).show()
-            } finally {
-                easterEggCounter = 0
-            }
-        }
-    }
-
-    // ===== 文件浏览器 =====
-    private var currentBrowseDir: File = Environment.getExternalStorageDirectory()
 
     private fun showFileBrowser() {
         currentBrowseDir = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath))
-        LogManager.log("Opening file browser at ${currentBrowseDir.absolutePath}")
-        browseDirectory(currentBrowseDir)
+        val view = layoutInflater.inflate(R.layout.dialog_file_browser, null)
+        tvPath = view.findViewById(R.id.tvPath)
+        recyclerView = view.findViewById(R.id.recyclerView)
+        recyclerView!!.layoutManager = LinearLayoutManager(this)
+        loadDirectory(currentBrowseDir)
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(view)
+            .setPositiveButton("选择此文件夹") { _, _ ->
+                LogManager.log("User selected launcher root: ${currentBrowseDir.absolutePath}")
+                prefs.edit().putString("launcher_root", currentBrowseDir.absolutePath).apply()
+                handleSelectedFolder(currentBrowseDir)
+            }
+            .setNegativeButton("返回上级") { _, _ ->
+                navigateUp()
+            }
+            .create()
+        fileBrowserDialog = dialog
+        dialog.show()
+        updateUpButtonVisibility()
     }
 
-    private fun browseDirectory(dir: File) {
-        if (!dir.exists() || !dir.isDirectory) {
-            Toast.makeText(this, "无效的文件夹", Toast.LENGTH_SHORT).show()
-            return
-        }
+    private fun loadDirectory(dir: File) {
         val files = dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
-        val names = files.map { it.name }.toTypedArray()
-
-        val builder = MaterialAlertDialogBuilder(this)
-            .setTitle(dir.absolutePath)
-            .setItems(names) { _, which ->
-                val selected = files[which]
-                if (selected.isDirectory) {
-                    LogManager.log("Navigated into: ${selected.name}")
-                    currentBrowseDir = selected
-                    browseDirectory(selected)
-                }
-            }
-            .setPositiveButton("选择此文件夹") { _, _ ->
-                LogManager.log("User selected launcher root: ${dir.absolutePath}")
-                prefs.edit().putString("launcher_root", dir.absolutePath).apply()
-                handleSelectedFolder(dir)
-            }
-
-        val root = Environment.getExternalStorageDirectory()
-        if (dir.absolutePath != root.absolutePath) {
-            builder.setNegativeButton("返回上级") { _, _ ->
-                val parent = dir.parentFile
-                if (parent != null) {
-                    LogManager.log("Navigated up to: ${parent.name}")
-                    currentBrowseDir = parent
-                    browseDirectory(parent)
-                }
+        fileAdapter = FileAdapter(files) { file ->
+            if (file.isDirectory) {
+                navigateToDirectory(file)
             }
         }
-        builder.show()
+        recyclerView!!.adapter = fileAdapter
+        tvPath!!.text = dir.absolutePath
+    }
+
+    private fun navigateToDirectory(dir: File) {
+        // 向左滑动出当前列表
+        recyclerView!!.animate()
+            .translationX(-recyclerView!!.width.toFloat())
+            .setDuration(250)
+            .setListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    currentBrowseDir = dir
+                    loadDirectory(dir)
+                    // 从右侧滑入新列表
+                    recyclerView!!.translationX = recyclerView!!.width.toFloat()
+                    recyclerView!!.animate()
+                        .translationX(0f)
+                        .setDuration(250)
+                        .setListener(null)
+                        .start()
+                    updateUpButtonVisibility()
+                }
+            })
+    }
+
+    private fun navigateUp() {
+        val parent = currentBrowseDir.parentFile ?: return
+        // 向右滑动出当前列表
+        recyclerView!!.animate()
+            .translationX(recyclerView!!.width.toFloat())
+            .setDuration(250)
+            .setListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    currentBrowseDir = parent
+                    loadDirectory(parent)
+                    // 从左侧滑入新列表
+                    recyclerView!!.translationX = -recyclerView!!.width.toFloat()
+                    recyclerView!!.animate()
+                        .translationX(0f)
+                        .setDuration(250)
+                        .setListener(null)
+                        .start()
+                    updateUpButtonVisibility()
+                }
+            })
+    }
+
+    private fun updateUpButtonVisibility() {
+        val root = Environment.getExternalStorageDirectory()
+        val btn = (fileBrowserDialog as? AlertDialog)?.getButton(AlertDialog.BUTTON_NEGATIVE)
+        btn?.visibility = if (currentBrowseDir.absolutePath == root.absolutePath) View.GONE else View.VISIBLE
     }
 
     private fun handleSelectedFolder(folder: File) {
@@ -225,6 +254,7 @@ class MainActivity : AppCompatActivity() {
             LogManager.log("Failed to find mods directory in selected folder")
             showError(Constants.ERROR01)
         }
+        fileBrowserDialog?.dismiss()
     }
 
     private fun findMinecraftModsDir(launcherRoot: File): File? {
@@ -254,50 +284,40 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ===== NeoForge 版本检查（基于 JSON 参数数组） =====
+    // ===== NeoForge 版本检查 =====
     private fun verifyNeoforgeVersion(callback: (Boolean) -> Unit) {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 try {
                     val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
                     val launcherRoot = prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath)
-
                     LogManager.log("NeoForge check: targetVersion=$targetVersion, launcherRoot=$launcherRoot")
-                    val mc = findMinecraftDir(File(launcherRoot))
-                    if (mc == null) {
+                    val mc = findMinecraftDir(File(launcherRoot)) ?: run {
                         LogManager.log("NeoForge check: .minecraft not found")
                         return@withContext false
                     }
                     val versionsDir = File(mc, "versions")
                     val versionDir = File(versionsDir, targetVersion)
                     if (!versionDir.exists()) {
-                        LogManager.log("NeoForge check: version dir not found: ${versionDir.absolutePath}")
+                        LogManager.log("NeoForge check: version dir not found")
                         return@withContext false
                     }
-
                     val jsonFile = File(versionDir, "$targetVersion.json")
                     if (!jsonFile.exists()) {
-                        LogManager.log("NeoForge check: json file not found: ${jsonFile.absolutePath}")
+                        LogManager.log("NeoForge check: json file not found")
                         return@withContext false
                     }
-
                     val jsonContent = jsonFile.readText()
-                    LogManager.log("NeoForge check: JSON content length = ${jsonContent.length}")
-
-                    // 直接从 JSON 文本中查找 "--fml.neoForgeVersion" 后的数字
                     val versionPattern = Regex("\"--fml\\.neoForgeVersion\",\\s*\"(\\d+\\.\\d+\\.\\d+)\"")
-                    val match = versionPattern.find(jsonContent)
-                    if (match == null) {
-                        LogManager.log("NeoForge check: could not find --fml.neoForgeVersion in JSON")
+                    val match = versionPattern.find(jsonContent) ?: run {
+                        LogManager.log("NeoForge check: version pattern not found")
                         return@withContext false
                     }
-
                     val installedVersion = match.groupValues[1]
-                    LogManager.log("NeoForge check: extracted version $installedVersion from arguments")
-
+                    LogManager.log("NeoForge check: installed=$installedVersion")
                     val required = "21.1.227"
                     val comparison = compareVersion(installedVersion, required)
-                    LogManager.log("NeoForge check: installed=$installedVersion, required=$required, comparison=$comparison")
+                    LogManager.log("NeoForge check: comparison=$comparison")
                     comparison >= 0
                 } catch (e: Exception) {
                     LogManager.log("NeoForge check exception: ${e.message}")
