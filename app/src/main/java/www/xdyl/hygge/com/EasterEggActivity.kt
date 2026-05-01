@@ -8,11 +8,13 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
+import android.widget.Button
+import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
-import java.io.File
 import java.util.Random
 
 class EasterEggActivity : AppCompatActivity() {
@@ -30,7 +32,6 @@ class EasterEggActivity : AppCompatActivity() {
         val editThreadLimit = findViewById<TextInputEditText>(R.id.etThreadLimit)
         editThreadLimit.setText(prefs.getInt("thread_limit", 256).toString())
 
-        // 自动保存：文本变化后立刻写入
         editThreadLimit.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 val value = s?.toString()?.toIntOrNull()?.coerceIn(128, 1024) ?: 256
