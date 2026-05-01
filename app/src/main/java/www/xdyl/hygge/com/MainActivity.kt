@@ -57,7 +57,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        LogManager.log("MainActivity onCreate")
+        LogManager.log("MainActivity created")
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         instance = this
@@ -79,9 +79,9 @@ class MainActivity : AppCompatActivity() {
                     if (verified) startUpdateProcess()
                     else {
                         MaterialAlertDialogBuilder(this)
-                            .setTitle("NeoForge 版本过低")
-                            .setMessage("需要更新 NeoForge 驱动至 21.1.227 或更高版本。")
-                            .setPositiveButton("确定", null)
+                            .setTitle("NeoForge version too low")
+                            .setMessage("NeoForge driver 21.1.227 or higher required.")
+                            .setPositiveButton("OK", null)
                             .show()
                     }
                 }
@@ -125,14 +125,14 @@ class MainActivity : AppCompatActivity() {
                 if (found != null) {
                     targetModsDir = found
                     binding.btnStartDownload.isEnabled = true
-                    LogManager.log("Auto-located mods directory: ${found.absolutePath}")
+                    LogManager.log("Restored mods dir: ${found.absolutePath}")
                     return
                 }
             }
         }
     }
 
-    // ===== 文件浏览器 =====
+    // ==================== File Browser ====================
     private class FileAdapter(private var files: List<File>, private val onItemClick: (File) -> Unit) :
         RecyclerView.Adapter<FileAdapter.VH>() {
         class VH(val tv: TextView) : RecyclerView.ViewHolder(tv)
@@ -164,11 +164,11 @@ class MainActivity : AppCompatActivity() {
 
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(view)
-            .setPositiveButton("选择此文件夹") { _, _ ->
+            .setPositiveButton("Select") { _, _ ->
                 prefs.edit().putString("launcher_root", currentBrowseDir.absolutePath).apply()
                 handleSelectedFolder(currentBrowseDir)
             }
-            .setNegativeButton("返回上级", null)
+            .setNegativeButton("Back", null)
             .create()
 
         dialog.setOnShowListener {
@@ -247,7 +247,7 @@ class MainActivity : AppCompatActivity() {
         if (modsDir != null) {
             targetModsDir = modsDir
             binding.btnStartDownload.isEnabled = true
-            LogManager.log("Game directory set to ${modsDir.absolutePath}")
+            LogManager.log("Selected mods directory: ${modsDir.absolutePath}")
             Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show()
         } else {
             showError(Constants.ERROR01)
@@ -282,7 +282,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ===== NeoForge 检查 =====
+    // ==================== NeoForge check ====================
     private fun verifyNeoforgeVersion(callback: (Boolean) -> Unit) {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
@@ -327,28 +327,23 @@ class MainActivity : AppCompatActivity() {
         return 0
     }
 
-    // ===== 智能更新逻辑 =====
+    // ==================== Smart update ====================
     private suspend fun filterOutUnchangedMods(modsDir: File, csvMods: List<ModInfo>): List<ModInfo> = withContext(Dispatchers.IO) {
-        val unchanged = mutableListOf<ModInfo>()
         val toDownload = mutableListOf<ModInfo>()
-
-        // 并发冲突小，直接串行，也可以并行，但为了简单，串行
         for (mod in csvMods) {
             val localFile = File(modsDir, mod.fileName)
             if (!localFile.exists() || localFile.length() != mod.size) {
                 toDownload.add(mod)
             } else {
-                // 校验 MD5
                 val localMd5 = calculateMD5(localFile)
                 if (localMd5 != null && localMd5.equals(mod.md5, true)) {
-                    LogManager.log("Skipping ${mod.fileName} (already up to date)")
-                    unchanged.add(mod)
+                    LogManager.log("Skipping ${mod.fileName} (unchanged)")
                 } else {
                     toDownload.add(mod)
                 }
             }
         }
-        LogManager.log("Smart update: ${unchanged.size} unchanged, ${toDownload.size} to download")
+        LogManager.log("${toDownload.size} mods need update")
         toDownload
     }
 
@@ -364,12 +359,12 @@ class MainActivity : AppCompatActivity() {
             }
             return digest.digest().joinToString("") { "%02x".format(it) }
         } catch (e: Exception) {
-            LogManager.log("MD5 calculation failed for ${file.name}: ${e.message}")
+            LogManager.log("MD5 calc failed for ${file.name}: ${e.message}")
             return null
         }
     }
 
-    // ===== 网络与下载 =====
+    // ==================== Download ====================
     private suspend fun fetchServerFileList(): List<String> = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder().url(Constants.BASE_URL).build()
@@ -383,7 +378,7 @@ class MainActivity : AppCompatActivity() {
                 val link = matcher.group(1)
                 if (link != null && link.endsWith(".jar")) files.add(link)
             }
-            LogManager.log("Found ${files.size} .jar files on server")
+            LogManager.log("Found ${files.size} files on server")
             files
         } catch (e: Exception) {
             LogManager.log("Failed to fetch server file list: ${e.message}")
@@ -424,10 +419,9 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.progress = 0
         logBuilder.clear()
         binding.tvLog.text = ""
-        appendLog("开始检查已有模组...")
+        appendLog("Checking existing mods...")
 
         val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
-        LogManager.log("Update started with $threadCount threads")
         scope.launch {
             try {
                 val serverFiles = fetchServerFileList()
@@ -436,10 +430,9 @@ class MainActivity : AppCompatActivity() {
                 val csvSet = csvMods.map { it.fileName }.toSet()
                 val allServerMods = serverFiles.filter { csvSet.contains(it) }
 
-                // 智能过滤
                 val toDownload = filterOutUnchangedMods(modsDir, csvMods.filter { it.fileName in allServerMods })
                 if (toDownload.isEmpty()) {
-                    appendLog("所有模组均为最新版本！")
+                    appendLog("All mods up-to-date.")
                     Toast.makeText(this@MainActivity, "Nothing to update", Toast.LENGTH_SHORT).show()
                     binding.progressBar.visibility = View.GONE
                     isProcessing = false
@@ -447,7 +440,7 @@ class MainActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                appendLog("开始下载 ${toDownload.size} 个模组...")
+                appendLog("Downloading ${toDownload.size} mods...")
                 val sem = Semaphore(threadCount)
                 val failed = AtomicInteger(0)
                 var completed = 0
@@ -481,7 +474,7 @@ class MainActivity : AppCompatActivity() {
                 if (failed.get() > 0) {
                     showError(Constants.ERROR05)
                 } else {
-                    appendLog("更新完成！")
+                    appendLog("Update completed.")
                     Toast.makeText(this@MainActivity, "Update completed!", Toast.LENGTH_LONG).show()
                     binding.progressBar.visibility = View.GONE
                 }
@@ -513,9 +506,9 @@ class MainActivity : AppCompatActivity() {
             val file = File(downloadsDir, "mod_update_log_${System.currentTimeMillis()}.txt")
             FileOutputStream(file).use { it.write(log.toByteArray()) }
             LogManager.log("Log exported to ${file.absolutePath}")
-            Toast.makeText(this, "Log exported to ${file.absolutePath}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Log exported", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Toast.makeText(this, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 

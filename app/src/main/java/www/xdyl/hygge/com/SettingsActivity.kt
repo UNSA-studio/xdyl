@@ -1,10 +1,12 @@
 package www.xdyl.hygge.com
 
+import android.animation.LayoutTransition
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.*
@@ -25,6 +27,9 @@ class SettingsActivity : AppCompatActivity() {
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         loadPrefs()
 
+        // 启用过渡动画（自动应用于布局变化）
+        binding.settingsRoot.layoutTransition.enableTransitionType(LayoutTransition.CHANGING)
+
         binding.btnExportLog.setOnClickListener {
             prefs.edit().putBoolean("request_export_log", true).apply()
             finish()
@@ -39,20 +44,29 @@ class SettingsActivity : AppCompatActivity() {
         binding.swExtensionMode.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 MaterialAlertDialogBuilder(this)
-                    .setTitle("警告!")
-                    .setMessage("您正在开启扩展模式，这个模式里面的内容允许您使用一些Beta内容，可能不稳定，您确定吗？")
-                    .setPositiveButton("开启") { _, _ ->
+                    .setTitle("Warning!")
+                    .setMessage("Enabling extension mode will give access to beta content.\nAfter enabling, the app must restart.\nProceed?")
+                    .setPositiveButton("Enable") { _, _ ->
                         prefs.edit().putBoolean("extension_mode", true).apply()
-                        binding.swExtensionMode.isChecked = true
+                        // 强制重启：结束所有 Activity
+                        finishAffinity()
+                        // 退出进程，用户需手动重新打开应用
+                        System.exit(0)
                     }
-                    .setNegativeButton("不开启") { _, _ ->
+                    .setNegativeButton("Cancel") { _, _ ->
                         prefs.edit().putBoolean("extension_mode", false).apply()
                         binding.swExtensionMode.isChecked = false
                     }
                     .show()
             } else {
                 prefs.edit().putBoolean("extension_mode", false).apply()
+                binding.btnExtensionPage.visibility = View.GONE
             }
+        }
+
+        binding.btnExtensionPage.setOnClickListener {
+            // 进入扩展页面（已在 AndroidManifest 中注册）
+            startActivity(Intent(this, EasterEggActivity::class.java))
         }
     }
 
@@ -68,7 +82,9 @@ class SettingsActivity : AppCompatActivity() {
         binding.etThreadCount.setText(
             prefs.getInt("thread_count", 20).toString()
         )
-        binding.swExtensionMode.isChecked = prefs.getBoolean("extension_mode", false)
+        val extensionEnabled = prefs.getBoolean("extension_mode", false)
+        binding.swExtensionMode.isChecked = extensionEnabled
+        binding.btnExtensionPage.visibility = if (extensionEnabled) View.VISIBLE else View.GONE
     }
 
     private fun savePrefs() {
@@ -84,6 +100,8 @@ class SettingsActivity : AppCompatActivity() {
     private fun startPing(address: String, textView: TextView, label: String) {
         textView.visibility = View.VISIBLE
         textView.text = "Pinging $label..."
+        // 触发动画
+        binding.settingsRoot.layoutTransition.enableTransitionType(LayoutTransition.CHANGING)
         scope.launch {
             val result = withContext(Dispatchers.IO) { executePing(address) }
             textView.text = result
@@ -116,7 +134,7 @@ class SettingsActivity : AppCompatActivity() {
             if (rttMatch != null) {
                 append("Min/Avg/Max/mdev: ${rttMatch.groupValues[1]}/${rttMatch.groupValues[2]}/${rttMatch.groupValues[3]}/${rttMatch.groupValues[4]} ms\n")
             }
-            append("Raw:\n$raw")
+            append("Raw output:\n$raw")
         }
     }
 
