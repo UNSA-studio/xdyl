@@ -152,10 +152,17 @@ class MainActivity : AppCompatActivity() {
         } else if (easterEggCounter >= 15) {
             lastToast = Toast.makeText(this, "开发者模式已打开!", Toast.LENGTH_SHORT)
             lastToast?.show()
-            LogManager.log("Opening extension page")
-            easterEggCounter = 0
-            startActivity(Intent(this, EasterEggActivity::class.java))
-            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+            LogManager.log("Attempting to open extension page")
+            try {
+                startActivity(Intent(this, EasterEggActivity::class.java))
+                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+                LogManager.log("EasterEggActivity started successfully")
+            } catch (e: Exception) {
+                LogManager.log("Failed to start EasterEggActivity: ${e.message}")
+                Toast.makeText(this, "无法打开扩展页面", Toast.LENGTH_SHORT).show()
+            } finally {
+                easterEggCounter = 0
+            }
         }
     }
 
@@ -246,27 +253,55 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ===== NeoForge 版本检查 =====
+    // ===== NeoForge 版本检查（修复版） =====
     private fun verifyNeoforgeVersion(callback: (Boolean) -> Unit) {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 try {
                     val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
                     val launcherRoot = prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath)
-                    val mc = findMinecraftDir(File(launcherRoot)) ?: return@withContext false
+                    LogManager.log("NeoForge check: targetVersion=$targetVersion, launcherRoot=$launcherRoot")
+                    val mc = findMinecraftDir(File(launcherRoot))
+                    if (mc == null) {
+                        LogManager.log("NeoForge check: .minecraft not found")
+                        return@withContext false
+                    }
                     val versionsDir = File(mc, "versions")
                     val versionDir = File(versionsDir, targetVersion)
-                    if (!versionDir.exists()) return@withContext false
-                    val neoforgeJars = versionDir.listFiles()?.filter { it.nameWithoutExtension.startsWith("neoforge-", true) } ?: emptyList()
-                    val versionPattern = Regex("neoforge-(\\d+\\.\\d+\\.\\d+)")
+                    if (!versionDir.exists()) {
+                        LogManager.log("NeoForge check: version dir not found: ${versionDir.absolutePath}")
+                        return@withContext false
+                    }
+                    // 查找包含 "neoforge" 的 jar 文件
+                    val jarFiles = versionDir.listFiles()?.filter { it.extension.equals("jar", true) } ?: emptyList()
+                    val neoforgeJars = jarFiles.filter {
+                        it.nameWithoutExtension.contains("neoforge", ignoreCase = true)
+                    }
+                    LogManager.log("NeoForge check: found ${neoforgeJars.size} possible NeoForge jars: ${neoforgeJars.map { it.name }}")
+                    if (neoforgeJars.isEmpty()) {
+                        LogManager.log("NeoForge check: no neoforge jar found")
+                        return@withContext false
+                    }
+                    val versionPattern = Regex("neoforge-(\\d+\\.\\d+\\.\\d+)", RegexOption.IGNORE_CASE)
                     var installedVersion = ""
                     for (jar in neoforgeJars) {
                         val match = versionPattern.find(jar.name)
-                        if (match != null) { installedVersion = match.groupValues[1]; break }
+                        if (match != null) {
+                            installedVersion = match.groupValues[1]
+                            LogManager.log("NeoForge check: extracted version $installedVersion from ${jar.name}")
+                            break
+                        }
                     }
-                    if (installedVersion.isEmpty()) return@withContext false
-                    compareVersion(installedVersion, "21.1.227") >= 0
+                    if (installedVersion.isEmpty()) {
+                        LogManager.log("NeoForge check: could not extract version")
+                        return@withContext false
+                    }
+                    val required = "21.1.227"
+                    val comparison = compareVersion(installedVersion, required)
+                    LogManager.log("NeoForge check: installed=$installedVersion, required=$required, comparison=$comparison")
+                    comparison >= 0
                 } catch (e: Exception) {
+                    LogManager.log("NeoForge check exception: ${e.message}")
                     false
                 }
             }
@@ -354,7 +389,7 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.progress = 0
         logBuilder.clear()
         binding.tvLog.text = ""
-        appendLog("Starting download...")
+        appendLog("开始下载...")
 
         val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
         LogManager.log("Update started with $threadCount threads")
@@ -401,7 +436,7 @@ class MainActivity : AppCompatActivity() {
                 if (failed.get() > 0) {
                     showError(Constants.ERROR05)
                 } else {
-                    appendLog("All mods updated!")
+                    appendLog("所有模组更新完成！")
                     LogManager.log("Update finished successfully")
                     Toast.makeText(this@MainActivity, "Update completed!", Toast.LENGTH_LONG).show()
                     binding.progressBar.visibility = View.GONE
