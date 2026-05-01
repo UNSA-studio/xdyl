@@ -2,7 +2,6 @@ package www.xdyl.hygge.com
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
@@ -15,6 +14,7 @@ import android.view.ViewGroup
 import android.view.animation.AnimationUtils
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
         .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
-    // 文件浏览器成员
+    // 文件浏览器成员 - 修正类型
     private var fileBrowserDialog: AlertDialog? = null
     private var currentBrowseDir: File = Environment.getExternalStorageDirectory()
     private var fileAdapter: FileAdapter? = null
@@ -95,7 +95,6 @@ class MainActivity : AppCompatActivity() {
             LogManager.log("User tapped Settings button")
             it.animate().rotationBy(180f).setDuration(300).start()
             if (prefs.getBoolean("extension_mode", false)) {
-                // 扩展模式开启，进入扩展页面
                 startActivity(Intent(this, EasterEggActivity::class.java))
                 overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
             } else {
@@ -141,7 +140,7 @@ class MainActivity : AppCompatActivity() {
         LogManager.log("No valid launcher root restored, user must select manually")
     }
 
-    // ===== 全新文件浏览器（单对话框 + 滑动动画） =====
+    // ===== 文件浏览器（单对话框 + 滑动动画） =====
     private class FileAdapter(private val files: List<File>, private val onItemClick: (File) -> Unit) :
         RecyclerView.Adapter<FileAdapter.VH>() {
         class VH(val tv: TextView) : RecyclerView.ViewHolder(tv)
@@ -195,7 +194,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun navigateToDirectory(dir: File) {
-        // 向左滑动出当前列表
         recyclerView!!.animate()
             .translationX(-recyclerView!!.width.toFloat())
             .setDuration(250)
@@ -203,7 +201,6 @@ class MainActivity : AppCompatActivity() {
                 override fun onAnimationEnd(animation: Animator) {
                     currentBrowseDir = dir
                     loadDirectory(dir)
-                    // 从右侧滑入新列表
                     recyclerView!!.translationX = recyclerView!!.width.toFloat()
                     recyclerView!!.animate()
                         .translationX(0f)
@@ -217,7 +214,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun navigateUp() {
         val parent = currentBrowseDir.parentFile ?: return
-        // 向右滑动出当前列表
         recyclerView!!.animate()
             .translationX(recyclerView!!.width.toFloat())
             .setDuration(250)
@@ -225,7 +221,6 @@ class MainActivity : AppCompatActivity() {
                 override fun onAnimationEnd(animation: Animator) {
                     currentBrowseDir = parent
                     loadDirectory(parent)
-                    // 从左侧滑入新列表
                     recyclerView!!.translationX = -recyclerView!!.width.toFloat()
                     recyclerView!!.animate()
                         .translationX(0f)
@@ -239,7 +234,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateUpButtonVisibility() {
         val root = Environment.getExternalStorageDirectory()
-        val btn = (fileBrowserDialog as? AlertDialog)?.getButton(AlertDialog.BUTTON_NEGATIVE)
+        val btn = fileBrowserDialog?.getButton(AlertDialog.BUTTON_NEGATIVE)
         btn?.visibility = if (currentBrowseDir.absolutePath == root.absolutePath) View.GONE else View.VISIBLE
     }
 
