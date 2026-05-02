@@ -21,7 +21,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Msi, TargetFormat.Exe)
             packageName = "XdylUpdate"
-            packageVersion = "1.0"
+            packageVersion = "1.0.0"
             windows {
                 iconFile.set(project.file("src/main/resources/icon.ico"))
                 menuGroup = "Xdyl"
