@@ -1,6 +1,5 @@
 package www.xdyl.hygge.desktop
 
-import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -18,6 +17,8 @@ import androidx.compose.ui.window.*
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.awt.FileDialog
+import java.awt.Frame
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
@@ -41,8 +42,7 @@ fun main() = application {
     var downloading by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showExtension by remember { mutableStateOf(false) }
-    var easterEggCounter by remember { mutableStateOf(0) }
-    var lastClickTime by remember { mutableStateOf(0L) }
+    var showEasterDialog by remember { mutableStateOf(false) }
     var versionName by remember { mutableStateOf("1.21.1-NeoForge") }
     var threadCount by remember { mutableStateOf(20) }
     var neoforgeCheckEnabled by remember { mutableStateOf(false) }
@@ -50,7 +50,6 @@ fun main() = application {
     var threadLimit by remember { mutableStateOf(256) }
     var extensionMode by remember { mutableStateOf(false) }
 
-    // 加载保存的设置
     LaunchedEffect(Unit) {
         val lastPath = prefs.getString("launcher_root", null)
         if (lastPath != null) {
@@ -86,26 +85,19 @@ fun main() = application {
                         value = versionName,
                         onValueChange = { versionName = it; prefs.putString("version_folder", it) },
                         label = { Text("Minecraft 版本文件夹名") },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = Color.Gray
-                        )
+                        singleLine = true
                     )
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = threadCount.toString(),
                         onValueChange = { threadCount = it.toIntOrNull()?.coerceIn(20, 128) ?: 20; prefs.putInt("thread_count", threadCount) },
                         label = { Text("下载线程数 (20-128)") },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = Color.Gray
-                        )
+                        singleLine = true
                     )
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = {
                         val dialog = FileDialog(Frame(), "选择启动器根目录", FileDialog.LOAD)
+                        dialog.mode = FileDialog.LOAD
                         dialog.isVisible = true
                         val dir = dialog.directory
                         if (dir != null) {
@@ -120,26 +112,18 @@ fun main() = application {
                     }
                     Spacer(Modifier.height(16.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Switch(
-                            checked = neoforgeCheckEnabled,
-                            onCheckedChange = { neoforgeCheckEnabled = it; prefs.putBoolean("neoforge_check_enabled", it) }
-                        )
+                        Switch(checked = neoforgeCheckEnabled, onCheckedChange = { neoforgeCheckEnabled = it; prefs.putBoolean("neoforge_check_enabled", it) })
                         Spacer(Modifier.width(8.dp))
                         Text("开启 NeoForge 版本检查", color = Color.White)
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Switch(
-                            checked = cleanOrphanFiles,
-                            onCheckedChange = { cleanOrphanFiles = it; prefs.putBoolean("clean_orphan_files", it) }
-                        )
+                        Switch(checked = cleanOrphanFiles, onCheckedChange = { cleanOrphanFiles = it; prefs.putBoolean("clean_orphan_files", it) })
                         Spacer(Modifier.width(8.dp))
                         Text("更新后自动清理多余文件", color = Color.White)
                     }
                     Spacer(Modifier.height(16.dp))
-                    Button(onClick = { showSettings = false }) {
-                        Text("关闭")
-                    }
+                    Button(onClick = { showSettings = false }) { Text("关闭") }
                 }
             }
         }
@@ -164,25 +148,27 @@ fun main() = application {
                         value = threadLimit.toString(),
                         onValueChange = { threadLimit = it.toIntOrNull()?.coerceIn(128, 1024) ?: 256; prefs.putInt("thread_limit", threadLimit) },
                         label = { Text("线程数上限 (128-1024)") },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = Color.Gray
-                        )
+                        singleLine = true
                     )
                     Spacer(Modifier.height(16.dp))
-                    Button(onClick = {
-                        // 成就（占位）
-                    }) {
-                        Text("成就")
-                    }
+                    Button(onClick = { /* 成就 */ }) { Text("成就") }
                     Spacer(Modifier.height(8.dp))
-                    Button(onClick = { showExtension = false }) {
-                        Text("关闭")
-                    }
+                    Button(onClick = { showExtension = false }) { Text("关闭") }
                 }
             }
         }
+    }
+
+    // 提示弹窗
+    if (showEasterDialog) {
+        AlertDialog(
+            onDismissRequest = { showEasterDialog = false },
+            title = { Text("提示") },
+            text = { Text("扩展模式已移至设置页，请前往设置开启。") },
+            confirmButton = {
+                TextButton(onClick = { showEasterDialog = false }) { Text("确定") }
+            }
+        )
     }
 
     // 主窗口
@@ -201,39 +187,21 @@ fun main() = application {
         ) {
             Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "更新器-",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 28.sp,
-                        fontFamily = FontFamily.Monospace
-                    )
+                    Text("更新器-", color = MaterialTheme.colorScheme.primary, fontSize = 28.sp, fontFamily = FontFamily.Monospace)
                     Text(
                         "Android",
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 28.sp,
                         fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.clickable {
-                            val now = System.currentTimeMillis()
-                            if (now - lastClickTime < 600) easterEggCounter++ else easterEggCounter = 1
-                            lastClickTime = now
-                            if (easterEggCounter == 7) {
-                                // 小提示（无 UI，可忽略）
-                            } else if (easterEggCounter >= 15) {
-                                showExtension = true
-                                easterEggCounter = 0
-                            }
-                        }
+                        modifier = Modifier.clickable { showEasterDialog = true }
                     )
                     Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { showSettings = true }) {
-                        Text("⚙", fontSize = 24.sp)
-                    }
+                    IconButton(onClick = { showSettings = true }) { Text("⚙", fontSize = 24.sp) }
                 }
-
                 Spacer(Modifier.height(24.dp))
-
                 Button(onClick = {
-                    val dialog = FileDialog(Frame(), "选择启动器根目录", FileDialog.LOAD)
+                    val dialog = FileDialog(Frame(), "选择游戏目录", FileDialog.LOAD)
+                    dialog.mode = FileDialog.LOAD
                     dialog.isVisible = true
                     val dir = dialog.directory
                     if (dir != null) {
@@ -243,22 +211,17 @@ fun main() = application {
                             prefs.putString("launcher_root", dir)
                         }
                     }
-                }) {
-                    Text("选择游戏目录")
-                }
-
+                }) { Text("选择游戏目录") }
                 Spacer(Modifier.height(16.dp))
-
                 Button(
                     onClick = {
                         if (!downloading && targetModsDir != null) {
                             downloading = true
-                            val finalModsDir = targetModsDir!!
                             scope.launch {
                                 try {
                                     val serverFiles = fetchDesktopServerFileList()
                                     val csvMods = parseDesktopCsvMods()
-                                    val toDownload = filterOutUnchangedModsDesktop(finalModsDir, csvMods)
+                                    val toDownload = filterOutUnchangedModsDesktop(targetModsDir!!, csvMods)
                                     if (toDownload.isEmpty()) {
                                         logBuilder.appendLine("所有模组均为最新版本！")
                                         logText = logBuilder.toString()
@@ -273,11 +236,11 @@ fun main() = application {
                                     val total = toDownload.size
 
                                     withContext(Dispatchers.IO) {
-                                        val jobs = toDownload.map { mod ->
+                                        toDownload.map { mod ->
                                             launch {
                                                 sem.acquire()
                                                 try {
-                                                    val file = File(finalModsDir, mod.fileName)
+                                                    val file = File(targetModsDir!!, mod.fileName)
                                                     val manager = DownloadManager(Constants.BASE_URL + mod.fileName, mod.size, 1, false)
                                                     manager.download(file) { pct ->
                                                         progress = pct.toFloat()
@@ -294,14 +257,12 @@ fun main() = application {
                                                     sem.release()
                                                 }
                                             }
-                                        }
-                                        jobs.joinAll()
+                                        }.joinAll()
                                     }
 
-                                    // 清理孤儿文件
                                     if (cleanOrphanFiles) {
                                         val csvFiles = csvMods.map { it.fileName }.toSet()
-                                        val modFiles = finalModsDir.listFiles()?.filter { it.extension == "jar" } ?: emptyList()
+                                        val modFiles = targetModsDir!!.listFiles()?.filter { it.extension == "jar" } ?: emptyList()
                                         var deleted = 0
                                         for (file in modFiles) {
                                             if (file.name !in csvFiles) {
@@ -330,22 +291,15 @@ fun main() = application {
                         }
                     },
                     enabled = targetModsDir != null && !downloading
-                ) {
-                    Text("开始下载")
-                }
-
+                ) { Text("开始下载") }
                 Spacer(Modifier.height(16.dp))
-
                 LinearProgressIndicator(
                     progress = { (progress / 100f).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth().height(8.dp),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.primary
                 )
-
                 Text(statusText, color = MaterialTheme.colorScheme.secondary)
-
                 Spacer(Modifier.height(8.dp))
-
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val scrollState = rememberScrollState()
                     Text(
@@ -363,7 +317,7 @@ fun main() = application {
     }
 }
 
-// 复用 Android 端的纯逻辑函数（参数略有调整）
+// 辅助函数
 fun findMinecraftModsDir(root: File, prefs: Preferences): File? {
     val mc = File(root, ".minecraft")
     val mcAlt = File(root, "minecraft")
@@ -396,10 +350,10 @@ fun parseDesktopCsvMods(): List<ModInfo> = Constants.CSV_CONTENT.lines().drop(1)
 
 fun filterOutUnchangedModsDesktop(modsDir: File, csvMods: List<ModInfo>): List<ModInfo> = csvMods.filterNot { mod ->
     val local = File(modsDir, mod.fileName)
-    local.exists() && local.length() == mod.size && calculateMD5(local) == mod.md5
+    local.exists() && local.length() == mod.size && calculateMD5Desktop(local) == mod.md5
 }
 
-fun calculateMD5(file: File): String? = try {
+fun calculateMD5Desktop(file: File): String? = try {
     val digest = MessageDigest.getInstance("MD5")
     file.inputStream().use { fis ->
         val buffer = ByteArray(8192)

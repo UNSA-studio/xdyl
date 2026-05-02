@@ -1,4 +1,4 @@
-package www.xdyl.hygge.com
+package www.xdyl.hygge.desktop
 
 import kotlinx.coroutines.*
 import okhttp3.*
@@ -11,7 +11,7 @@ class DownloadManager(
     private val url: String,
     private val totalSize: Long,
     private val threadCount: Int = 20,
-    private val useRange: Boolean = true  // 可以关闭 Range 请求
+    private val useRange: Boolean = true
 ) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
@@ -21,7 +21,7 @@ class DownloadManager(
 
     suspend fun download(destFile: File, onProgress: (Int) -> Unit) = withContext(Dispatchers.IO) {
         if (!useRange || threadCount <= 1) {
-            // 简单模式：直接 GET，不使用 Range
+            // 简单模式
             val request = Request.Builder().url(url).build()
             val response = client.newCall(request).execute()
             response.use {
@@ -41,7 +41,6 @@ class DownloadManager(
                 }
             }
         } else {
-            // 多线程 Range 下载
             val chunkSize = totalSize / threadCount
             val rem = totalSize % threadCount
             val randomAccessFile = RandomAccessFile(destFile, "rw")

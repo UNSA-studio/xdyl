@@ -1,20 +1,14 @@
-package www.xdyl.hygge.com
+package www.xdyl.hygge.desktop
 
 object Constants {
     const val BASE_URL = "http://8.129.236.213:5551/mods/"
     const val TARGET_VERSION_DIR = "1.21.1-NeoForge"
     const val MODS_DIR = "mods"
-
     const val ERROR01 = "ERROR01"
-    const val ERROR02 = "ERROR02"
-    const val ERROR03 = "ERROR03"
-    const val ERROR04 = "ERROR04"
-    const val ERROR05 = "ERROR05"
-    const val ERROR06 = "ERROR06"
-
-    // CSV 内容（已过滤自身行），请用你的最新数据替换下面内容
+    // ... 其他错误码 ...
+    // 将你的完整 CSV_CONTENT 粘贴在这里
     val CSV_CONTENT = """
-"./CBMultipart-1.21.1-3.5.0.155.jar","535K",547450,5a6dedd06ddd39f1b341126d428424e3,b95ad536b91a264c484937909e5d3dab4bab9b268fc72f1e51611d0a80506da5
+ "./CBMultipart-1.21.1-3.5.0.155.jar","535K",547450,5a6dedd06ddd39f1b341126d428424e3,b95ad536b91a264c484937909e5d3dab4bab9b268fc72f1e51611d0a80506da5
 "./CodeChickenLib-1.21.1-4.6.1.526.jar","1.5M",1538347,cb6cc54c315e9e11278a0542473d5f2f,e35cb0ca3e3aeb87e1e171242454426d22edf517b06dc38e5c3d5b6d44d6bc04
 "./Controlling-neoforge-1.21.1-19.0.5.jar","76K",77555,7141c2d0bb774dc6e4481be32b685179,cc525fb6b030d9e4d33176983f278919e17b33935e2ca568929bdfa98f2b44a0
 "./DistantHorizons-3.0.2-b-1.21.1-fabric-neoforge.jar","29M",30019727,4e4e1ab6b753e194aace27ae1cdfb454,ffe8da15ac4deedcf1eb306b0a49d6f5ba1a8385d0119bf1475e5c358f16f855
@@ -160,5 +154,5 @@ object Constants {
 "./wwoo-2.3.4.jar","2.2M",2217959,fff07297d07ebdf729876831f275965a,de4ef02f438b5dc680ed90ae14ef003da295f774e58c34390d19552cee0d25b9
 "./xaeroworldmap-neoforge-1.21.1-1.40.11.jar","1.4M",1386001,e99d61c568fd117c23bd919afab39791,a00363399c1672e5bfa399889d128f5ba60f42200ee97312038924df6cbebcb6
 "./yet_another_config_lib_v3-3.8.2+1.21.1-neoforge.jar","1.1M",1118651,c346120062c3364a0d215c228354030e,b5c30321b46cfaa521645a04aff89d2804d8167a25bb23ad4b1ae8da73093a2f
-""".trimIndent()
+    """.trimIndent()
 }
