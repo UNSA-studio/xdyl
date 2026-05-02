@@ -1,0 +1,412 @@
+package www.xdyl.hygge.desktop
+
+import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.*
+import kotlinx.coroutines.*
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.File
+import java.io.FileOutputStream
+import java.security.MessageDigest
+import java.util.concurrent.Semaphore
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.regex.Pattern
+
+val client = OkHttpClient.Builder()
+    .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+    .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+    .build()
+
+fun main() = application {
+    var targetModsDir by remember { mutableStateOf<File?>(null) }
+    val scope = rememberCoroutineScope()
+    val prefs = remember { Preferences() }
+    val logBuilder = remember { StringBuilder() }
+    var logText by remember { mutableStateOf("") }
+    var progress by remember { mutableStateOf(0f) }
+    var statusText by remember { mutableStateOf("") }
+    var downloading by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+    var showExtension by remember { mutableStateOf(false) }
+    var easterEggCounter by remember { mutableStateOf(0) }
+    var lastClickTime by remember { mutableStateOf(0L) }
+    var versionName by remember { mutableStateOf("1.21.1-NeoForge") }
+    var threadCount by remember { mutableStateOf(20) }
+    var neoforgeCheckEnabled by remember { mutableStateOf(false) }
+    var cleanOrphanFiles by remember { mutableStateOf(true) }
+    var threadLimit by remember { mutableStateOf(256) }
+    var extensionMode by remember { mutableStateOf(false) }
+
+    // 加载保存的设置
+    LaunchedEffect(Unit) {
+        val lastPath = prefs.getString("launcher_root", null)
+        if (lastPath != null) {
+            val dir = File(lastPath)
+            if (dir.exists() && dir.isDirectory) {
+                targetModsDir = findMinecraftModsDir(dir, prefs)
+            }
+        }
+        versionName = prefs.getString("version_folder", "1.21.1-NeoForge") ?: "1.21.1-NeoForge"
+        threadCount = prefs.getInt("thread_count", 20)
+        neoforgeCheckEnabled = prefs.getBoolean("neoforge_check_enabled", false)
+        cleanOrphanFiles = prefs.getBoolean("clean_orphan_files", true)
+        threadLimit = prefs.getInt("thread_limit", 256)
+        extensionMode = prefs.getBoolean("extension_mode", false)
+    }
+
+    // 设置窗口
+    if (showSettings) {
+        Window(onCloseRequest = { showSettings = false }, title = "设置") {
+            MaterialTheme(
+                colorScheme = darkColorScheme(
+                    primary = Color(0xFFA0C4FF),
+                    onPrimary = Color.Black,
+                    background = Color(0xFF1E1E1E),
+                    surface = Color(0xFF2A2A2A),
+                    onSurface = Color.White
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp).width(400.dp).verticalScroll(rememberScrollState())) {
+                    Text("设置", color = MaterialTheme.colorScheme.primary, fontSize = 24.sp)
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = versionName,
+                        onValueChange = { versionName = it; prefs.putString("version_folder", it) },
+                        label = { Text("Minecraft 版本文件夹名") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.Gray
+                        )
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = threadCount.toString(),
+                        onValueChange = { threadCount = it.toIntOrNull()?.coerceIn(20, 128) ?: 20; prefs.putInt("thread_count", threadCount) },
+                        label = { Text("下载线程数 (20-128)") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.Gray
+                        )
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = {
+                        val dialog = FileDialog(Frame(), "选择启动器根目录", FileDialog.LOAD)
+                        dialog.isVisible = true
+                        val dir = dialog.directory
+                        if (dir != null) {
+                            val file = File(dir)
+                            if (file.exists() && file.isDirectory) {
+                                targetModsDir = findMinecraftModsDir(file, prefs)
+                                prefs.putString("launcher_root", dir)
+                            }
+                        }
+                    }) {
+                        Text("选择游戏目录")
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(
+                            checked = neoforgeCheckEnabled,
+                            onCheckedChange = { neoforgeCheckEnabled = it; prefs.putBoolean("neoforge_check_enabled", it) }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("开启 NeoForge 版本检查", color = Color.White)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(
+                            checked = cleanOrphanFiles,
+                            onCheckedChange = { cleanOrphanFiles = it; prefs.putBoolean("clean_orphan_files", it) }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("更新后自动清理多余文件", color = Color.White)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = { showSettings = false }) {
+                        Text("关闭")
+                    }
+                }
+            }
+        }
+    }
+
+    // 扩展窗口
+    if (showExtension) {
+        Window(onCloseRequest = { showExtension = false }, title = "扩展页面") {
+            MaterialTheme(
+                colorScheme = darkColorScheme(
+                    primary = Color(0xFFA0C4FF),
+                    onPrimary = Color.Black,
+                    background = Color(0xFF1E1E1E),
+                    surface = Color(0xFF2A2A2A),
+                    onSurface = Color.White
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp).width(400.dp).verticalScroll(rememberScrollState())) {
+                    Text("扩展页面", color = MaterialTheme.colorScheme.primary, fontSize = 24.sp)
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = threadLimit.toString(),
+                        onValueChange = { threadLimit = it.toIntOrNull()?.coerceIn(128, 1024) ?: 256; prefs.putInt("thread_limit", threadLimit) },
+                        label = { Text("线程数上限 (128-1024)") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.Gray
+                        )
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = {
+                        // 成就（占位）
+                    }) {
+                        Text("成就")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = { showExtension = false }) {
+                        Text("关闭")
+                    }
+                }
+            }
+        }
+    }
+
+    // 主窗口
+    Window(
+        onCloseRequest = ::exitApplication,
+        title = "日影西沉 - 模组更新器"
+    ) {
+        MaterialTheme(
+            colorScheme = darkColorScheme(
+                primary = Color(0xFFA0C4FF),
+                onPrimary = Color.Black,
+                background = Color(0xFF1E1E1E),
+                surface = Color(0xFF2A2A2A),
+                onSurface = Color.White
+            )
+        ) {
+            Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "更新器-",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 28.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        "Android",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 28.sp,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.clickable {
+                            val now = System.currentTimeMillis()
+                            if (now - lastClickTime < 600) easterEggCounter++ else easterEggCounter = 1
+                            lastClickTime = now
+                            if (easterEggCounter == 7) {
+                                // 小提示（无 UI，可忽略）
+                            } else if (easterEggCounter >= 15) {
+                                showExtension = true
+                                easterEggCounter = 0
+                            }
+                        }
+                    )
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = { showSettings = true }) {
+                        Text("⚙", fontSize = 24.sp)
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                Button(onClick = {
+                    val dialog = FileDialog(Frame(), "选择启动器根目录", FileDialog.LOAD)
+                    dialog.isVisible = true
+                    val dir = dialog.directory
+                    if (dir != null) {
+                        val file = File(dir)
+                        if (file.exists() && file.isDirectory) {
+                            targetModsDir = findMinecraftModsDir(file, prefs)
+                            prefs.putString("launcher_root", dir)
+                        }
+                    }
+                }) {
+                    Text("选择游戏目录")
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        if (!downloading && targetModsDir != null) {
+                            downloading = true
+                            val finalModsDir = targetModsDir!!
+                            scope.launch {
+                                try {
+                                    val serverFiles = fetchDesktopServerFileList()
+                                    val csvMods = parseDesktopCsvMods()
+                                    val toDownload = filterOutUnchangedModsDesktop(finalModsDir, csvMods)
+                                    if (toDownload.isEmpty()) {
+                                        logBuilder.appendLine("所有模组均为最新版本！")
+                                        logText = logBuilder.toString()
+                                        downloading = false
+                                        return@launch
+                                    }
+                                    logBuilder.appendLine("开始下载 ${toDownload.size} 个模组...")
+                                    logText = logBuilder.toString()
+                                    val sem = Semaphore(threadLimit.coerceIn(1, 1024))
+                                    val failed = AtomicInteger(0)
+                                    var completed = 0
+                                    val total = toDownload.size
+
+                                    withContext(Dispatchers.IO) {
+                                        val jobs = toDownload.map { mod ->
+                                            launch {
+                                                sem.acquire()
+                                                try {
+                                                    val file = File(finalModsDir, mod.fileName)
+                                                    val manager = DownloadManager(Constants.BASE_URL + mod.fileName, mod.size, 1, false)
+                                                    manager.download(file) { pct ->
+                                                        progress = pct.toFloat()
+                                                    }
+                                                    if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256))
+                                                        throw RuntimeException("Checksum mismatch")
+                                                    completed++
+                                                    progress = (completed * 100f) / total
+                                                    statusText = "$completed/$total"
+                                                } catch (e: Exception) {
+                                                    LogManager.log("Failed ${mod.fileName}: ${e.message}")
+                                                    failed.incrementAndGet()
+                                                } finally {
+                                                    sem.release()
+                                                }
+                                            }
+                                        }
+                                        jobs.joinAll()
+                                    }
+
+                                    // 清理孤儿文件
+                                    if (cleanOrphanFiles) {
+                                        val csvFiles = csvMods.map { it.fileName }.toSet()
+                                        val modFiles = finalModsDir.listFiles()?.filter { it.extension == "jar" } ?: emptyList()
+                                        var deleted = 0
+                                        for (file in modFiles) {
+                                            if (file.name !in csvFiles) {
+                                                if (file.delete()) {
+                                                    deleted++
+                                                    LogManager.log("Deleted orphan file: ${file.name}")
+                                                }
+                                            }
+                                        }
+                                        if (deleted > 0) logBuilder.appendLine("已清理 $deleted 个多余文件")
+                                    }
+
+                                    if (failed.get() > 0) {
+                                        logBuilder.appendLine("错误: ERROR05")
+                                    } else {
+                                        logBuilder.appendLine("更新完成！")
+                                    }
+                                    logText = logBuilder.toString()
+                                } catch (e: Exception) {
+                                    logBuilder.appendLine("异常: ${e.message}")
+                                    logText = logBuilder.toString()
+                                } finally {
+                                    downloading = false
+                                }
+                            }
+                        }
+                    },
+                    enabled = targetModsDir != null && !downloading
+                ) {
+                    Text("开始下载")
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                LinearProgressIndicator(
+                    progress = { (progress / 100f).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+
+                Text(statusText, color = MaterialTheme.colorScheme.secondary)
+
+                Spacer(Modifier.height(8.dp))
+
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    val scrollState = rememberScrollState()
+                    Text(
+                        logBuilder.toString(),
+                        modifier = Modifier.verticalScroll(scrollState).padding(8.dp).fillMaxWidth(),
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        color = Color.LightGray,
+                        maxLines = Int.MAX_VALUE,
+                        overflow = TextOverflow.Clip
+                    )
+                }
+            }
+        }
+    }
+}
+
+// 复用 Android 端的纯逻辑函数（参数略有调整）
+fun findMinecraftModsDir(root: File, prefs: Preferences): File? {
+    val mc = File(root, ".minecraft")
+    val mcAlt = File(root, "minecraft")
+    val m = if (mc.exists()) mc else if (mcAlt.exists()) mcAlt else return null
+    val versions = File(m, "versions")
+    if (!versions.exists()) return null
+    val target = prefs.getString("version_folder", "1.21.1-NeoForge") ?: "1.21.1-NeoForge"
+    val targetDir = File(versions, target)
+    if (!targetDir.exists()) return null
+    val mods = File(targetDir, "mods")
+    if (!mods.exists()) mods.mkdirs()
+    return mods
+}
+
+suspend fun fetchDesktopServerFileList(): List<String> = withContext(Dispatchers.IO) {
+    try {
+        val request = Request.Builder().url(Constants.BASE_URL).build()
+        val response = client.newCall(request).execute()
+        val body = response.body?.string() ?: return@withContext emptyList()
+        if (response.code != 200) return@withContext emptyList()
+        val pattern = Regex("<a href=\"([^\"]+)\">")
+        pattern.findAll(body).map { it.groupValues[1] }.filter { it.endsWith(".jar") }.toList()
+    } catch (e: Exception) { emptyList() }
+}
+
+fun parseDesktopCsvMods(): List<ModInfo> = Constants.CSV_CONTENT.lines().drop(1).filter { it.isNotBlank() }.map { line ->
+    val parts = line.split(",")
+    ModInfo(parts[0].trim('"').removePrefix("./"), parts[2].toLong(), parts[3].trim('"'), parts[4].trim('"'))
+}
+
+fun filterOutUnchangedModsDesktop(modsDir: File, csvMods: List<ModInfo>): List<ModInfo> = csvMods.filterNot { mod ->
+    val local = File(modsDir, mod.fileName)
+    local.exists() && local.length() == mod.size && calculateMD5(local) == mod.md5
+}
+
+fun calculateMD5(file: File): String? = try {
+    val digest = MessageDigest.getInstance("MD5")
+    file.inputStream().use { fis ->
+        val buffer = ByteArray(8192)
+        var len: Int
+        while (fis.read(buffer).also { len = it } != -1) digest.update(buffer, 0, len)
+    }
+    digest.digest().joinToString("") { "%02x".format(it) }
+} catch (e: Exception) { null }
+
+data class ModInfo(val fileName: String, val size: Long, val md5: String, val sha256: String)
