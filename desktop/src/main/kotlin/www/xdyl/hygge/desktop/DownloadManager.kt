@@ -42,7 +42,6 @@ class DownloadManager(
             }
         } else {
             val chunkSize = totalSize / threadCount
-            val rem = totalSize % threadCount
             val randomAccessFile = RandomAccessFile(destFile, "rw")
             randomAccessFile.setLength(totalSize)
             val progress = AtomicInteger(0)
