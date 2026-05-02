@@ -5,11 +5,6 @@ plugins {
     id("org.jetbrains.compose")
 }
 
-repositories {
-    mavenCentral()
-    maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-}
-
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
