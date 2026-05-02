@@ -467,6 +467,29 @@ class MainActivity : AppCompatActivity() {
                     }.joinAll()
                 }
 
+                // 清理孤儿文件
+                val cleanOrphan = prefs.getBoolean("clean_orphan_files", true)
+                if (cleanOrphan) {
+                    withContext(Dispatchers.IO) {
+                        val csvFiles = csvMods.map { it.fileName }.toSet()
+                        val modFiles = modsDir.listFiles()?.filter { it.extension.equals("jar", true) } ?: emptyList()
+                        var deleted = 0
+                        for (file in modFiles) {
+                            if (file.name !in csvFiles) {
+                                if (file.delete()) {
+                                    deleted++
+                                    LogManager.log("Deleted orphan file: ${file.name}")
+                                }
+                            }
+                        }
+                        if (deleted > 0) {
+                            withContext(Dispatchers.Main) {
+                                appendLog("已清理 $deleted 个多余文件")
+                            }
+                        }
+                    }
+                }
+
                 if (failed.get() > 0) {
                     showError(Constants.ERROR05)
                 } else {

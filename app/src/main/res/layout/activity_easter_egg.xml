@@ -26,7 +26,7 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="16dp"/>
 
-            <!-- 线程数输入框 -->
+            <!-- 线程数上限输入 -->
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -55,6 +55,16 @@
                 android:textColor="@android:color/white"
                 android:layout_marginTop="16dp"
                 android:checked="false"/>
+
+            <!-- 清理多余文件开关 -->
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/swCleanOrphanFiles"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="更新后自动清理多余文件"
+                android:textColor="@android:color/white"
+                android:layout_marginTop="16dp"
+                android:checked="true"/>
 
             <Button
                 android:id="@+id/btnDownloadUrl"

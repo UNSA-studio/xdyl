@@ -31,7 +31,6 @@ class EasterEggActivity : AppCompatActivity() {
 
         val editThreadLimit = findViewById<TextInputEditText>(R.id.etThreadLimit)
         editThreadLimit.setText(prefs.getInt("thread_limit", 256).toString())
-
         editThreadLimit.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 val value = s?.toString()?.toIntOrNull()?.coerceIn(128, 1024) ?: 256
@@ -46,6 +45,12 @@ class EasterEggActivity : AppCompatActivity() {
         switchNeoforge.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("neoforge_check_enabled", isChecked).apply()
             Toast.makeText(this, if (isChecked) "NeoForge 检查已开启" else "NeoForge 检查已关闭", Toast.LENGTH_SHORT).show()
+        }
+
+        val switchClean = findViewById<SwitchMaterial>(R.id.swCleanOrphanFiles)
+        switchClean.isChecked = prefs.getBoolean("clean_orphan_files", true)
+        switchClean.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("clean_orphan_files", isChecked).apply()
         }
 
         findViewById<Button>(R.id.btnAchievements).setOnClickListener {
