@@ -219,7 +219,6 @@ fun main() = application {
                             downloading = true
                             scope.launch {
                                 try {
-                                    val serverFiles = fetchDesktopServerFileList()
                                     val csvMods = parseDesktopCsvMods()
                                     val toDownload = filterOutUnchangedModsDesktop(targetModsDir!!, csvMods)
                                     if (toDownload.isEmpty()) {
