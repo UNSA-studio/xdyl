@@ -52,13 +52,6 @@ jobs:
     - name: Build Windows MSI
       run: ./gradlew :desktop:packageMsi
       shell: bash
-    - name: Sign MSI with stored certificate
-      run: |
-        $msi = Get-ChildItem -Path "desktop/build/compose/binaries/main/msi" -Filter *.msi | Select-Object -First 1
-        if ($msi) {
-          & signtool sign /fd SHA256 /f certificate.pfx /p xdyl123 $msi.FullName
-        }
-      shell: powershell
     - name: Upload Windows MSI
       uses: actions/upload-artifact@v4
       with:
