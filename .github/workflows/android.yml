@@ -49,15 +49,10 @@ jobs:
         key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
         restore-keys: |
           ${{ runner.os }}-gradle-wrapper-
-    - name: Create self-signed certificate
-      run: |
-        openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=UNSA Studio/O=xdyl"
-        openssl pkcs12 -export -in cert.pem -inkey key.pem -out certificate.pfx -passout pass:xdyl123
-      shell: bash
     - name: Build Windows MSI
       run: ./gradlew :desktop:packageMsi
       shell: bash
-    - name: Sign MSI with self-signed certificate
+    - name: Sign MSI with stored certificate
       run: |
         $msi = Get-ChildItem -Path "desktop/build/compose/binaries/main/msi" -Filter *.msi | Select-Object -First 1
         if ($msi) {
