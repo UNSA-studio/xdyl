@@ -49,6 +49,8 @@ fun main() = application {
     var cleanOrphanFiles by remember { mutableStateOf(true) }
     var threadLimit by remember { mutableStateOf(256) }
     var extensionMode by remember { mutableStateOf(false) }
+    var useLocalCsv by remember { mutableStateOf(false) }
+    var localCsvPath by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         val lastPath = prefs.getString("launcher_root", null)
@@ -64,6 +66,8 @@ fun main() = application {
         cleanOrphanFiles = prefs.getBoolean("clean_orphan_files", true)
         threadLimit = prefs.getInt("thread_limit", 256)
         extensionMode = prefs.getBoolean("extension_mode", false)
+        useLocalCsv = prefs.getBoolean("use_local_csv", false)
+        localCsvPath = prefs.getString("local_csv_path", "") ?: ""
     }
 
     // 设置窗口
@@ -78,7 +82,10 @@ fun main() = application {
                     onSurface = Color.White
                 )
             ) {
-                Column(modifier = Modifier.padding(16.dp).width(400.dp).verticalScroll(rememberScrollState())) {
+                Column(
+                    modifier = Modifier.padding(16.dp).width(400.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
                     Text("设置", color = MaterialTheme.colorScheme.primary, fontSize = 24.sp)
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
@@ -90,7 +97,10 @@ fun main() = application {
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = threadCount.toString(),
-                        onValueChange = { threadCount = it.toIntOrNull()?.coerceIn(20, 128) ?: 20; prefs.putInt("thread_count", threadCount) },
+                        onValueChange = {
+                            threadCount = it.toIntOrNull()?.coerceIn(20, 128) ?: 20
+                            prefs.putInt("thread_count", threadCount)
+                        },
                         label = { Text("下载线程数 (20-128)") },
                         singleLine = true
                     )
@@ -112,13 +122,25 @@ fun main() = application {
                     }
                     Spacer(Modifier.height(16.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Switch(checked = neoforgeCheckEnabled, onCheckedChange = { neoforgeCheckEnabled = it; prefs.putBoolean("neoforge_check_enabled", it) })
+                        Switch(
+                            checked = neoforgeCheckEnabled,
+                            onCheckedChange = {
+                                neoforgeCheckEnabled = it
+                                prefs.putBoolean("neoforge_check_enabled", it)
+                            }
+                        )
                         Spacer(Modifier.width(8.dp))
                         Text("开启 NeoForge 版本检查", color = Color.White)
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Switch(checked = cleanOrphanFiles, onCheckedChange = { cleanOrphanFiles = it; prefs.putBoolean("clean_orphan_files", it) })
+                        Switch(
+                            checked = cleanOrphanFiles,
+                            onCheckedChange = {
+                                cleanOrphanFiles = it
+                                prefs.putBoolean("clean_orphan_files", it)
+                            }
+                        )
                         Spacer(Modifier.width(8.dp))
                         Text("更新后自动清理多余文件", color = Color.White)
                     }
@@ -141,15 +163,54 @@ fun main() = application {
                     onSurface = Color.White
                 )
             ) {
-                Column(modifier = Modifier.padding(16.dp).width(400.dp).verticalScroll(rememberScrollState())) {
+                Column(
+                    modifier = Modifier.padding(16.dp).width(400.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
                     Text("扩展页面", color = MaterialTheme.colorScheme.primary, fontSize = 24.sp)
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
                         value = threadLimit.toString(),
-                        onValueChange = { threadLimit = it.toIntOrNull()?.coerceIn(128, 1024) ?: 256; prefs.putInt("thread_limit", threadLimit) },
+                        onValueChange = {
+                            threadLimit = it.toIntOrNull()?.coerceIn(128, 1024) ?: 256
+                            prefs.putInt("thread_limit", threadLimit)
+                        },
                         label = { Text("线程数上限 (128-1024)") },
                         singleLine = true
                     )
+                    Spacer(Modifier.height(16.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(
+                            checked = useLocalCsv,
+                            onCheckedChange = {
+                                useLocalCsv = it
+                                prefs.putBoolean("use_local_csv", it)
+                            }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("使用本地 CSV", color = Color.White)
+                    }
+                    if (useLocalCsv) {
+                        Button(onClick = {
+                            val dialog = FileDialog(Frame(), "选择 CSV 文件", FileDialog.LOAD)
+                            dialog.file = "*.csv"
+                            dialog.mode = FileDialog.LOAD
+                            dialog.isVisible = true
+                            val file = dialog.file
+                            if (file != null) {
+                                val selectedFile = File(dialog.directory, file)
+                                if (selectedFile.exists()) {
+                                    localCsvPath = selectedFile.absolutePath
+                                    prefs.putString("local_csv_path", localCsvPath)
+                                }
+                            }
+                        }) {
+                            Text("浏览...")
+                        }
+                        if (localCsvPath.isNotEmpty()) {
+                            Text("已选择: $localCsvPath", color = Color.White, fontSize = 12.sp)
+                        }
+                    }
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = { /* 成就 */ }) { Text("成就") }
                     Spacer(Modifier.height(8.dp))
@@ -174,7 +235,7 @@ fun main() = application {
     // 主窗口
     Window(
         onCloseRequest = ::exitApplication,
-        title = "日影西沉 - 模组更新器"
+        title = "Nebula updater-NU 星云更新器-Windows端"
     ) {
         MaterialTheme(
             colorScheme = darkColorScheme(
@@ -186,19 +247,22 @@ fun main() = application {
             )
         ) {
             Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+                // 标题栏
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("更新器-", color = MaterialTheme.colorScheme.primary, fontSize = 28.sp, fontFamily = FontFamily.Monospace)
                     Text(
-                        "Android",
+                        "Nebula updater-NU 星云更新器-Windows端",
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 28.sp,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.clickable { showEasterDialog = true }
+                        fontFamily = FontFamily.Monospace
                     )
                     Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { showSettings = true }) { Text("⚙", fontSize = 24.sp) }
+                    IconButton(onClick = { showSettings = true }) {
+                        Text("⚙", fontSize = 24.sp)
+                    }
                 }
                 Spacer(Modifier.height(24.dp))
+
+                // 选择游戏目录按钮
                 Button(onClick = {
                     val dialog = FileDialog(Frame(), "选择游戏目录", FileDialog.LOAD)
                     dialog.mode = FileDialog.LOAD
@@ -211,16 +275,26 @@ fun main() = application {
                             prefs.putString("launcher_root", dir)
                         }
                     }
-                }) { Text("选择游戏目录") }
+                }) {
+                    Text("选择游戏目录")
+                }
                 Spacer(Modifier.height(16.dp))
+
+                // 开始下载按钮
                 Button(
                     onClick = {
                         if (!downloading && targetModsDir != null) {
                             downloading = true
                             scope.launch {
                                 try {
-                                    val csvMods = parseDesktopCsvMods()
-                                    val toDownload = filterOutUnchangedModsDesktop(targetModsDir!!, csvMods)
+                                    val serverFiles = fetchDesktopServerFileList()
+                                    val csvMods = if (useLocalCsv && localCsvPath.isNotEmpty()) {
+                                        parseCsvFromFile(File(localCsvPath))
+                                    } else {
+                                        parseDesktopCsvMods()
+                                    }
+                                    val toDownload =
+                                        filterOutUnchangedModsDesktop(targetModsDir!!, csvMods)
                                     if (toDownload.isEmpty()) {
                                         logBuilder.appendLine("所有模组均为最新版本！")
                                         logText = logBuilder.toString()
@@ -229,6 +303,7 @@ fun main() = application {
                                     }
                                     logBuilder.appendLine("开始下载 ${toDownload.size} 个模组...")
                                     logText = logBuilder.toString()
+
                                     val sem = Semaphore(threadLimit.coerceIn(1, 1024))
                                     val failed = AtomicInteger(0)
                                     var completed = 0
@@ -240,12 +315,21 @@ fun main() = application {
                                                 sem.acquire()
                                                 try {
                                                     val file = File(targetModsDir!!, mod.fileName)
-                                                    val manager = DownloadManager(Constants.BASE_URL + mod.fileName, mod.size, 1, false)
+                                                    val manager = DownloadManager(
+                                                        Constants.BASE_URL + mod.fileName,
+                                                        mod.size,
+                                                        1,
+                                                        false
+                                                    )
                                                     manager.download(file) { pct ->
                                                         progress = pct.toFloat()
                                                     }
-                                                    if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256))
-                                                        throw RuntimeException("Checksum mismatch")
+                                                    if (!FileVerifier().verifyFile(
+                                                            file,
+                                                            mod.md5,
+                                                            mod.sha256
+                                                        )
+                                                    ) throw RuntimeException("Checksum mismatch")
                                                     completed++
                                                     progress = (completed * 100f) / total
                                                     statusText = "$completed/$total"
@@ -259,9 +343,12 @@ fun main() = application {
                                         }.joinAll()
                                     }
 
+                                    // 清理孤儿文件
                                     if (cleanOrphanFiles) {
                                         val csvFiles = csvMods.map { it.fileName }.toSet()
-                                        val modFiles = targetModsDir!!.listFiles()?.filter { it.extension == "jar" } ?: emptyList()
+                                        val modFiles =
+                                            targetModsDir!!.listFiles()?.filter { it.extension == "jar" }
+                                                ?: emptyList()
                                         var deleted = 0
                                         for (file in modFiles) {
                                             if (file.name !in csvFiles) {
@@ -290,8 +377,12 @@ fun main() = application {
                         }
                     },
                     enabled = targetModsDir != null && !downloading
-                ) { Text("开始下载") }
+                ) {
+                    Text("开始下载")
+                }
                 Spacer(Modifier.height(16.dp))
+
+                // 进度条
                 LinearProgressIndicator(
                     progress = { (progress / 100f).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth().height(8.dp),
@@ -299,11 +390,14 @@ fun main() = application {
                 )
                 Text(statusText, color = MaterialTheme.colorScheme.secondary)
                 Spacer(Modifier.height(8.dp))
+
+                // 日志区域
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val scrollState = rememberScrollState()
                     Text(
                         logBuilder.toString(),
-                        modifier = Modifier.verticalScroll(scrollState).padding(8.dp).fillMaxWidth(),
+                        modifier = Modifier.verticalScroll(scrollState).padding(8.dp)
+                            .fillMaxWidth(),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 12.sp,
                         color = Color.LightGray,
@@ -339,18 +433,38 @@ suspend fun fetchDesktopServerFileList(): List<String> = withContext(Dispatchers
         if (response.code != 200) return@withContext emptyList()
         val pattern = Regex("<a href=\"([^\"]+)\">")
         pattern.findAll(body).map { it.groupValues[1] }.filter { it.endsWith(".jar") }.toList()
-    } catch (e: Exception) { emptyList() }
+    } catch (e: Exception) {
+        emptyList()
+    }
 }
 
-fun parseDesktopCsvMods(): List<ModInfo> = Constants.CSV_CONTENT.lines().drop(1).filter { it.isNotBlank() }.map { line ->
-    val parts = line.split(",")
-    ModInfo(parts[0].trim('"').removePrefix("./"), parts[2].toLong(), parts[3].trim('"'), parts[4].trim('"'))
-}
+fun parseDesktopCsvMods(): List<ModInfo> =
+    Constants.CSV_CONTENT.lines().drop(1).filter { it.isNotBlank() }.map { line ->
+        val parts = line.split(",")
+        ModInfo(
+            parts[0].trim('"').removePrefix("./"),
+            parts[2].toLong(),
+            parts[3].trim('"'),
+            parts[4].trim('"')
+        )
+    }
 
-fun filterOutUnchangedModsDesktop(modsDir: File, csvMods: List<ModInfo>): List<ModInfo> = csvMods.filterNot { mod ->
-    val local = File(modsDir, mod.fileName)
-    local.exists() && local.length() == mod.size && calculateMD5Desktop(local) == mod.md5
-}
+fun parseCsvFromFile(file: File): List<ModInfo> =
+    file.readText().lines().drop(1).filter { it.isNotBlank() }.map { line ->
+        val parts = line.split(",")
+        ModInfo(
+            parts[0].trim('"').removePrefix("./"),
+            parts[2].toLong(),
+            parts[3].trim('"'),
+            parts[4].trim('"')
+        )
+    }
+
+fun filterOutUnchangedModsDesktop(modsDir: File, csvMods: List<ModInfo>): List<ModInfo> =
+    csvMods.filterNot { mod ->
+        val local = File(modsDir, mod.fileName)
+        local.exists() && local.length() == mod.size && calculateMD5Desktop(local) == mod.md5
+    }
 
 fun calculateMD5Desktop(file: File): String? = try {
     val digest = MessageDigest.getInstance("MD5")
@@ -360,6 +474,8 @@ fun calculateMD5Desktop(file: File): String? = try {
         while (fis.read(buffer).also { len = it } != -1) digest.update(buffer, 0, len)
     }
     digest.digest().joinToString("") { "%02x".format(it) }
-} catch (e: Exception) { null }
+} catch (e: Exception) {
+    null
+}
 
 data class ModInfo(val fileName: String, val size: Long, val md5: String, val sha256: String)
