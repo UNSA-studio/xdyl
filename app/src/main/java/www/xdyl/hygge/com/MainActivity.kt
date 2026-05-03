@@ -49,12 +49,6 @@ class MainActivity : AppCompatActivity() {
     private var tvPath: TextView? = null
     private var recyclerView: RecyclerView? = null
 
-    // CSV 文件选择器相关
-    private var csvPickDialog: AlertDialog? = null
-    private var csvPickRecycler: RecyclerView? = null
-    private var csvPickTvPath: TextView? = null
-    private var csvPickCurrentDir: File = Environment.getExternalStorageDirectory()
-
     companion object {
         var instance: MainActivity? = null
     }
@@ -68,21 +62,15 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         instance = this
 
-        // 设置标题
-        binding.tvTitlePrefix.text = "Nebula updater-NU 星云更新器-"
-        binding.tvTitleSuffix.text = "Android端"
+        // 设置标题两行
+        binding.tvTitleLine1.text = "Nebula updater-NU"
+        binding.tvTitleLine2.text = "星云更新器-Android端"
 
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         binding.tvLog.movementMethod = ScrollingMovementMethod()
 
         requestPermissionsIfNeeded()
         restoreLastDirectory()
-
-        // 处理来自扩展页面的 CSV 选择请求
-        if (prefs.getBoolean("pick_csv_request", false)) {
-            prefs.edit().putBoolean("pick_csv_request", false).apply()
-            showCsvFilePicker()
-        }
 
         binding.btnSelectDir.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
@@ -114,10 +102,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (prefs.getBoolean("pick_csv_request", false)) {
-            prefs.edit().putBoolean("pick_csv_request", false).apply()
-            showCsvFilePicker()
-        }
         if (prefs.getBoolean("request_export_log", false)) {
             prefs.edit().putBoolean("request_export_log", false).apply()
             exportLogToFile()
@@ -148,73 +132,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ==================== CSV 文件选择器 ====================
-    private fun showCsvFilePicker() {
-        val lastPath = prefs.getString("csv_browser_last_path", Environment.getExternalStorageDirectory().absolutePath)
-        csvPickCurrentDir = File(lastPath)
-        showCsvPickDialog(csvPickCurrentDir)
-    }
-
-    private fun showCsvPickDialog(dir: File) {
-        val view = layoutInflater.inflate(R.layout.dialog_file_browser, null)
-        csvPickTvPath = view.findViewById(R.id.tvPath)
-        csvPickRecycler = view.findViewById(R.id.recyclerView)
-        csvPickRecycler!!.layoutManager = LinearLayoutManager(this)
-        loadCsvPickDir(dir)
-
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setView(view)
-            .setNegativeButton("返回上级", null)
-            .create()
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener { csvNavigateUp() }
-        }
-        csvPickDialog = dialog
-        dialog.show()
-    }
-
-    private fun loadCsvPickDir(dir: File) {
-        scope.launch(Dispatchers.IO) {
-            val files = dir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
-            withContext(Dispatchers.Main) {
-                val adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-                    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-                        val tv = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false) as TextView
-                        tv.setBackgroundColor(0xFF1E1E1E.toInt())
-                        tv.setTextColor(0xFFFFFFFF.toInt())
-                        return object : RecyclerView.ViewHolder(tv) {}
-                    }
-                    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-                        val f = files[position]
-                        (holder.itemView as TextView).text = f.name
-                        holder.itemView.setOnClickListener {
-                            if (f.isDirectory) {
-                                csvPickCurrentDir = f
-                                prefs.edit().putString("csv_browser_last_path", f.absolutePath).apply()
-                                loadCsvPickDir(f)
-                            } else {
-                                prefs.edit().putString("local_csv_path", f.absolutePath).apply()
-                                csvPickDialog?.dismiss()
-                                Toast.makeText(this@MainActivity, "已选择 CSV: ${f.name}", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-                    override fun getItemCount(): Int = files.size
-                }
-                csvPickRecycler!!.adapter = adapter
-                csvPickTvPath!!.text = dir.absolutePath
-            }
-        }
-    }
-
-    private fun csvNavigateUp() {
-        val parent = csvPickCurrentDir.parentFile ?: return
-        csvPickCurrentDir = parent
-        prefs.edit().putString("csv_browser_last_path", parent.absolutePath).apply()
-        loadCsvPickDir(parent)
-    }
-
-    // ==================== 通用文件浏览器（目录选择） ====================
+    // ---------- 文件浏览器 ----------
     private class FileAdapter(private var files: List<File>, private val onItemClick: (File) -> Unit) :
         RecyclerView.Adapter<FileAdapter.VH>() {
         class VH(val tv: TextView) : RecyclerView.ViewHolder(tv)
@@ -251,7 +169,6 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("返回上级", null)
             .create()
-
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener { navigateUp() }
             loadDirectory(currentBrowseDir)
@@ -363,7 +280,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ==================== NeoForge check ====================
+    // ---------- NeoForge 检查 ----------
     private fun verifyNeoforgeVersion(callback: (Boolean) -> Unit) {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
@@ -408,7 +325,7 @@ class MainActivity : AppCompatActivity() {
         return 0
     }
 
-    // ==================== Smart update ====================
+    // ---------- 智能更新 ----------
     private suspend fun filterOutUnchangedMods(modsDir: File, csvMods: List<ModInfo>): List<ModInfo> = withContext(Dispatchers.IO) {
         val toDownload = mutableListOf<ModInfo>()
         for (mod in csvMods) {
@@ -445,7 +362,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ==================== Download ====================
+    private fun getCsvContent(): String {
+        if (prefs.getBoolean("use_local_csv", false)) {
+            val path = prefs.getString("local_csv_path", null)
+            if (path != null) {
+                val file = File(path)
+                if (file.exists()) {
+                    return file.readText()
+                }
+            }
+        }
+        return Constants.CSV_CONTENT
+    }
+
     private suspend fun fetchServerFileList(): List<String> = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder().url(Constants.BASE_URL).build()
@@ -472,19 +401,6 @@ class MainActivity : AppCompatActivity() {
             val parts = line.split(",")
             ModInfo(parts[0].trim('"').removePrefix("./"), parts[2].toLong(), parts[3].trim('"'), parts[4].trim('"'))
         }
-    }
-
-    private fun getCsvContent(): String {
-        if (prefs.getBoolean("use_local_csv", false)) {
-            val path = prefs.getString("local_csv_path", null)
-            if (path != null) {
-                val file = File(path)
-                if (file.exists()) {
-                    return file.readText()
-                }
-            }
-        }
-        return Constants.CSV_CONTENT
     }
 
     private suspend fun downloadWithRetry(url: String, size: Long, destFile: File, maxRetries: Int = 5) {

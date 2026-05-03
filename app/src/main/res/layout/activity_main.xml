@@ -6,35 +6,34 @@
     android:background="@color/background_dark"
     android:padding="16dp">
 
-    <!-- 将原标题拆分为两个并排的 TextView -->
+    <!-- 标题两行 -->
     <LinearLayout
         android:id="@+id/titleContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         android:layout_marginTop="8dp">
 
         <TextView
-            android:id="@+id/tvTitlePrefix"
+            android:id="@+id/tvTitleLine1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="更新器-"
+            android:text="Nebula updater-NU"
             android:textSize="28sp"
             android:textStyle="bold"
             android:textColor="@color/primary_light_blue"
             android:letterSpacing="0.05" />
 
         <TextView
-            android:id="@+id/tvTitleSuffix"
+            android:id="@+id/tvTitleLine2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Android"
-            android:textSize="28sp"
-            android:textStyle="bold"
+            android:text="星云更新器-Android端"
+            android:textSize="16sp"
             android:textColor="@color/primary_light_blue"
-            android:letterSpacing="0.05" />
+            android:alpha="0.8" />
     </LinearLayout>
 
     <ImageButton
@@ -52,7 +51,7 @@
         android:id="@+id/cardSelect"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="80dp"
+        android:layout_marginTop="100dp"
         app:cardCornerRadius="24dp"
         app:cardElevation="8dp"
         app:cardBackgroundColor="#2A2A2A"
@@ -145,7 +144,6 @@
             android:padding="4dp" />
     </ScrollView>
 
-    <!-- 绿色覆盖层，默认隐藏 -->
     <View
         android:id="@+id/greenOverlay"
         android:layout_width="0dp"

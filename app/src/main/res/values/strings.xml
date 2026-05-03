@@ -2,4 +2,5 @@
     <string name="app_name">Nebula updater</string>
     <string name="btn_select_dir">选择游戏目录</string>
     <string name="btn_start_download">开始下载</string>
+    <string name="update_title">更新器</string>
 </resources>
