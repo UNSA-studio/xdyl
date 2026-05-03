@@ -1,7 +1,6 @@
 package www.xdyl.hygge.desktop
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -12,6 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,8 +29,10 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
-// 加载自定义字体
-val silverFontFamily = FontFamily(Font("font/silver.ttf"))
+// 修正后的自定义字体（使用 resource 参数，并指定 weight 和 style）
+val silverFontFamily = FontFamily(
+    Font(resource = "font/silver.ttf", weight = FontWeight.Normal, style = FontStyle.Normal)
+)
 
 val client = OkHttpClient.Builder()
     .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
@@ -239,7 +242,7 @@ fun main() = application {
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-                    // 标题两行
+                    // 标题两行，使用自定义字体
                     Column {
                         Text(
                             "Nebula updater-NU",
