@@ -29,9 +29,9 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
-// 修正后的自定义字体（使用 resource 参数，并指定 weight 和 style）
+// 加载自定义字体（Compose 1.6.0 JVM 方式）
 val silverFontFamily = FontFamily(
-    Font(resource = "font/silver.ttf", weight = FontWeight.Normal, style = FontStyle.Normal)
+    Font(path = "fonts/silver.ttf", weight = FontWeight.Normal, style = FontStyle.Normal)
 )
 
 val client = OkHttpClient.Builder()
@@ -383,7 +383,6 @@ fun main() = application {
                             logBuilder.toString(),
                             modifier = Modifier.verticalScroll(scrollState).padding(8.dp)
                                 .fillMaxWidth(),
-                            fontFamily = FontFamily.Monospace,
                             fontSize = 12.sp,
                             color = Color.LightGray,
                             maxLines = Int.MAX_VALUE,
