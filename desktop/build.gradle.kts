@@ -11,8 +11,6 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.7.3")
-    implementation("org.apache.commons:commons-compress:1.26.0")
-    implementation("com.github.junrar:junrar:7.5.5")
 }
 
 compose.desktop {
@@ -25,9 +23,10 @@ compose.desktop {
             windows {
                 iconFile.set(project.file("src/main/resources/icon.ico"))
                 menuGroup = "Nebula updater"
-                // 关键：创建桌面快捷方式和开始菜单快捷方式
-                desktopShortcut = true
-                menuGroup = "Nebula updater"
+                // 创建桌面快捷方式
+                shortcut = true
+                // 创建开始菜单快捷方式
+                menu = true
             }
         }
     }
