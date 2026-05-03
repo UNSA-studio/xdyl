@@ -24,8 +24,10 @@ compose.desktop {
             packageVersion = "1.0.0"
             windows {
                 iconFile.set(project.file("src/main/resources/icon.ico"))
-                menuGroup = "Xdyl"
-                upgradeUuid = "b55e2c6a-7e67-4e5e-a81f-0f2c9c03f55c"
+                menuGroup = "Nebula updater"
+                // 关键：创建桌面快捷方式和开始菜单快捷方式
+                desktopShortcut = true
+                menuGroup = "Nebula updater"
             }
         }
     }
