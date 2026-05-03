@@ -53,6 +53,26 @@ class EasterEggActivity : AppCompatActivity() {
             prefs.edit().putBoolean("clean_orphan_files", isChecked).apply()
         }
 
+        val switchLocalCsv = findViewById<SwitchMaterial>(R.id.swLocalCsv)
+        val btnPickCsv = findViewById<Button>(R.id.btnPickCsv)
+        switchLocalCsv.isChecked = prefs.getBoolean("use_local_csv", false)
+        btnPickCsv.visibility = if (switchLocalCsv.isChecked) View.VISIBLE else View.GONE
+
+        switchLocalCsv.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("use_local_csv", isChecked).apply()
+            btnPickCsv.visibility = if (isChecked) View.VISIBLE else View.GONE
+            if (!isChecked) {
+                // 关闭时清除已选文件路径
+                prefs.edit().remove("local_csv_path").apply()
+            }
+        }
+
+        btnPickCsv.setOnClickListener {
+            // 通知主界面打开文件选择器，选择 CSV 文件；这里通过 SharedPreferences 标记
+            prefs.edit().putBoolean("pick_csv_request", true).apply()
+            finish()
+        }
+
         findViewById<Button>(R.id.btnAchievements).setOnClickListener {
             startActivity(Intent(this, AchievementActivity::class.java))
         }

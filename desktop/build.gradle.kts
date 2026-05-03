@@ -19,7 +19,7 @@ compose.desktop {
     application {
         mainClass = "www.xdyl.hygge.desktop.MainKt"
         nativeDistributions {
-            targetFormats(TargetFormat.Msi, TargetFormat.Exe)
+            targetFormats(TargetFormat.Msi)
             packageName = "XdylUpdate"
             packageVersion = "1.0.0"
             windows {
