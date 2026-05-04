@@ -27,14 +27,9 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
-// 加载自定义字体（Compose 1.6.0 桌面端正确方式）
+// 使用 resource 参数加载自定义字体（Compose 1.6.0 桌面端正确方式）
 val silverFontFamily = FontFamily(
-    Font(
-        java.awt.Font.createFont(
-            java.awt.Font.TRUETYPE_FONT,
-            Thread.currentThread().contextClassLoader.getResourceAsStream("fonts/silver.ttf")!!
-        )
-    )
+    Font(resource = "fonts/silver.ttf")
 )
 
 val client = OkHttpClient.Builder()
