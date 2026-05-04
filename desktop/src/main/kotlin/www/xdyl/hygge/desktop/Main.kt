@@ -11,8 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,9 +27,14 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
-// 加载自定义字体（Compose 1.6.0 JVM 方式）
+// 从 JAR 资源加载自定义字体（Compose 1.6.0）
 val silverFontFamily = FontFamily(
-    Font(path = "fonts/silver.ttf", weight = FontWeight.Normal, style = FontStyle.Normal)
+    Font(
+        java.awt.Font.createFont(
+            java.awt.Font.TRUETYPE_FONT,
+            Thread.currentThread().contextClassLoader.getResourceAsStream("fonts/silver.ttf")!!
+        )
+    )
 )
 
 val client = OkHttpClient.Builder()
