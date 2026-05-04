@@ -27,13 +27,15 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 
-// 正确加载自定义字体（Compose 1.6.0 desktop）
-val silverFontFamily: FontFamily = run {
-    val fontStream = Thread.currentThread().contextClassLoader
-        .getResourceAsStream("fonts/silver.ttf")
-    val awtFont = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, fontStream)
-    FontFamily(Font(awtFont))
-}
+// 正确加载自定义字体（Compose Multiplatform 1.6.0 桌面端）
+val silverFontFamily = FontFamily(
+    Font(
+        java.awt.Font.createFont(
+            java.awt.Font.TRUETYPE_FONT,
+            Thread.currentThread().contextClassLoader.getResourceAsStream("fonts/silver.ttf")!!
+        )
+    )
+)
 
 val client = OkHttpClient.Builder()
     .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
