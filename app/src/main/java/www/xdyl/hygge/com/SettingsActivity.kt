@@ -81,7 +81,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun startPing(address: String, textView: TextView, label: String) {
         textView.visibility = View.VISIBLE
-        textView.text = "Pinging $label..."
+        textView.text = "正在 Ping $label..."
         scope.launch {
             val result = withContext(Dispatchers.IO) { executePing(address) }
             textView.text = result
@@ -96,18 +96,18 @@ class SettingsActivity : AppCompatActivity() {
             val output = reader.readText()
             val error = errorReader.readText()
             process.waitFor()
-            if (output.isEmpty() && error.isNotEmpty()) return "Ping failed: $error"
-            return parsePingResult(output, address)
-        } catch (e: Exception) { return "Ping error: ${e.message}" }
+            if (output.isEmpty() && error.isNotEmpty()) return "Ping 失败: $error"
+            return parsePingResult(output)
+        } catch (e: Exception) { return "Ping 错误: ${e.message}" }
     }
 
-    private fun parsePingResult(raw: String, address: String): String {
+    private fun parsePingResult(raw: String): String {
         val loss = Regex("(\\d+)% packet loss").find(raw)?.groupValues?.get(1) ?: "N/A"
         val rtt = Regex("min/avg/max/mdev = (\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)").find(raw)
         return buildString {
-            append("Target: $address\nPacket loss: $loss%\n")
-            if (rtt != null) append("Min/Avg/Max/mdev: ${rtt.groupValues[1]}/${rtt.groupValues[2]}/${rtt.groupValues[3]}/${rtt.groupValues[4]} ms\n")
-            append("Raw:\n$raw")
+            append("丢包率: $loss%\n")
+            if (rtt != null) append("最小/平均/最大/mdev: ${rtt.groupValues[1]}/${rtt.groupValues[2]}/${rtt.groupValues[3]}/${rtt.groupValues[4]} ms\n")
+            append("原始输出:\n$raw")
         }
     }
 

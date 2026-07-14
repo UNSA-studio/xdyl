@@ -60,7 +60,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        LogManager.log("MainActivity created")
+        LogManager.log("MainActivity 创建")
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         instance = this
@@ -74,21 +74,21 @@ class MainActivity : AppCompatActivity() {
         requestStoragePermissions()
 
         binding.btnSelectDir.setOnClickListener {
-            LogManager.log("User tapped 'Select Game Directory'")
+            LogManager.log("用户点击了“选择游戏目录”")
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
             showFileBrowser()
         }
         binding.btnStartDownload.setOnClickListener {
-            LogManager.log("User tapped 'Start Download'")
+            LogManager.log("用户点击了“开始下载”")
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
             if (prefs.getBoolean("neoforge_check_enabled", false)) {
                 verifyNeoforgeVersion { verified ->
                     if (verified) startUpdateProcess()
                     else {
                         MaterialAlertDialogBuilder(this)
-                            .setTitle("NeoForge version too low")
-                            .setMessage("NeoForge driver 21.1.227 or higher required.")
-                            .setPositiveButton("OK", null)
+                            .setTitle("NeoForge 版本过低")
+                            .setMessage("需要更新 NeoForge 驱动至 21.1.227 或更高版本。")
+                            .setPositiveButton("确定", null)
                             .show()
                     }
                 }
@@ -97,7 +97,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         binding.btnSettings.setOnClickListener {
-            LogManager.log("User tapped Settings button")
+            LogManager.log("用户点击了“设置”按钮")
             it.animate().rotationBy(180f).setDuration(300).start()
             startActivity(Intent(this, SettingsActivity::class.java))
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
@@ -112,12 +112,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ========== 权限请求流程 ==========
     private fun requestStoragePermissions() {
+        LogManager.log("开始权限请求")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
                 startActivity(Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
             } else {
+                LogManager.log("已有 MANAGE_EXTERNAL_STORAGE 权限")
                 restoreLastDirectory()
             }
         } else {
@@ -128,6 +129,7 @@ class MainActivity : AppCompatActivity() {
             when {
                 ContextCompat.checkSelfPermission(this, permissions[0]) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, permissions[1]) == PackageManager.PERMISSION_GRANTED -> {
+                    LogManager.log("已有存储权限")
                     restoreLastDirectory()
                 }
                 else -> {
@@ -141,10 +143,10 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             val allGranted = permissions.values.all { it }
             if (allGranted) {
-                LogManager.log("Storage permissions granted")
+                LogManager.log("用户授予了存储权限")
                 restoreLastDirectory()
             } else {
-                LogManager.log("Storage permissions denied")
+                LogManager.log("用户拒绝了存储权限")
                 Toast.makeText(this, "存储权限被拒绝，部分功能不可用", Toast.LENGTH_LONG).show()
             }
         }
@@ -152,17 +154,19 @@ class MainActivity : AppCompatActivity() {
     private fun restoreLastDirectory() {
         val lastPath = prefs.getString("launcher_root", null)
         if (lastPath != null) {
+            LogManager.log("尝试恢复上次选择的目录: $lastPath")
             val dir = File(lastPath)
             if (dir.exists() && dir.isDirectory) {
                 val found = findMinecraftModsDir(dir)
                 if (found != null) {
                     targetModsDir = found
                     binding.btnStartDownload.isEnabled = true
-                    LogManager.log("Restored mods dir: ${found.absolutePath}")
+                    LogManager.log("成功恢复 mods 目录: ${found.absolutePath}")
                     return
                 }
             }
         }
+        LogManager.log("没有可恢复的目录")
     }
 
     // ========== 文件浏览器 ==========
@@ -188,6 +192,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showFileBrowser() {
         currentBrowseDir = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath))
+        LogManager.log("打开文件浏览器，当前目录: ${currentBrowseDir.absolutePath}")
         val view = layoutInflater.inflate(R.layout.dialog_file_browser, null)
         tvPath = view.findViewById(R.id.tvPath)
         recyclerView = view.findViewById(R.id.recyclerView)
@@ -196,11 +201,11 @@ class MainActivity : AppCompatActivity() {
 
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(view)
-            .setPositiveButton("Select") { _, _ ->
+            .setPositiveButton("选择此文件夹") { _, _ ->
                 prefs.edit().putString("launcher_root", currentBrowseDir.absolutePath).apply()
                 handleSelectedFolder(currentBrowseDir)
             }
-            .setNegativeButton("Back", null)
+            .setNegativeButton("返回上级", null)
             .create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener { navigateUp() }
@@ -225,6 +230,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun navigateToDirectory(dir: File) {
+        LogManager.log("进入目录: ${dir.name}")
         recyclerView!!.animate()
             .translationX(-recyclerView!!.width.toFloat())
             .setDuration(250)
@@ -244,6 +250,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun navigateUp() {
         val parent = currentBrowseDir.parentFile ?: return
+        LogManager.log("返回上级目录: ${parent.name}")
         recyclerView!!.animate()
             .translationX(recyclerView!!.width.toFloat())
             .setDuration(250)
@@ -278,9 +285,10 @@ class MainActivity : AppCompatActivity() {
         if (modsDir != null) {
             targetModsDir = modsDir
             binding.btnStartDownload.isEnabled = true
-            LogManager.log("Selected mods directory: ${modsDir.absolutePath}")
-            Toast.makeText(this, "Game directory selected", Toast.LENGTH_SHORT).show()
+            LogManager.log("已选择游戏目录: ${modsDir.absolutePath}")
+            Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show()
         } else {
+            LogManager.log("所选文件夹中未找到 mods 目录")
             showError(Constants.ERROR01)
         }
         fileBrowserDialog?.dismiss()
@@ -305,11 +313,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showError(errorCode: String) {
-        LogManager.log("Error: $errorCode")
+        LogManager.log("出现错误: $errorCode")
         MaterialAlertDialogBuilder(this)
-            .setTitle("Error")
-            .setMessage("Error code: $errorCode")
-            .setPositiveButton("OK", null)
+            .setTitle("意外错误!")
+            .setMessage("错误码: $errorCode\n请查看是否是您的问题,如不是,请联系开发者")
+            .setPositiveButton("确定", null)
             .show()
     }
 
@@ -332,7 +340,7 @@ class MainActivity : AppCompatActivity() {
                     val required = "21.1.227"
                     compareVersion(installedVersion, required) >= 0
                 } catch (e: Exception) {
-                    LogManager.log("NeoForge check exception: ${e.message}")
+                    LogManager.log("NeoForge 检查异常: ${e.message}")
                     false
                 }
             }
@@ -372,10 +380,10 @@ class MainActivity : AppCompatActivity() {
                 val link = matcher.group(1)
                 if (link != null && link.endsWith(".jar")) files.add(link)
             }
-            LogManager.log("Found ${files.size} files on server")
+            LogManager.log("从服务器获取到 ${files.size} 个文件")
             files
         } catch (e: Exception) {
-            LogManager.log("Failed to fetch server file list: ${e.message}")
+            LogManager.log("获取服务器文件列表失败: ${e.message}")
             emptyList()
         }
     }
@@ -405,12 +413,12 @@ class MainActivity : AppCompatActivity() {
                 val start = System.currentTimeMillis()
                 DownloadManager(url, size, 1, useRange = false).download(destFile) { }
                 val elapsed = System.currentTimeMillis() - start
-                LogManager.log("${destFile.name} downloaded in ${elapsed}ms")
+                LogManager.log("${destFile.name} 下载成功，耗时 ${elapsed}ms")
                 return
             } catch (e: Exception) {
                 lastEx = e
-                appendLog("[Retry $attempt/$maxRetries] ${destFile.name}: ${e.message?.substringBefore("\n")}")
-                LogManager.log("${destFile.name} attempt $attempt failed: ${e.message}")
+                appendLog("[重试 $attempt/$maxRetries] ${destFile.name}: ${e.message?.substringBefore("\n")}")
+                LogManager.log("${destFile.name} 第 $attempt 次下载失败: ${e.message}")
                 delay((1000L * attempt).coerceAtMost(5000))
             }
         }
@@ -426,10 +434,10 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.progress = 0
         logBuilder.clear()
         binding.tvLog.text = ""
-        appendLog("Checking existing mods...")
+        appendLog("正在检查已有模组...")
 
         val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
-        LogManager.log("Update started with $threadCount threads")
+        LogManager.log("开始更新，使用 $threadCount 线程")
         scope.launch {
             try {
                 val serverFiles = fetchServerFileList()
@@ -440,15 +448,15 @@ class MainActivity : AppCompatActivity() {
 
                 val toDownload = filterOutUnchangedMods(modsDir, csvMods.filter { it.fileName in allServerMods })
                 if (toDownload.isEmpty()) {
-                    appendLog("All mods are up-to-date!")
-                    Toast.makeText(this@MainActivity, "Nothing to update", Toast.LENGTH_SHORT).show()
+                    appendLog("所有模组均为最新版本！")
+                    Toast.makeText(this@MainActivity, "没有需要更新的文件", Toast.LENGTH_SHORT).show()
                     binding.progressBar.visibility = View.GONE
                     isProcessing = false
                     binding.btnStartDownload.isEnabled = true
                     return@launch
                 }
 
-                appendLog("Downloading ${toDownload.size} mods...")
+                appendLog("开始下载 ${toDownload.size} 个模组...")
                 val sem = Semaphore(threadCount)
                 val failed = AtomicInteger(0)
                 var completed = 0
@@ -463,15 +471,15 @@ class MainActivity : AppCompatActivity() {
                                 appendLog("[${completed+1}/$total] ${mod.fileName}")
                                 downloadWithRetry(Constants.BASE_URL + mod.fileName, mod.size, file)
                                 if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256))
-                                    throw RuntimeException("Checksum mismatch")
+                                    throw RuntimeException("校验失败")
                                 completed++
                                 withContext(Dispatchers.Main) {
                                     binding.progressBar.progress = (completed * 100) / total
                                     binding.tvStatus.text = "$completed/$total"
                                 }
                             } catch (e: Exception) {
-                                appendLog("Failed: ${mod.fileName}")
-                                LogManager.log("Failed ${mod.fileName}: ${e.message}")
+                                appendLog("失败: ${mod.fileName}")
+                                LogManager.log("下载失败 ${mod.fileName}: ${e.message}")
                                 failed.incrementAndGet()
                             } finally {
                                 sem.release()
@@ -480,11 +488,34 @@ class MainActivity : AppCompatActivity() {
                     }.joinAll()
                 }
 
+                // 清理孤儿文件
+                val cleanOrphan = prefs.getBoolean("clean_orphan_files", true)
+                if (cleanOrphan) {
+                    withContext(Dispatchers.IO) {
+                        val csvFiles = csvMods.map { it.fileName }.toSet()
+                        val modFiles = modsDir.listFiles()?.filter { it.extension.equals("jar", true) } ?: emptyList()
+                        var deleted = 0
+                        for (file in modFiles) {
+                            if (file.name !in csvFiles) {
+                                if (file.delete()) {
+                                    deleted++
+                                    LogManager.log("已删除孤儿文件: ${file.name}")
+                                }
+                            }
+                        }
+                        if (deleted > 0) {
+                            withContext(Dispatchers.Main) {
+                                appendLog("已清理 $deleted 个多余文件")
+                            }
+                        }
+                    }
+                }
+
                 if (failed.get() > 0) {
                     showError(Constants.ERROR05)
                 } else {
-                    appendLog("Update completed!")
-                    Toast.makeText(this@MainActivity, "Update completed!", Toast.LENGTH_LONG).show()
+                    appendLog("更新完成！")
+                    Toast.makeText(this@MainActivity, "模组已经更新完成!", Toast.LENGTH_LONG).show()
                     binding.progressBar.visibility = View.GONE
                 }
             } catch (e: Exception) {
@@ -505,13 +536,13 @@ class MainActivity : AppCompatActivity() {
             } else {
                 val localMd5 = calculateMD5(localFile)
                 if (localMd5 != null && localMd5.equals(mod.md5, true)) {
-                    LogManager.log("Skipping ${mod.fileName} (unchanged)")
+                    LogManager.log("跳过未变化的模组: ${mod.fileName}")
                 } else {
                     toDownload.add(mod)
                 }
             }
         }
-        LogManager.log("${toDownload.size} mods need update")
+        LogManager.log("需要更新 ${toDownload.size} 个模组")
         toDownload
     }
 
@@ -527,7 +558,7 @@ class MainActivity : AppCompatActivity() {
             }
             return digest.digest().joinToString("") { "%02x".format(it) }
         } catch (e: Exception) {
-            LogManager.log("MD5 calc failed for ${file.name}: ${e.message}")
+            LogManager.log("MD5 计算失败 ${file.name}: ${e.message}")
             return null
         }
     }
@@ -543,10 +574,11 @@ class MainActivity : AppCompatActivity() {
     private fun exportLogToFile() {
         scope.launch(Dispatchers.IO) {
             try {
+                LogManager.log("开始导出日志...")
                 val log = LogManager.getFullLog()
                 if (log.isEmpty()) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MainActivity, "No log to export", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "没有日志可导出", Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
@@ -555,14 +587,14 @@ class MainActivity : AppCompatActivity() {
                 val fileName = "mod_update_log_${System.currentTimeMillis()}.txt"
                 val file = File(downloadsDir, fileName)
                 FileOutputStream(file).use { it.write(log.toByteArray()) }
-                LogManager.log("Log exported to ${file.absolutePath}")
+                LogManager.log("日志已成功导出到 ${file.absolutePath}")
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "Log saved to ${file.absolutePath}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@MainActivity, "日志已保存至 ${file.absolutePath}", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
-                LogManager.log("Export failed: ${e.message}")
+                LogManager.log("导出日志失败: ${e.message}")
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@MainActivity, "导出失败: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
