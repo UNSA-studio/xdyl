@@ -65,14 +65,12 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         instance = this
 
-        // 标题两行纯显示
         binding.tvTitleLine1.text = "Nebula updater-NU"
         binding.tvTitleLine2.text = "星云更新器-Android端"
 
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         binding.tvLog.movementMethod = ScrollingMovementMethod()
 
-        // 请求标准存储权限
         requestStoragePermissions()
 
         binding.btnSelectDir.setOnClickListener {
@@ -114,18 +112,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ========== 全新权限请求流程 ==========
+    // ========== 权限请求流程 ==========
     private fun requestStoragePermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11+ 需要 MANAGE_EXTERNAL_STORAGE
             if (!Environment.isExternalStorageManager()) {
                 startActivity(Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
             } else {
-                // 已有权限，恢复目录
                 restoreLastDirectory()
             }
         } else {
-            // Android 10 及以下，请求 READ/WRITE_EXTERNAL_STORAGE
             val permissions = arrayOf(
                 android.Manifest.permission.READ_EXTERNAL_STORAGE,
                 android.Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -133,11 +128,9 @@ class MainActivity : AppCompatActivity() {
             when {
                 ContextCompat.checkSelfPermission(this, permissions[0]) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, permissions[1]) == PackageManager.PERMISSION_GRANTED -> {
-                    // 已有权限
                     restoreLastDirectory()
                 }
                 else -> {
-                    // 发起标准请求弹窗
                     requestPermissionLauncher.launch(permissions)
                 }
             }
@@ -548,19 +541,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun exportLogToFile() {
-        try {
-            val log = LogManager.getFullLog()
-            if (log.isEmpty()) {
-                Toast.makeText(this, "No log to export", Toast.LENGTH_SHORT).show()
-                return
+        scope.launch(Dispatchers.IO) {
+            try {
+                val log = LogManager.getFullLog()
+                if (log.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, "No log to export", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                val downloadsDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: filesDir
+                if (!downloadsDir.exists()) downloadsDir.mkdirs()
+                val fileName = "mod_update_log_${System.currentTimeMillis()}.txt"
+                val file = File(downloadsDir, fileName)
+                FileOutputStream(file).use { it.write(log.toByteArray()) }
+                LogManager.log("Log exported to ${file.absolutePath}")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "Log saved to ${file.absolutePath}", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                LogManager.log("Export failed: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
             }
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            val file = File(downloadsDir, "mod_update_log_${System.currentTimeMillis()}.txt")
-            FileOutputStream(file).use { it.write(log.toByteArray()) }
-            LogManager.log("Log exported to ${file.absolutePath}")
-            Toast.makeText(this, "Log exported", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Toast.makeText(this, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
