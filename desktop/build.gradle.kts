@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.gradle.api.tasks.JavaExec
 
 plugins {
     kotlin("jvm")
@@ -30,9 +31,9 @@ compose.desktop {
     }
 }
 
-// 为 packageMsi 任务添加自定义 WiX 资源目录参数
-tasks.named("packageMsi") {
-    (this as org.gradle.api.tasks.JavaExec).apply {
+// 动态配置所有 package 开头的任务（如 packageMsi、packageExe 等），仅在任务存在时执行
+tasks.matching { it.name.startsWith("package") }.configureEach {
+    if (this is JavaExec) {
         args("--resource-dir", "${project.projectDir}/src/main/resources/wix")
     }
 }
