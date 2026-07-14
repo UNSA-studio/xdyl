@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
 
 plugins {
     kotlin("jvm")
@@ -26,11 +27,16 @@ compose.desktop {
                 shortcut = true
                 menu = true
             }
-            // 传递自定义 WiX 资源目录给 jpackage
-            jpackageArgs = listOf(
-                "--resource-dir",
-                "${project.projectDir}/src/main/resources/wix"
-            )
         }
     }
+}
+
+// 为 packageMsi 任务传递自定义 WiX 资源目录
+tasks.named<AbstractJPackageTask>("packageMsi") {
+    jpackageArgs.addAll(
+        listOf(
+            "--resource-dir",
+            "${project.projectDir}/src/main/resources/wix"
+        )
+    )
 }
