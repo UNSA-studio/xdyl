@@ -12,7 +12,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -29,6 +28,7 @@ class EasterEggActivity : AppCompatActivity() {
     private val random = Random()
     private lateinit var prefs: SharedPreferences
     private var csvBrowseDialog: AlertDialog? = null
+private var currentDir: File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,7 +50,6 @@ class EasterEggActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        // NeoForge 检查开关
         val switchNeoforge = findViewById<SwitchMaterial>(R.id.swNeoforgeCheck)
         switchNeoforge.isChecked = prefs.getBoolean("neoforge_check_enabled", false)
         switchNeoforge.setOnCheckedChangeListener { _, isChecked ->
@@ -58,18 +57,17 @@ class EasterEggActivity : AppCompatActivity() {
             Toast.makeText(this, if (isChecked) "NeoForge 检查已开启" else "NeoForge 检查已关闭", Toast.LENGTH_SHORT).show()
         }
 
-        // 清理孤儿文件开关
         val switchClean = findViewById<SwitchMaterial>(R.id.swCleanOrphanFiles)
         switchClean.isChecked = prefs.getBoolean("clean_orphan_files", true)
         switchClean.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("clean_orphan_files", isChecked).apply()
         }
 
-        // 本地 CSV 开关及选择按钮
         val switchLocalCsv = findViewById<SwitchMaterial>(R.id.swLocalCsv)
         val btnPickCsv = findViewById<MaterialButton>(R.id.btnPickCsv)
         switchLocalCsv.isChecked = prefs.getBoolean("use_local_csv", false)
         btnPickCsv.visibility = if (switchLocalCsv.isChecked) View.VISIBLE else View.GONE
+
         switchLocalCsv.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("use_local_csv", isChecked).apply()
             btnPickCsv.visibility = if (isChecked) View.VISIBLE else View.GONE
@@ -77,19 +75,21 @@ class EasterEggActivity : AppCompatActivity() {
                 prefs.edit().remove("local_csv_path").apply()
             }
         }
-        btnPickCsv.setOnClickListener { showCsvFilePicker() }
 
-        // 自定义下载地址（暂无）
-        findViewById<MaterialButton>(R.id.btnDownloadUrl).setOnClickListener {
-            Toast.makeText(this, "自定义下载地址暂未实现", Toast.LENGTH_SHORT).show()
+        // 点击按钮直接弹出内置 CSV 文件选择器，不关闭当前页面
+        btnPickCsv.setOnClickListener {
+            showCsvFilePicker()
         }
-        // 成就（暂无）
+
         findViewById<MaterialButton>(R.id.btnAchievements).setOnClickListener {
             startActivity(Intent(this, AchievementActivity::class.java))
         }
+        findViewById<MaterialButton>(R.id.btnDownloadUrl).setOnClickListener {
+            Toast.makeText(this, "自定义下载地址暂未实现", Toast.LENGTH_SHORT).show()
+        }
     }
 
-    // ---------- 内置 CSV 文件选择器 ----------
+    // ========== 内置 CSV 文件选择器 ==========
     private fun showCsvFilePicker() {
         val lastPath = prefs.getString("csv_browser_last_path", Environment.getExternalStorageDirectory().absolutePath)
         val startDir = File(lastPath)
@@ -122,8 +122,9 @@ class EasterEggActivity : AppCompatActivity() {
                             prefs.edit().putString("csv_browser_last_path", f.absolutePath).apply()
                             loadDir(f)
                             tvPath.text = f.absolutePath
-                            updateUpButton(csvBrowseDialog!!, currentDir)
+                            updateUpButton()
                         } else if (f.name.endsWith(".csv")) {
+                            // 选中 CSV 文件
                             prefs.edit().putString("local_csv_path", f.absolutePath).apply()
                             csvBrowseDialog?.dismiss()
                             Toast.makeText(this@EasterEggActivity, "已选择 CSV: ${f.name}", Toast.LENGTH_SHORT).show()
@@ -135,7 +136,7 @@ class EasterEggActivity : AppCompatActivity() {
                 override fun getItemCount(): Int = files.size
             }
             recycler.adapter = adapter
-            updateUpButton(csvBrowseDialog!!, dir)
+            updateUpButton()
         }
         loadDir(currentDir)
 
@@ -143,6 +144,7 @@ class EasterEggActivity : AppCompatActivity() {
             .setView(view)
             .setNegativeButton("返回上级", null)
             .create()
+
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
                 val parent = currentDir.parentFile ?: return@setOnClickListener
@@ -156,10 +158,10 @@ class EasterEggActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun updateUpButton(dialog: AlertDialog, dir: File) {
+    private fun updateUpButton() {
         val root = Environment.getExternalStorageDirectory()
-        val btn = dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
-        if (dir.absolutePath == root.absolutePath) {
+        val btn = csvBrowseDialog?.getButton(AlertDialog.BUTTON_NEGATIVE) ?: return
+        if (currentDir?.absolutePath == root.absolutePath) {
             btn.isEnabled = false
             btn.alpha = 0.5f
         } else {
@@ -168,7 +170,7 @@ class EasterEggActivity : AppCompatActivity() {
         }
     }
 
-    // ---------- 掉落动画 ----------
+    // 掉落动画
     private fun setupFallingViews(parent: View) {
         if (parent is ViewGroup) {
             for (i in 0 until parent.childCount) {
