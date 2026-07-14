@@ -11,6 +11,7 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -28,7 +29,7 @@ class EasterEggActivity : AppCompatActivity() {
     private val random = Random()
     private lateinit var prefs: SharedPreferences
     private var csvBrowseDialog: AlertDialog? = null
-private var currentDir: File? = null
+    private var currentDir: File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,7 +39,6 @@ private var currentDir: File? = null
         val content = findViewById<LinearLayout>(R.id.contentLayout)
         setupFallingViews(content)
 
-        // 线程数上限
         val editThreadLimit = findViewById<TextInputEditText>(R.id.etThreadLimit)
         editThreadLimit.setText(prefs.getInt("thread_limit", 256).toString())
         editThreadLimit.addTextChangedListener(object : TextWatcher {
@@ -76,7 +76,6 @@ private var currentDir: File? = null
             }
         }
 
-        // 点击按钮直接弹出内置 CSV 文件选择器，不关闭当前页面
         btnPickCsv.setOnClickListener {
             showCsvFilePicker()
         }
@@ -89,19 +88,16 @@ private var currentDir: File? = null
         }
     }
 
-    // ========== 内置 CSV 文件选择器 ==========
+    // 内置 CSV 文件选择器
     private fun showCsvFilePicker() {
         val lastPath = prefs.getString("csv_browser_last_path", Environment.getExternalStorageDirectory().absolutePath)
-        val startDir = File(lastPath)
-        if (!startDir.exists()) startDir.mkdirs()
+        currentDir = File(lastPath)
+        if (currentDir!!.exists().not()) currentDir!!.mkdirs()
 
         val view = layoutInflater.inflate(R.layout.dialog_file_browser, null)
         val tvPath = view.findViewById<TextView>(R.id.tvPath)
         val recycler = view.findViewById<RecyclerView>(R.id.recyclerView)
         recycler.layoutManager = LinearLayoutManager(this)
-
-        var currentDir = startDir
-        tvPath.text = currentDir.absolutePath
 
         fun loadDir(dir: File) {
             val files = dir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
@@ -124,7 +120,6 @@ private var currentDir: File? = null
                             tvPath.text = f.absolutePath
                             updateUpButton()
                         } else if (f.name.endsWith(".csv")) {
-                            // 选中 CSV 文件
                             prefs.edit().putString("local_csv_path", f.absolutePath).apply()
                             csvBrowseDialog?.dismiss()
                             Toast.makeText(this@EasterEggActivity, "已选择 CSV: ${f.name}", Toast.LENGTH_SHORT).show()
@@ -138,16 +133,15 @@ private var currentDir: File? = null
             recycler.adapter = adapter
             updateUpButton()
         }
-        loadDir(currentDir)
+        loadDir(currentDir!!)
 
         val dialog = MaterialAlertDialogBuilder(this)
             .setView(view)
             .setNegativeButton("返回上级", null)
             .create()
-
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
-                val parent = currentDir.parentFile ?: return@setOnClickListener
+                val parent = currentDir!!.parentFile ?: return@setOnClickListener
                 currentDir = parent
                 prefs.edit().putString("csv_browser_last_path", parent.absolutePath).apply()
                 loadDir(parent)
