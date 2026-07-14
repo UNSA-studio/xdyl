@@ -111,5 +111,8 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    override fun onDestroy() { scope.cancel() }
+    override fun onDestroy() {
+        super.onDestroy()  // 必须调用 super.onDestroy()
+        scope.cancel()
+    }
 }
