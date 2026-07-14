@@ -1,13 +1,9 @@
 package www.xdyl.hygge.com
 
-import android.animation.Animator
-import android.animation.ValueAnimator
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.Environment
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -23,10 +19,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import java.io.File
-import java.util.Random
 
 class EasterEggActivity : AppCompatActivity() {
-    private val random = Random()
     private lateinit var prefs: SharedPreferences
     private var csvBrowseDialog: AlertDialog? = null
     private var currentDir: File? = null
@@ -36,19 +30,15 @@ class EasterEggActivity : AppCompatActivity() {
         setContentView(R.layout.activity_easter_egg)
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
 
-        val content = findViewById<LinearLayout>(R.id.contentLayout)
-        setupFallingViews(content)
-
         val editThreadLimit = findViewById<TextInputEditText>(R.id.etThreadLimit)
         editThreadLimit.setText(prefs.getInt("thread_limit", 256).toString())
-        editThreadLimit.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                val value = s?.toString()?.toIntOrNull()?.coerceIn(128, 1024) ?: 256
+        editThreadLimit.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                val value = editThreadLimit.text.toString().toIntOrNull()?.coerceIn(128, 1024) ?: 256
                 prefs.edit().putInt("thread_limit", value).apply()
+                Toast.makeText(this, "线程数已更新", Toast.LENGTH_SHORT).show()
             }
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-        })
+        }
 
         val switchNeoforge = findViewById<SwitchMaterial>(R.id.swNeoforgeCheck)
         switchNeoforge.isChecked = prefs.getBoolean("neoforge_check_enabled", false)
@@ -88,11 +78,10 @@ class EasterEggActivity : AppCompatActivity() {
         }
     }
 
-    // 内置 CSV 文件选择器
     private fun showCsvFilePicker() {
         val lastPath = prefs.getString("csv_browser_last_path", Environment.getExternalStorageDirectory().absolutePath)
         currentDir = File(lastPath)
-        if (currentDir!!.exists().not()) currentDir!!.mkdirs()
+        if (!currentDir!!.exists()) currentDir!!.mkdirs()
 
         val view = layoutInflater.inflate(R.layout.dialog_file_browser, null)
         val tvPath = view.findViewById<TextView>(R.id.tvPath)
@@ -162,40 +151,5 @@ class EasterEggActivity : AppCompatActivity() {
             btn.isEnabled = true
             btn.alpha = 1.0f
         }
-    }
-
-    // 掉落动画
-    private fun setupFallingViews(parent: View) {
-        if (parent is ViewGroup) {
-            for (i in 0 until parent.childCount) {
-                val child = parent.getChildAt(i)
-                child.isClickable = true
-                child.setOnClickListener { performFallAnimation(it) }
-                setupFallingViews(child)
-            }
-        }
-    }
-
-    private fun performFallAnimation(view: View) {
-        val targetY = (view.parent as? ViewGroup)?.height?.toFloat() ?: return
-        val animator = ValueAnimator.ofFloat(0f, 1f)
-        animator.addUpdateListener { ani ->
-            val fraction = ani.animatedFraction
-            view.translationY = fraction * targetY
-            view.rotation = fraction * 360f * random.nextFloat()
-            view.alpha = 1f - fraction * 0.8f
-        }
-        animator.addListener(object : Animator.AnimatorListener {
-            override fun onAnimationStart(animation: Animator) {}
-            override fun onAnimationEnd(animation: Animator) {
-                view.translationY = 0f
-                view.rotation = 0f
-                view.alpha = 1f
-            }
-            override fun onAnimationCancel(animation: Animator) {}
-            override fun onAnimationRepeat(animation: Animator) {}
-        })
-        animator.duration = 800
-        animator.start()
     }
 }

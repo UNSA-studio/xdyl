@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         instance = this
 
-        // 设置标题两行
+        // 标题两行纯显示
         binding.tvTitleLine1.text = "Nebula updater-NU"
         binding.tvTitleLine2.text = "星云更新器-Android端"
 
@@ -132,7 +132,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---------- 文件浏览器 ----------
+    // ========== 文件浏览器 ==========
     private class FileAdapter(private var files: List<File>, private val onItemClick: (File) -> Unit) :
         RecyclerView.Adapter<FileAdapter.VH>() {
         class VH(val tv: TextView) : RecyclerView.ViewHolder(tv)
@@ -231,7 +231,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateUpButtonState() {
         val root = Environment.getExternalStorageDirectory()
         val btn = fileBrowserDialog?.getButton(AlertDialog.BUTTON_NEGATIVE) ?: return
-        if (currentBrowseDir.absolutePath == root.absolutePath) {
+        if (currentBrowseDir.absolutePath == root.absolutePath || currentBrowseDir.absolutePath.startsWith("/storage/emulated/0/Android")) {
             btn.isEnabled = false
             btn.alpha = 0.5f
         } else {
@@ -280,7 +280,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // ---------- NeoForge 检查 ----------
+    // ========== NeoForge 检查 ==========
     private fun verifyNeoforgeVersion(callback: (Boolean) -> Unit) {
         scope.launch {
             val result = withContext(Dispatchers.IO) {
@@ -325,56 +325,7 @@ class MainActivity : AppCompatActivity() {
         return 0
     }
 
-    // ---------- 智能更新 ----------
-    private suspend fun filterOutUnchangedMods(modsDir: File, csvMods: List<ModInfo>): List<ModInfo> = withContext(Dispatchers.IO) {
-        val toDownload = mutableListOf<ModInfo>()
-        for (mod in csvMods) {
-            val localFile = File(modsDir, mod.fileName)
-            if (!localFile.exists() || localFile.length() != mod.size) {
-                toDownload.add(mod)
-            } else {
-                val localMd5 = calculateMD5(localFile)
-                if (localMd5 != null && localMd5.equals(mod.md5, true)) {
-                    LogManager.log("Skipping ${mod.fileName} (unchanged)")
-                } else {
-                    toDownload.add(mod)
-                }
-            }
-        }
-        LogManager.log("${toDownload.size} mods need update")
-        toDownload
-    }
-
-    private fun calculateMD5(file: File): String? {
-        try {
-            val digest = MessageDigest.getInstance("MD5")
-            file.inputStream().use { fis ->
-                val buffer = ByteArray(8192)
-                var bytesRead: Int
-                while (fis.read(buffer).also { bytesRead = it } != -1) {
-                    digest.update(buffer, 0, bytesRead)
-                }
-            }
-            return digest.digest().joinToString("") { "%02x".format(it) }
-        } catch (e: Exception) {
-            LogManager.log("MD5 calc failed for ${file.name}: ${e.message}")
-            return null
-        }
-    }
-
-    private fun getCsvContent(): String {
-        if (prefs.getBoolean("use_local_csv", false)) {
-            val path = prefs.getString("local_csv_path", null)
-            if (path != null) {
-                val file = File(path)
-                if (file.exists()) {
-                    return file.readText()
-                }
-            }
-        }
-        return Constants.CSV_CONTENT
-    }
-
+    // ========== 下载与日志 ==========
     private suspend fun fetchServerFileList(): List<String> = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder().url(Constants.BASE_URL).build()
@@ -403,17 +354,29 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun getCsvContent(): String {
+        if (prefs.getBoolean("use_local_csv", false)) {
+            val path = prefs.getString("local_csv_path", null)
+            if (path != null) {
+                val file = File(path)
+                if (file.exists()) return file.readText()
+            }
+        }
+        return Constants.CSV_CONTENT
+    }
+
     private suspend fun downloadWithRetry(url: String, size: Long, destFile: File, maxRetries: Int = 5) {
         var lastEx: Exception? = null
         for (attempt in 1..maxRetries) {
             try {
                 val start = System.currentTimeMillis()
                 DownloadManager(url, size, 1, useRange = false).download(destFile) { }
-                LogManager.log("${destFile.name} downloaded in ${System.currentTimeMillis() - start}ms")
+                val elapsed = System.currentTimeMillis() - start
+                LogManager.log("${destFile.name} downloaded in ${elapsed}ms")
                 return
             } catch (e: Exception) {
                 lastEx = e
-                LogManager.log("${destFile.name} attempt $attempt failed: ${e.message}")
+                appendLog("[重试 $attempt/$maxRetries] ${destFile.name}: ${e.message}")
                 delay((1000L * attempt).coerceAtMost(5000))
             }
         }
@@ -432,6 +395,7 @@ class MainActivity : AppCompatActivity() {
         appendLog("开始检查已有模组...")
 
         val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
+        LogManager.log("Update started with $threadCount threads")
         scope.launch {
             try {
                 val serverFiles = fetchServerFileList()
@@ -472,35 +436,13 @@ class MainActivity : AppCompatActivity() {
                                     binding.tvStatus.text = "$completed/$total"
                                 }
                             } catch (e: Exception) {
-                                LogManager.log("Failed ${mod.fileName}: ${e.message}")
+                                appendLog("失败: ${mod.fileName}")
                                 failed.incrementAndGet()
                             } finally {
                                 sem.release()
                             }
                         }
                     }.joinAll()
-                }
-
-                val cleanOrphan = prefs.getBoolean("clean_orphan_files", true)
-                if (cleanOrphan) {
-                    withContext(Dispatchers.IO) {
-                        val csvFiles = csvMods.map { it.fileName }.toSet()
-                        val modFiles = modsDir.listFiles()?.filter { it.extension.equals("jar", true) } ?: emptyList()
-                        var deleted = 0
-                        for (file in modFiles) {
-                            if (file.name !in csvFiles) {
-                                if (file.delete()) {
-                                    deleted++
-                                    LogManager.log("Deleted orphan file: ${file.name}")
-                                }
-                            }
-                        }
-                        if (deleted > 0) {
-                            withContext(Dispatchers.Main) {
-                                appendLog("已清理 $deleted 个多余文件")
-                            }
-                        }
-                    }
                 }
 
                 if (failed.get() > 0) {
@@ -516,6 +458,43 @@ class MainActivity : AppCompatActivity() {
                 isProcessing = false
                 binding.btnStartDownload.isEnabled = true
             }
+        }
+    }
+
+    // 智能跳过已有模组
+    private suspend fun filterOutUnchangedMods(modsDir: File, csvMods: List<ModInfo>): List<ModInfo> = withContext(Dispatchers.IO) {
+        val toDownload = mutableListOf<ModInfo>()
+        for (mod in csvMods) {
+            val localFile = File(modsDir, mod.fileName)
+            if (!localFile.exists() || localFile.length() != mod.size) {
+                toDownload.add(mod)
+            } else {
+                val localMd5 = calculateMD5(localFile)
+                if (localMd5 != null && localMd5.equals(mod.md5, true)) {
+                    LogManager.log("Skipping ${mod.fileName} (unchanged)")
+                } else {
+                    toDownload.add(mod)
+                }
+            }
+        }
+        LogManager.log("${toDownload.size} mods need update")
+        toDownload
+    }
+
+    private fun calculateMD5(file: File): String? {
+        try {
+            val digest = MessageDigest.getInstance("MD5")
+            file.inputStream().use { fis ->
+                val buffer = ByteArray(8192)
+                var bytesRead: Int
+                while (fis.read(buffer).also { bytesRead = it } != -1) {
+                    digest.update(buffer, 0, bytesRead)
+                }
+            }
+            return digest.digest().joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            LogManager.log("MD5 calc failed for ${file.name}: ${e.message}")
+            return null
         }
     }
 
