@@ -16,7 +16,6 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
-import rikka.shizuku.Shizuku
 import java.io.File
 
 class EasterEggActivity : AppCompatActivity() {
@@ -40,7 +39,7 @@ class EasterEggActivity : AppCompatActivity() {
         }
 
         val switchNeoforge = findViewById<SwitchMaterial>(R.id.swNeoforgeCheck)
-        switchNeoforge.isChecked = prefs.getBoolean("neoforge_check_enabled", true) // 默认开启
+        switchNeoforge.isChecked = prefs.getBoolean("neoforge_check_enabled", true)
         switchNeoforge.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("neoforge_check_enabled", isChecked).apply()
             Toast.makeText(this, if (isChecked) "NeoForge 检查已开启" else "NeoForge 检查已关闭", Toast.LENGTH_SHORT).show()
@@ -65,26 +64,10 @@ class EasterEggActivity : AppCompatActivity() {
         }
         btnPickCsv.setOnClickListener { showCsvFilePicker() }
 
-        // Shizuku 测试按钮
+        // Shizuku 测试按钮 – 暂时仅显示提示，后续完善
         val btnTestShizuku = findViewById<MaterialButton>(R.id.btnTestShizuku)
         btnTestShizuku.setOnClickListener {
-            if (Shizuku.pingBinder()) {
-                if (Shizuku.isPreV11() || Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    // 已授权，执行测试
-                    try {
-                        val rootFiles = Shizuku.newProcess(arrayOf("ls", "/"), null, null).inputStream.bufferedReader().readText()
-                        Toast.makeText(this, "Shizuku 可用！根目录文件列表:\n$rootFiles", Toast.LENGTH_LONG).show()
-                    } catch (e: Exception) {
-                        Toast.makeText(this, "Shizuku 执行失败: ${e.message}", Toast.LENGTH_LONG).show()
-                    }
-                } else {
-                    // 需要请求权限
-                    Shizuku.requestPermission(0)
-                    Toast.makeText(this, "请在弹出的界面中授权 Shizuku", Toast.LENGTH_LONG).show()
-                }
-            } else {
-                Toast.makeText(this, "Shizuku 未运行", Toast.LENGTH_SHORT).show()
-            }
+            Toast.makeText(this, "Shizuku 功能正在开发中...", Toast.LENGTH_SHORT).show()
         }
 
         // 白名单管理按钮
@@ -141,7 +124,7 @@ class EasterEggActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    // 内置 CSV 文件选择器（保持不变）
+    // 内置 CSV 文件选择器
     private fun showCsvFilePicker() {
         val lastPath = prefs.getString("csv_browser_last_path", Environment.getExternalStorageDirectory().absolutePath)
         currentDir = File(lastPath)
