@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <!-- 使用内置的 WixUI_InstallDir 作为基础界面 -->
+    <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+
+    <!-- Java 安装询问属性 -->
+    <Property Id="JAVACHECK" Secure="yes" />
+
+    <!-- 自定义安装程序 UI 序列 -->
+    <UI>
+        <UIRef Id="WixUI_InstallDir" />
+        <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="JavaCheckDlg" Order="3" />
+        <!-- 自定义对话框 -->
+        <Dialog Id="JavaCheckDlg" Width="370" Height="270" Title="Java 8 安装程序">
+            <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Text="{\WixUI_Font_Title}Java 8 检测" />
+            <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15" Text="您是否已经安装了 Java 8？" />
+            <Control Id="YesButton" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="是的" />
+            <Control Id="NoButton" Type="PushButton" X="304" Y="243" Width="56" Height="17" Text="没有" />
+        </Dialog>
+        <Publish Dialog="JavaCheckDlg" Control="YesButton" Event="SetProperty" Value="1" Order="1">JAVACHECK</Publish>
+        <Publish Dialog="JavaCheckDlg" Control="YesButton" Event="NewDialog" Value="VerifyReadyDlg" Order="2" />
+        <Publish Dialog="JavaCheckDlg" Control="NoButton" Event="SetProperty" Value="0" Order="1">JAVACHECK</Publish>
+        <Publish Dialog="JavaCheckDlg" Control="NoButton" Event="NewDialog" Value="VerifyReadyDlg" Order="2" />
+    </UI>
+
+    <!-- 自定义动作：执行 PowerShell 脚本安装 Java -->
+    <Binary Id="InstallJavaPS" SourceFile="install_java.ps1" />
+    <CustomAction Id="RunJavaInstall" BinaryKey="InstallJavaPS" ExeCommand='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden' Execute="deferred" Return="check" Impersonate="no" />
+
+    <InstallExecuteSequence>
+        <Custom Action="RunJavaInstall" After="InstallFiles">NOT JAVACHECK</Custom>
+    </InstallExecuteSequence>
+
+    <!-- 其余内容由 jpackage 自动注入，无需额外定义 -->
+    <Include File="overrides.wxi" />
+</Wix>

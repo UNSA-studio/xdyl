@@ -7,15 +7,6 @@ android {
     namespace = "www.xdyl.hygge.com"
     compileSdk = 35
 
-    signingConfigs {
-        create("release") {
-            storeFile = file("xdyl_keystore.jks")
-            storePassword = "xdyl123"
-            keyAlias = "xdyl"
-            keyPassword = "xdyl123"
-        }
-    }
-
     defaultConfig {
         applicationId = "www.xdyl.hygge.com"
         minSdk = 28
@@ -25,14 +16,8 @@ android {
     }
 
     buildTypes {
-        debug {
-            signingConfig = signingConfigs.getByName("release")
-        }
         release {
-            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
-    isDebuggable = true
-    isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -57,4 +42,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.documentfile:documentfile:1.0.1")
+    // Shizuku
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
 }
