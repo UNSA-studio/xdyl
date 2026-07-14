@@ -1,14 +1,11 @@
 package www.xdyl.hygge.com
 
-import android.animation.LayoutTransition
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.os.Process
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.*
@@ -34,21 +31,18 @@ class SettingsActivity : AppCompatActivity() {
             finish()
         }
 
-        val tvPingServerResult = findViewById<TextView>(R.id.tvPingServerResult)
-        val tvPingWifiResult = findViewById<TextView>(R.id.tvPingWifiResult)
-
-        binding.btnPingServer.setOnClickListener { startPing("8.129.236.213", tvPingServerResult, "Server") }
-        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", tvPingWifiResult, "WiFi") }
+        binding.btnPingServer.setOnClickListener { startPing("82.157.155.86", binding.tvPingServerResult, "Server") }
+        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", binding.tvPingWifiResult, "WiFi") }
 
         binding.swExtensionMode.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 MaterialAlertDialogBuilder(this)
                     .setTitle("警告!")
-                    .setMessage("您正在开启扩展模式，这个模式里面的内容允许您使用一些Beta内容，可能不稳定，重启后生效。")
+                    .setMessage("您正在开启扩展模式，重启后生效。")
                     .setPositiveButton("开启并重启") { _, _ ->
-                        prefs.edit().putBoolean("extension_mode", true).commit()  // 同步保存
+                        prefs.edit().putBoolean("extension_mode", true).commit()
                         finishAffinity()
-                        Process.killProcess(Process.myPid())  // 杀掉进程，确保写入
+                        System.exit(0)
                     }
                     .setNegativeButton("取消") { _, _ ->
                         prefs.edit().putBoolean("extension_mode", false).commit()
@@ -72,25 +66,17 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun loadPrefs() {
-        binding.etVersionName.setText(
-            prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
-        )
-        binding.etThreadCount.setText(
-            prefs.getInt("thread_count", 20).toString()
-        )
-        val extensionEnabled = prefs.getBoolean("extension_mode", false)
-        binding.swExtensionMode.isChecked = extensionEnabled
-        binding.btnExtensionPage.visibility = if (extensionEnabled) View.VISIBLE else View.GONE
+        binding.etVersionName.setText(prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR)
+        binding.etThreadCount.setText(prefs.getInt("thread_count", prefs.getInt("thread_limit", 256)).toString())
+        binding.swExtensionMode.isChecked = prefs.getBoolean("extension_mode", false)
+        binding.btnExtensionPage.visibility = if (prefs.getBoolean("extension_mode", false)) View.VISIBLE else View.GONE
     }
 
     private fun savePrefs() {
         val version = binding.etVersionName.text.toString().ifBlank { Constants.TARGET_VERSION_DIR }
         val threads = binding.etThreadCount.text.toString().toIntOrNull() ?: 20
         val threadCount = threads.coerceIn(20, 128)
-        prefs.edit()
-            .putString("version_folder", version)
-            .putInt("thread_count", threadCount)
-            .apply()
+        prefs.edit().putString("version_folder", version).putInt("thread_count", threadCount).apply()
     }
 
     private fun startPing(address: String, textView: TextView, label: String) {
@@ -112,28 +98,18 @@ class SettingsActivity : AppCompatActivity() {
             process.waitFor()
             if (output.isEmpty() && error.isNotEmpty()) return "Ping failed: $error"
             return parsePingResult(output, address)
-        } catch (e: Exception) {
-            return "Ping error: ${e.message}"
-        }
+        } catch (e: Exception) { return "Ping error: ${e.message}" }
     }
 
     private fun parsePingResult(raw: String, address: String): String {
-        val lossPattern = Regex("(\\d+)% packet loss")
-        val loss = lossPattern.find(raw)?.groupValues?.get(1) ?: "N/A"
-        val rttPattern = Regex("min/avg/max/mdev = (\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)")
-        val rttMatch = rttPattern.find(raw)
+        val loss = Regex("(\\d+)% packet loss").find(raw)?.groupValues?.get(1) ?: "N/A"
+        val rtt = Regex("min/avg/max/mdev = (\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)").find(raw)
         return buildString {
-            append("Target: $address\n")
-            append("Packet loss: $loss%\n")
-            if (rttMatch != null) {
-                append("Min/Avg/Max/mdev: ${rttMatch.groupValues[1]}/${rttMatch.groupValues[2]}/${rttMatch.groupValues[3]}/${rttMatch.groupValues[4]} ms\n")
-            }
-            append("Raw output:\n$raw")
+            append("Target: $address\nPacket loss: $loss%\n")
+            if (rtt != null) append("Min/Avg/Max/mdev: ${rtt.groupValues[1]}/${rtt.groupValues[2]}/${rtt.groupValues[3]}/${rtt.groupValues[4]} ms\n")
+            append("Raw:\n$raw")
         }
     }
 
-    override fun onDestroy() {
-        scope.cancel()
-        super.onDestroy()
-    }
+    override fun onDestroy() { scope.cancel() }
 }
