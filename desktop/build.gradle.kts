@@ -1,5 +1,4 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
 
 plugins {
     kotlin("jvm")
@@ -31,12 +30,9 @@ compose.desktop {
     }
 }
 
-// 为 packageMsi 任务传递自定义 WiX 资源目录
-tasks.named<AbstractJPackageTask>("packageMsi") {
-    jpackageArgs.addAll(
-        listOf(
-            "--resource-dir",
-            "${project.projectDir}/src/main/resources/wix"
-        )
-    )
+// 为 packageMsi 任务添加自定义 WiX 资源目录参数
+tasks.named("packageMsi") {
+    (this as org.gradle.api.tasks.JavaExec).apply {
+        args("--resource-dir", "${project.projectDir}/src/main/resources/wix")
+    }
 }
