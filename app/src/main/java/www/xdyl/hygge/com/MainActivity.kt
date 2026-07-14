@@ -81,7 +81,8 @@ class MainActivity : AppCompatActivity() {
         binding.btnStartDownload.setOnClickListener {
             LogManager.log("用户点击了“开始下载”")
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
-            if (prefs.getBoolean("neoforge_check_enabled", false)) {
+            // NeoForge 检查默认为 true（如果未设置）
+            if (prefs.getBoolean("neoforge_check_enabled", true)) {
                 verifyNeoforgeVersion { verified ->
                     if (verified) startUpdateProcess()
                     else {
@@ -271,13 +272,10 @@ class MainActivity : AppCompatActivity() {
     private fun updateUpButtonState() {
         val root = Environment.getExternalStorageDirectory()
         val btn = fileBrowserDialog?.getButton(AlertDialog.BUTTON_NEGATIVE) ?: return
-        if (currentBrowseDir.absolutePath == root.absolutePath || currentBrowseDir.absolutePath.startsWith("/storage/emulated/0/Android")) {
-            btn.isEnabled = false
-            btn.alpha = 0.5f
-        } else {
-            btn.isEnabled = true
-            btn.alpha = 1.0f
-        }
+        // 只有真正的根目录 /storage/emulated/0 才禁用返回上级，其他目录一律允许
+        val isRoot = currentBrowseDir.absolutePath == root.absolutePath
+        btn.isEnabled = !isRoot
+        btn.alpha = if (isRoot) 0.5f else 1.0f
     }
 
     private fun handleSelectedFolder(folder: File) {
@@ -488,15 +486,16 @@ class MainActivity : AppCompatActivity() {
                     }.joinAll()
                 }
 
-                // 清理孤儿文件
+                // 清理孤儿文件（跳过白名单）
                 val cleanOrphan = prefs.getBoolean("clean_orphan_files", true)
                 if (cleanOrphan) {
                     withContext(Dispatchers.IO) {
+                        val whiteList = prefs.getStringSet("mod_whitelist", emptySet()) ?: emptySet()
                         val csvFiles = csvMods.map { it.fileName }.toSet()
                         val modFiles = modsDir.listFiles()?.filter { it.extension.equals("jar", true) } ?: emptyList()
                         var deleted = 0
                         for (file in modFiles) {
-                            if (file.name !in csvFiles) {
+                            if (file.name !in csvFiles && file.name !in whiteList) {
                                 if (file.delete()) {
                                     deleted++
                                     LogManager.log("已删除孤儿文件: ${file.name}")

@@ -23,10 +23,10 @@ compose.desktop {
             windows {
                 iconFile.set(project.file("src/main/resources/icon.ico"))
                 menuGroup = "Nebula updater"
-                // 创建桌面快捷方式
                 shortcut = true
-                // 创建开始菜单快捷方式
                 menu = true
+                // 关键：传递自定义 WiX 资源目录
+                jpackageArgs += listOf("--resource-dir", "${project.projectDir}/src/main/resources/wix")
             }
         }
     }

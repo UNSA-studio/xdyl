@@ -7,9 +7,7 @@ import android.os.Environment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -18,6 +16,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
+import rikka.shizuku.Shizuku
 import java.io.File
 
 class EasterEggActivity : AppCompatActivity() {
@@ -41,7 +40,7 @@ class EasterEggActivity : AppCompatActivity() {
         }
 
         val switchNeoforge = findViewById<SwitchMaterial>(R.id.swNeoforgeCheck)
-        switchNeoforge.isChecked = prefs.getBoolean("neoforge_check_enabled", false)
+        switchNeoforge.isChecked = prefs.getBoolean("neoforge_check_enabled", true) // 默认开启
         switchNeoforge.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("neoforge_check_enabled", isChecked).apply()
             Toast.makeText(this, if (isChecked) "NeoForge 检查已开启" else "NeoForge 检查已关闭", Toast.LENGTH_SHORT).show()
@@ -57,7 +56,6 @@ class EasterEggActivity : AppCompatActivity() {
         val btnPickCsv = findViewById<MaterialButton>(R.id.btnPickCsv)
         switchLocalCsv.isChecked = prefs.getBoolean("use_local_csv", false)
         btnPickCsv.visibility = if (switchLocalCsv.isChecked) View.VISIBLE else View.GONE
-
         switchLocalCsv.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("use_local_csv", isChecked).apply()
             btnPickCsv.visibility = if (isChecked) View.VISIBLE else View.GONE
@@ -65,9 +63,34 @@ class EasterEggActivity : AppCompatActivity() {
                 prefs.edit().remove("local_csv_path").apply()
             }
         }
+        btnPickCsv.setOnClickListener { showCsvFilePicker() }
 
-        btnPickCsv.setOnClickListener {
-            showCsvFilePicker()
+        // Shizuku 测试按钮
+        val btnTestShizuku = findViewById<MaterialButton>(R.id.btnTestShizuku)
+        btnTestShizuku.setOnClickListener {
+            if (Shizuku.pingBinder()) {
+                if (Shizuku.isPreV11() || Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    // 已授权，执行测试
+                    try {
+                        val rootFiles = Shizuku.newProcess(arrayOf("ls", "/"), null, null).inputStream.bufferedReader().readText()
+                        Toast.makeText(this, "Shizuku 可用！根目录文件列表:\n$rootFiles", Toast.LENGTH_LONG).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(this, "Shizuku 执行失败: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    // 需要请求权限
+                    Shizuku.requestPermission(0)
+                    Toast.makeText(this, "请在弹出的界面中授权 Shizuku", Toast.LENGTH_LONG).show()
+                }
+            } else {
+                Toast.makeText(this, "Shizuku 未运行", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // 白名单管理按钮
+        val btnWhitelist = findViewById<MaterialButton>(R.id.btnWhitelist)
+        btnWhitelist.setOnClickListener {
+            showWhitelistDialog()
         }
 
         findViewById<MaterialButton>(R.id.btnAchievements).setOnClickListener {
@@ -78,6 +101,47 @@ class EasterEggActivity : AppCompatActivity() {
         }
     }
 
+    // 白名单对话框
+    private fun showWhitelistDialog() {
+        val whitelist = prefs.getStringSet("mod_whitelist", emptySet())?.toMutableSet() ?: mutableSetOf()
+        val adapter = ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, whitelist.toList())
+        val listView = ListView(this)
+        listView.adapter = adapter
+        val input = EditText(this)
+        input.hint = "输入模组文件名（如 example.jar）"
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle("模组白名单")
+            .setView(LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(input)
+                addView(listView)
+            })
+            .setPositiveButton("添加") { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isNotEmpty()) {
+                    whitelist.add(name)
+                    prefs.edit().putStringSet("mod_whitelist", whitelist).apply()
+                    adapter.add(name)
+                    Toast.makeText(this, "已添加", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("删除选中") { _, _ ->
+                val selected = listView.checkedItemPosition
+                if (selected >= 0) {
+                    val item = adapter.getItem(selected)
+                    whitelist.remove(item)
+                    prefs.edit().putStringSet("mod_whitelist", whitelist).apply()
+                    adapter.remove(item)
+                    Toast.makeText(this, "已删除", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNeutralButton("关闭", null)
+            .create()
+        dialog.show()
+    }
+
+    // 内置 CSV 文件选择器（保持不变）
     private fun showCsvFilePicker() {
         val lastPath = prefs.getString("csv_browser_last_path", Environment.getExternalStorageDirectory().absolutePath)
         currentDir = File(lastPath)
