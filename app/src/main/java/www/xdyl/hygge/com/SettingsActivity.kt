@@ -62,7 +62,9 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun loadPrefs() {
         binding.etVersionName.setText(prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR)
-        binding.etThreadCount.setText(prefs.getInt("thread_count", prefs.getInt("thread_limit", 256)).toString())
+        // 统一显示 thread_limit 的值，范围 20-128
+        val currentThreads = prefs.getInt("thread_limit", 256)
+        binding.etThreadCount.setText(currentThreads.toString())
         binding.swExtensionMode.isChecked = prefs.getBoolean("extension_mode", false)
         binding.btnExtensionPage.visibility = if (prefs.getBoolean("extension_mode", false)) View.VISIBLE else View.GONE
     }
@@ -70,7 +72,11 @@ class SettingsActivity : AppCompatActivity() {
     private fun savePrefs() {
         val version = binding.etVersionName.text.toString().ifBlank { Constants.TARGET_VERSION_DIR }
         val threads = binding.etThreadCount.text.toString().toIntOrNull() ?: 20
-        prefs.edit().putString("version_folder", version).putInt("thread_count", threads.coerceIn(20, 128)).apply()
+        // 保存到 thread_limit，并限制在 20-128
+        prefs.edit()
+            .putString("version_folder", version)
+            .putInt("thread_limit", threads.coerceIn(20, 128))
+            .apply()
     }
 
     private fun startPing(address: String, textView: TextView, hideIp: Boolean) {
@@ -89,7 +95,6 @@ class SettingsActivity : AppCompatActivity() {
             val output = reader.readText()
             process.waitFor()
 
-            // 解析数据
             val loss = Regex("(\\d+)% packet loss").find(output)?.groupValues?.get(1) ?: "N/A"
             val rtt = Regex("min/avg/max/mdev = (\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)").find(output)
 
@@ -98,7 +103,6 @@ class SettingsActivity : AppCompatActivity() {
                 if (rtt != null) append("Min/Avg/Max/mdev: ${rtt.groupValues[1]}/${rtt.groupValues[2]}/${rtt.groupValues[3]}/${rtt.groupValues[4]} ms\n")
             }
 
-            // 根据 hideIp 决定是否屏蔽 IP
             val raw = if (hideIp) {
                 output.replace(Regex("\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b"), "***")
             } else {
