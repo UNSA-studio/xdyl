@@ -67,9 +67,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun loadPrefs() {
         binding.etVersionName.setText(prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR)
-        // 显示扩展页设置的线程上限（如果没有则显示默认256）
-        val displayThreads = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256))
-        binding.etThreadCount.setText(displayThreads.toString())
+        binding.etThreadCount.setText(prefs.getInt("thread_count", prefs.getInt("thread_limit", 256)).toString())
         binding.swExtensionMode.isChecked = prefs.getBoolean("extension_mode", false)
         binding.btnExtensionPage.visibility = if (prefs.getBoolean("extension_mode", false)) View.VISIBLE else View.GONE
     }
@@ -78,7 +76,6 @@ class SettingsActivity : AppCompatActivity() {
         val version = binding.etVersionName.text.toString().ifBlank { Constants.TARGET_VERSION_DIR }
         val threads = binding.etThreadCount.text.toString().toIntOrNull() ?: 20
         val threadCount = threads.coerceIn(20, 128)
-        // 保存到设置页的线程数（仅用于显示，实际下载以扩展页的 thread_limit 为准）
         prefs.edit().putString("version_folder", version).putInt("thread_count", threadCount).apply()
     }
 
@@ -115,7 +112,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        super.onDestroy()   // 必须调用，修复崩溃
         scope.cancel()
     }
 }
