@@ -28,6 +28,7 @@ class EasterEggActivity : AppCompatActivity() {
         setContentView(R.layout.activity_easter_egg)
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
 
+        // 线程数上限
         val editThreadLimit = findViewById<TextInputEditText>(R.id.etThreadLimit)
         editThreadLimit.setText(prefs.getInt("thread_limit", 256).toString())
         editThreadLimit.setOnFocusChangeListener { _, hasFocus ->
@@ -38,6 +39,7 @@ class EasterEggActivity : AppCompatActivity() {
             }
         }
 
+        // NeoForge 检查开关
         val switchNeoforge = findViewById<SwitchMaterial>(R.id.swNeoforgeCheck)
         switchNeoforge.isChecked = prefs.getBoolean("neoforge_check_enabled", true)
         switchNeoforge.setOnCheckedChangeListener { _, isChecked ->
@@ -45,12 +47,14 @@ class EasterEggActivity : AppCompatActivity() {
             Toast.makeText(this, if (isChecked) "NeoForge 检查已开启" else "NeoForge 检查已关闭", Toast.LENGTH_SHORT).show()
         }
 
+        // 清理孤儿文件开关
         val switchClean = findViewById<SwitchMaterial>(R.id.swCleanOrphanFiles)
         switchClean.isChecked = prefs.getBoolean("clean_orphan_files", true)
         switchClean.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("clean_orphan_files", isChecked).apply()
         }
 
+        // 本地 CSV 开关及选择按钮
         val switchLocalCsv = findViewById<SwitchMaterial>(R.id.swLocalCsv)
         val btnPickCsv = findViewById<MaterialButton>(R.id.btnPickCsv)
         switchLocalCsv.isChecked = prefs.getBoolean("use_local_csv", false)
@@ -64,27 +68,23 @@ class EasterEggActivity : AppCompatActivity() {
         }
         btnPickCsv.setOnClickListener { showCsvFilePicker() }
 
-        // Shizuku 测试按钮 – 暂时仅显示提示，后续完善
-        val btnTestShizuku = findViewById<MaterialButton>(R.id.btnTestShizuku)
-        btnTestShizuku.setOnClickListener {
-            Toast.makeText(this, "Shizuku 功能正在开发中...", Toast.LENGTH_SHORT).show()
-        }
-
         // 白名单管理按钮
         val btnWhitelist = findViewById<MaterialButton>(R.id.btnWhitelist)
         btnWhitelist.setOnClickListener {
             showWhitelistDialog()
         }
 
+        // 成就入口
         findViewById<MaterialButton>(R.id.btnAchievements).setOnClickListener {
             startActivity(Intent(this, AchievementActivity::class.java))
         }
+        // 自定义下载地址（占位）
         findViewById<MaterialButton>(R.id.btnDownloadUrl).setOnClickListener {
             Toast.makeText(this, "自定义下载地址暂未实现", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // 白名单对话框
+    // ========== 白名单对话框 ==========
     private fun showWhitelistDialog() {
         val whitelist = prefs.getStringSet("mod_whitelist", emptySet())?.toMutableSet() ?: mutableSetOf()
         val adapter = ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, whitelist.toList())
@@ -124,7 +124,7 @@ class EasterEggActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    // 内置 CSV 文件选择器
+    // ========== 内置 CSV 文件选择器 ==========
     private fun showCsvFilePicker() {
         val lastPath = prefs.getString("csv_browser_last_path", Environment.getExternalStorageDirectory().absolutePath)
         currentDir = File(lastPath)
