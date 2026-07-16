@@ -22,7 +22,6 @@ class SettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         loadPrefs()
 
@@ -31,8 +30,8 @@ class SettingsActivity : AppCompatActivity() {
             finish()
         }
 
-        binding.btnPingServer.setOnClickListener { startPing("82.157.155.86", binding.tvPingServerResult, "Server") }
-        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", binding.tvPingWifiResult, "WiFi") }
+        binding.btnPingServer.setOnClickListener { startPing("82.157.155.86", binding.tvPingServerResult) }
+        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", binding.tvPingWifiResult) }
 
         binding.swExtensionMode.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
@@ -41,8 +40,7 @@ class SettingsActivity : AppCompatActivity() {
                     .setMessage("您正在开启扩展模式，重启后生效。")
                     .setPositiveButton("开启并重启") { _, _ ->
                         prefs.edit().putBoolean("extension_mode", true).commit()
-                        finishAffinity()
-                        System.exit(0)
+                        finishAffinity(); System.exit(0)
                     }
                     .setNegativeButton("取消") { _, _ ->
                         prefs.edit().putBoolean("extension_mode", false).commit()
@@ -60,10 +58,7 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-        savePrefs()
-    }
+    override fun onPause() { super.onPause(); savePrefs() }
 
     private fun loadPrefs() {
         binding.etVersionName.setText(prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR)
@@ -75,13 +70,12 @@ class SettingsActivity : AppCompatActivity() {
     private fun savePrefs() {
         val version = binding.etVersionName.text.toString().ifBlank { Constants.TARGET_VERSION_DIR }
         val threads = binding.etThreadCount.text.toString().toIntOrNull() ?: 20
-        val threadCount = threads.coerceIn(20, 128)
-        prefs.edit().putString("version_folder", version).putInt("thread_count", threadCount).apply()
+        prefs.edit().putString("version_folder", version).putInt("thread_count", threads.coerceIn(20, 128)).apply()
     }
 
-    private fun startPing(address: String, textView: TextView, label: String) {
+    private fun startPing(address: String, textView: TextView) {
         textView.visibility = View.VISIBLE
-        textView.text = "正在 Ping $label..."
+        textView.text = "正在 Ping..."
         scope.launch {
             val result = withContext(Dispatchers.IO) { executePing(address) }
             textView.text = result
@@ -92,27 +86,24 @@ class SettingsActivity : AppCompatActivity() {
         try {
             val process = Runtime.getRuntime().exec(arrayOf("ping", "-c", "4", address))
             val reader = BufferedReader(InputStreamReader(process.inputStream))
-            val errorReader = BufferedReader(InputStreamReader(process.errorStream))
             val output = reader.readText()
-            val error = errorReader.readText()
             process.waitFor()
-            if (output.isEmpty() && error.isNotEmpty()) return "Ping 失败: $error"
-            return parsePingResult(output)
+            return desensitize(output)
         } catch (e: Exception) { return "Ping 错误: ${e.message}" }
     }
 
-    private fun parsePingResult(raw: String): String {
-        val loss = Regex("(\\d+)% packet loss").find(raw)?.groupValues?.get(1) ?: "N/A"
-        val rtt = Regex("min/avg/max/mdev = (\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)").find(raw)
+    private fun desensitize(raw: String): String {
+        // 替换 IP 地址为 ***
+        val ipPattern = Regex("\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b")
+        val masked = ipPattern.replace(raw, "***")
+        // 提取丢包率和延迟
+        val loss = Regex("(\\d+)% packet loss").find(masked)?.groupValues?.get(1) ?: "N/A"
+        val rtt = Regex("min/avg/max/mdev = (\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)").find(masked)
         return buildString {
             append("丢包率: $loss%\n")
-            if (rtt != null) append("最小/平均/最大/mdev: ${rtt.groupValues[1]}/${rtt.groupValues[2]}/${rtt.groupValues[3]}/${rtt.groupValues[4]} ms\n")
-            append("原始输出:\n$raw")
+            if (rtt != null) append("最小/平均/最大/mdev: ${rtt.groupValues[1]}/${rtt.groupValues[2]}/${rtt.groupValues[3]}/${rtt.groupValues[4]} ms")
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()   // 必须调用，修复崩溃
-        scope.cancel()
-    }
+    override fun onDestroy() { super.onDestroy(); scope.cancel() }
 }
