@@ -84,7 +84,7 @@ class MainActivity : AppCompatActivity() {
                     else {
                         MaterialAlertDialogBuilder(this)
                             .setTitle("NeoForge 版本过低")
-                            .setMessage("需要更新 NeoForge 驱动至 21.1.227 或更高版本。")
+                            .setMessage("需要更新 NeoForge 驱动至 21.1.228 或更高版本。")
                             .setPositiveButton("确定", null)
                             .show()
                     }
@@ -298,7 +298,7 @@ class MainActivity : AppCompatActivity() {
                     val versionPattern = Regex("\"--fml\\.neoForgeVersion\",\\s*\"(\\d+\\.\\d+\\.\\d+)\"")
                     val match = versionPattern.find(jsonContent) ?: return@withContext false
                     val installedVersion = match.groupValues[1]
-                    compareVersion(installedVersion, "21.1.227") >= 0
+                    compareVersion(installedVersion, "21.1.228") >= 0
                 } catch (e: Exception) {
                     LogManager.log("NeoForge 检查异常: ${e.message}")
                     false
@@ -449,12 +449,62 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 if (failed.get() > 0) showError(Constants.ERROR05)
-                else appendLog("Update completed!")
+                else {
+                    appendLog("Update completed!")
+                    // 首次更新成功询问安装材质包
+                    if (!prefs.getBoolean("has_completed_first_update", false)) {
+                        prefs.edit().putBoolean("has_completed_first_update", true).apply()
+                        withContext(Dispatchers.Main) {
+                            MaterialAlertDialogBuilder(this@MainActivity)
+                                .setTitle("安装服务器材质包")
+                                .setMessage("是否要安装 Server 材质包？\n注意！这是必要，如不装，进服将下载材质包，在这里安装可以加快速度。")
+                                .setPositiveButton("好的") { _, _ ->
+                                    scope.launch { installResourcePack() }
+                                }
+                                .setNegativeButton("取消", null)
+                                .show()
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 showError(Constants.ERROR03)
             } finally {
                 isProcessing = false
                 binding.btnStartDownload.isEnabled = true
+            }
+        }
+    }
+
+    private suspend fun installResourcePack() {
+        withContext(Dispatchers.IO) {
+            try {
+                val launcherRoot = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath)!!)
+                val mc = File(launcherRoot, ".minecraft")
+                val packsDir = File(mc, "resourcepacks")
+                if (!packsDir.exists()) packsDir.mkdirs()
+
+                val destFile = File(packsDir, "generated.zip")
+                if (!destFile.exists()) {
+                    resources.openRawResource(R.raw.generated).use { input ->
+                        FileOutputStream(destFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    LogManager.log("材质包已安装到 ${destFile.absolutePath}")
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, "材质包已安装", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    LogManager.log("材质包已存在，跳过安装")
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, "材质包已存在", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                LogManager.log("安装材质包失败: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "安装材质包失败: ${e.message}", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

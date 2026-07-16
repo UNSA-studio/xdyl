@@ -3,8 +3,6 @@ package www.xdyl.hygge.com
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.Environment
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,7 +14,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
-import com.google.android.material.textfield.TextInputEditText
 import java.io.File
 
 class EasterEggActivity : AppCompatActivity() {
@@ -29,17 +26,21 @@ class EasterEggActivity : AppCompatActivity() {
         setContentView(R.layout.activity_easter_egg)
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
 
-        val editThreadLimit = findViewById<TextInputEditText>(R.id.etThreadLimit)
-        editThreadLimit.setText(prefs.getInt("thread_limit", 256).toString())
-        // 文本变化即保存
-        editThreadLimit.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                val value = s?.toString()?.toIntOrNull()?.coerceIn(128, 1024) ?: 256
-                prefs.edit().putInt("thread_limit", value).apply()
+        // 解锁线程上限
+        val swUnlock = findViewById<SwitchMaterial>(R.id.swUnlockThread)
+        swUnlock.isChecked = prefs.getBoolean("unlock_thread_limit", false)
+        swUnlock.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("unlock_thread_limit", isChecked).apply()
+            if (isChecked) {
+                Toast.makeText(this, "线程上限已解锁，设置中可调整至 1024", Toast.LENGTH_SHORT).show()
+            } else {
+                val current = prefs.getInt("thread_limit", 256)
+                if (current > 128) {
+                    prefs.edit().putInt("thread_limit", 128).apply()
+                }
+                Toast.makeText(this, "线程上限已锁定为 128", Toast.LENGTH_SHORT).show()
             }
-            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
-            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
-        })
+        }
 
         val switchNeoforge = findViewById<SwitchMaterial>(R.id.swNeoforgeCheck)
         switchNeoforge.isChecked = prefs.getBoolean("neoforge_check_enabled", true)
@@ -67,37 +68,57 @@ class EasterEggActivity : AppCompatActivity() {
 
         val btnWhitelist = findViewById<MaterialButton>(R.id.btnWhitelist)
         btnWhitelist.setOnClickListener { showWhitelistDialog() }
+
+        // 重置按钮
+        val btnReset = findViewById<MaterialButton>(R.id.btnReset)
+        btnReset.setOnClickListener {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("重置确认")
+                .setMessage("将清除所有设置、路径记忆、白名单、标记状态等，恢复到初始状态。此操作不可撤销！")
+                .setPositiveButton("重置") { _, _ ->
+                    prefs.edit().clear().apply()
+                    Toast.makeText(this, "已重置，请重启应用", Toast.LENGTH_LONG).show()
+                    finishAffinity()
+                    System.exit(0)
+                }
+                .setNegativeButton("取消", null)
+                .show()
+        }
     }
 
     private fun showWhitelistDialog() {
         val whitelist = (prefs.getStringSet("mod_whitelist", emptySet()) ?: emptySet()).toMutableList()
-        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, whitelist)
-        val listView = ListView(this)
-        listView.adapter = adapter
-        val input = EditText(this)
-        input.hint = "输入模组文件名（如 example.jar）"
+        val items = whitelist.toTypedArray()
+        val checked = BooleanArray(items.size)
 
         MaterialAlertDialogBuilder(this)
             .setTitle("模组白名单")
-            .setView(LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                addView(input)
-                addView(listView)
-            })
+            .setMultiChoiceItems(items, checked) { _, _, _ -> }
             .setPositiveButton("添加") { _, _ ->
-                val name = input.text.toString().trim()
-                if (name.isNotEmpty() && !whitelist.contains(name)) {
-                    whitelist.add(name)
-                    adapter.notifyDataSetChanged()
-                    saveWhitelist(whitelist)
-                }
+                val input = EditText(this)
+                input.hint = "输入模组文件名"
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("添加白名单")
+                    .setView(input)
+                    .setPositiveButton("确定") { _, _ ->
+                        val name = input.text.toString().trim()
+                        if (name.isNotEmpty() && !whitelist.contains(name)) {
+                            whitelist.add(name)
+                            saveWhitelist(whitelist)
+                            Toast.makeText(this, "已添加", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .setNegativeButton("取消", null)
+                    .show()
             }
             .setNegativeButton("删除选中") { _, _ ->
-                val pos = listView.checkedItemPosition
-                if (pos >= 0 && pos < whitelist.size) {
-                    whitelist.removeAt(pos)
-                    adapter.notifyDataSetChanged()
+                val toRemove = whitelist.filterIndexed { index, _ -> checked[index] }
+                if (toRemove.isNotEmpty()) {
+                    whitelist.removeAll(toRemove)
                     saveWhitelist(whitelist)
+                    Toast.makeText(this, "已删除 ${toRemove.size} 项", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "未选中任何项", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNeutralButton("关闭", null)
@@ -108,6 +129,7 @@ class EasterEggActivity : AppCompatActivity() {
         prefs.edit().putStringSet("mod_whitelist", list.toSet()).apply()
     }
 
+    // CSV 选择器（略，与之前相同，不再重复，但确保有正确功能）
     private fun showCsvFilePicker() {
         val lastPath = prefs.getString("csv_browser_last_path", Environment.getExternalStorageDirectory().absolutePath)
         currentDir = File(lastPath)
@@ -124,8 +146,7 @@ class EasterEggActivity : AppCompatActivity() {
             val adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
                     val tv = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false) as TextView
-                    tv.setBackgroundColor(0xFF1E1E1E.toInt())
-                    tv.setTextColor(0xFFFFFFFF.toInt())
+                    tv.setBackgroundColor(0xFF1E1E1E.toInt()); tv.setTextColor(0xFFFFFFFF.toInt())
                     return object : RecyclerView.ViewHolder(tv) {}
                 }
                 override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
@@ -133,8 +154,7 @@ class EasterEggActivity : AppCompatActivity() {
                     (holder.itemView as TextView).text = f.name
                     holder.itemView.setOnClickListener {
                         if (f.isDirectory) {
-                            currentDir = f
-                            prefs.edit().putString("csv_browser_last_path", f.absolutePath).apply()
+                            currentDir = f; prefs.edit().putString("csv_browser_last_path", f.absolutePath).apply()
                             loadDir(f)
                         } else if (f.name.endsWith(".csv")) {
                             prefs.edit().putString("local_csv_path", f.absolutePath).apply()
@@ -148,7 +168,6 @@ class EasterEggActivity : AppCompatActivity() {
                 override fun getItemCount(): Int = files.size
             }
             recycler.adapter = adapter
-            // 更新返回按钮状态（传入当前目录）
             updateBackButtonState(dir)
         }
         loadDir(currentDir!!)
@@ -160,8 +179,7 @@ class EasterEggActivity : AppCompatActivity() {
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
                 val parent = currentDir!!.parentFile ?: return@setOnClickListener
-                currentDir = parent
-                prefs.edit().putString("csv_browser_last_path", parent.absolutePath).apply()
+                currentDir = parent; prefs.edit().putString("csv_browser_last_path", parent.absolutePath).apply()
                 loadDir(parent)
             }
         }
@@ -169,16 +187,10 @@ class EasterEggActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    // 根据目录是否根目录来启用/禁用返回按钮
     private fun updateBackButtonState(dir: File) {
         val btn = csvBrowseDialog?.getButton(AlertDialog.BUTTON_NEGATIVE) ?: return
         val root = Environment.getExternalStorageDirectory()
-        // 使用 canonicalPath 避免符号链接问题
-        val isRoot = try {
-            dir.canonicalPath == root.canonicalPath
-        } catch (e: Exception) {
-            dir.absolutePath == root.absolutePath
-        }
+        val isRoot = try { dir.canonicalPath == root.canonicalPath } catch (e: Exception) { dir.absolutePath == root.absolutePath }
         btn.isEnabled = !isRoot
         btn.alpha = if (isRoot) 0.5f else 1.0f
     }

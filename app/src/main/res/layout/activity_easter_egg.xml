@@ -27,24 +27,14 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="16dp"/>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/swUnlockThread"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="线程数上限 (128-1024)"
-                android:textColorHint="#AAFFFFFF"
-                app:hintTextColor="@color/primary_light_blue"
-                app:boxStrokeColor="@color/primary_light_blue"
-                app:boxBackgroundColor="#2A2A2A">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etThreadLimit"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="256"
-                    android:textColor="@android:color/white"
-                    android:inputType="number"
-                    android:singleLine="true"/>
-            </com.google.android.material.textfield.TextInputLayout>
+                android:text="解锁线程数上限至 1024"
+                android:textColor="@android:color/white"
+                android:layout_marginTop="16dp"
+                android:checked="false"/>
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/swNeoforgeCheck"
@@ -88,6 +78,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:text="模组白名单"
+                android:textColor="@android:color/black"
+                app:backgroundTint="@color/primary_light_blue"
+                android:layout_marginTop="16dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReset"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="重置登记状态"
                 android:textColor="@android:color/black"
                 app:backgroundTint="@color/primary_light_blue"
                 android:layout_marginTop="16dp"/>

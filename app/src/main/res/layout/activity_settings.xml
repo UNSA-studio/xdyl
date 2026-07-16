@@ -6,12 +6,27 @@
     android:background="@color/background_dark">
 
     <LinearLayout
-        android:id="@+id/settingsRoot"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp"
         android:animateLayoutChanges="true">
+
+        <!-- 返回按钮 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="start"
+            android:orientation="horizontal">
+            <ImageButton
+                android:id="@+id/btnBack"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_arrow_back"
+                android:contentDescription="返回"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:tint="@color/primary_light_blue"/>
+        </LinearLayout>
 
         <TextView
             android:layout_width="wrap_content"
@@ -41,6 +56,7 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/threadInputLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -54,7 +70,7 @@
                 android:id="@+id/etThreadCount"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="20"
+                android:text="256"
                 android:textColor="@android:color/white"
                 android:inputType="number"
                 android:singleLine="true"/>
@@ -131,5 +147,26 @@
             android:backgroundTint="@color/primary_light_blue"
             android:layout_marginTop="24dp"
             android:textSize="16sp"/>
+
+        <Button
+            android:id="@+id/btnErrorCodes"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="ERROR 错误代码"
+            android:textColor="@android:color/black"
+            android:backgroundTint="@color/primary_light_blue"
+            android:layout_marginTop="12dp"
+            android:textSize="16sp"/>
+
+        <Button
+            android:id="@+id/btnAbout"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="关于软件"
+            android:textColor="@android:color/black"
+            android:backgroundTint="@color/primary_light_blue"
+            android:layout_marginTop="12dp"
+            android:textSize="16sp"/>
+
     </LinearLayout>
 </ScrollView>
