@@ -66,9 +66,8 @@ class EasterEggActivity : AppCompatActivity() {
     }
 
     private fun showWhitelistDialog() {
-        val rawSet = prefs.getStringSet("mod_whitelist", emptySet())
-        val whitelist = rawSet?.toMutableSet() ?: mutableSetOf()   // 确保非 null
-        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, whitelist.toList())
+        val whitelist = (prefs.getStringSet("mod_whitelist", emptySet()) ?: emptySet()).toMutableList()
+        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, whitelist)
         val listView = ListView(this)
         listView.adapter = adapter
         val input = EditText(this)
@@ -83,23 +82,26 @@ class EasterEggActivity : AppCompatActivity() {
             })
             .setPositiveButton("添加") { _, _ ->
                 val name = input.text.toString().trim()
-                if (name.isNotEmpty()) {
+                if (name.isNotEmpty() && !whitelist.contains(name)) {
                     whitelist.add(name)
-                    prefs.edit().putStringSet("mod_whitelist", whitelist).apply()
-                    adapter.add(name)
+                    adapter.notifyDataSetChanged()
+                    saveWhitelist(whitelist)
                 }
             }
             .setNegativeButton("删除选中") { _, _ ->
-                val selected = listView.checkedItemPosition
-                if (selected >= 0) {
-                    val item = adapter.getItem(selected)
-                    whitelist.remove(item)
-                    prefs.edit().putStringSet("mod_whitelist", whitelist).apply()
-                    adapter.remove(item)
+                val pos = listView.checkedItemPosition
+                if (pos >= 0 && pos < whitelist.size) {
+                    whitelist.removeAt(pos)
+                    adapter.notifyDataSetChanged()
+                    saveWhitelist(whitelist)
                 }
             }
             .setNeutralButton("关闭", null)
             .show()
+    }
+
+    private fun saveWhitelist(list: List<String>) {
+        prefs.edit().putStringSet("mod_whitelist", list.toSet()).apply()
     }
 
     private fun showCsvFilePicker() {
@@ -114,23 +116,23 @@ class EasterEggActivity : AppCompatActivity() {
 
         fun loadDir(dir: File) {
             val files = dir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
-            tvPath.text = dir.absolutePath   // 确保路径显示
+            tvPath.text = dir.absolutePath
             val adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
                     val tv = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false) as TextView
-                    tv.setBackgroundColor(0xFF1E1E1E.toInt()); tv.setTextColor(0xFFFFFFFF.toInt())
+                    tv.setBackgroundColor(0xFF1E1E1E.toInt())
+                    tv.setTextColor(0xFFFFFFFF.toInt())
                     return object : RecyclerView.ViewHolder(tv) {}
                 }
                 override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
                     val f = files[position]
-                    val tv = holder.itemView as TextView
-                    tv.text = f.name
+                    (holder.itemView as TextView).text = f.name
                     holder.itemView.setOnClickListener {
                         if (f.isDirectory) {
                             currentDir = f
                             prefs.edit().putString("csv_browser_last_path", f.absolutePath).apply()
                             loadDir(f)
-                            updateUpButton()
+                            enableBackButton(currentDir!!)
                         } else if (f.name.endsWith(".csv")) {
                             prefs.edit().putString("local_csv_path", f.absolutePath).apply()
                             csvBrowseDialog?.dismiss()
@@ -143,7 +145,7 @@ class EasterEggActivity : AppCompatActivity() {
                 override fun getItemCount(): Int = files.size
             }
             recycler.adapter = adapter
-            updateUpButton()
+            enableBackButton(dir)
         }
         loadDir(currentDir!!)
 
@@ -163,10 +165,10 @@ class EasterEggActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun updateUpButton() {
+    private fun enableBackButton(dir: File) {
         val btn = csvBrowseDialog?.getButton(AlertDialog.BUTTON_NEGATIVE) ?: return
         val root = Environment.getExternalStorageDirectory()
-        val isRoot = currentDir?.absolutePath == root.absolutePath
+        val isRoot = dir.absolutePath == root.absolutePath
         btn.isEnabled = !isRoot
         btn.alpha = if (isRoot) 0.5f else 1.0f
     }
