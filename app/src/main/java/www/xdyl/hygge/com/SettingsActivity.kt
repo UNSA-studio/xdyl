@@ -30,8 +30,8 @@ class SettingsActivity : AppCompatActivity() {
             finish()
         }
 
-        binding.btnPingServer.setOnClickListener { startPing("82.157.155.86", binding.tvPingServerResult, "Server") }
-        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", binding.tvPingWifiResult, "WiFi") }
+        binding.btnPingServer.setOnClickListener { startPing("82.157.155.86", binding.tvPingServerResult, true) }
+        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", binding.tvPingWifiResult, false) }
 
         binding.swExtensionMode.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
@@ -73,23 +73,39 @@ class SettingsActivity : AppCompatActivity() {
         prefs.edit().putString("version_folder", version).putInt("thread_count", threads.coerceIn(20, 128)).apply()
     }
 
-    private fun startPing(address: String, textView: TextView, label: String) {
+    private fun startPing(address: String, textView: TextView, hideIp: Boolean) {
         textView.visibility = View.VISIBLE
-        textView.text = "Pinging $label..."
+        textView.text = "Pinging..."
         scope.launch {
-            val result = withContext(Dispatchers.IO) { executePing(address) }
+            val result = withContext(Dispatchers.IO) { executePing(address, hideIp) }
             textView.text = result
         }
     }
 
-    private fun executePing(address: String): String {
+    private fun executePing(address: String, hideIp: Boolean): String {
         try {
             val process = Runtime.getRuntime().exec(arrayOf("ping", "-c", "4", address))
             val reader = BufferedReader(InputStreamReader(process.inputStream))
             val output = reader.readText()
             process.waitFor()
-            // 只屏蔽 IP 地址，其余保留
-            return output.replace(Regex("\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b"), "***")
+
+            // 解析数据
+            val loss = Regex("(\\d+)% packet loss").find(output)?.groupValues?.get(1) ?: "N/A"
+            val rtt = Regex("min/avg/max/mdev = (\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)").find(output)
+
+            val analysis = buildString {
+                append("Packet loss: $loss%\n")
+                if (rtt != null) append("Min/Avg/Max/mdev: ${rtt.groupValues[1]}/${rtt.groupValues[2]}/${rtt.groupValues[3]}/${rtt.groupValues[4]} ms\n")
+            }
+
+            // 根据 hideIp 决定是否屏蔽 IP
+            val raw = if (hideIp) {
+                output.replace(Regex("\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b"), "***")
+            } else {
+                output
+            }
+
+            return "$analysis\n$raw"
         } catch (e: Exception) { return "Ping error: ${e.message}" }
     }
 
