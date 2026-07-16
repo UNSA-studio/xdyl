@@ -67,7 +67,7 @@ class EasterEggActivity : AppCompatActivity() {
 
     private fun showWhitelistDialog() {
         val rawSet = prefs.getStringSet("mod_whitelist", emptySet())
-        val whitelist = (rawSet ?: emptySet()).toMutableSet()
+        val whitelist = rawSet?.toMutableSet() ?: mutableSetOf()   // 确保非 null
         val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, whitelist.toList())
         val listView = ListView(this)
         listView.adapter = adapter
@@ -114,6 +114,7 @@ class EasterEggActivity : AppCompatActivity() {
 
         fun loadDir(dir: File) {
             val files = dir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
+            tvPath.text = dir.absolutePath   // 确保路径显示
             val adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
                     val tv = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false) as TextView
@@ -126,8 +127,10 @@ class EasterEggActivity : AppCompatActivity() {
                     tv.text = f.name
                     holder.itemView.setOnClickListener {
                         if (f.isDirectory) {
-                            currentDir = f; prefs.edit().putString("csv_browser_last_path", f.absolutePath).apply()
-                            loadDir(f); tvPath.text = f.absolutePath; updateUpButton()
+                            currentDir = f
+                            prefs.edit().putString("csv_browser_last_path", f.absolutePath).apply()
+                            loadDir(f)
+                            updateUpButton()
                         } else if (f.name.endsWith(".csv")) {
                             prefs.edit().putString("local_csv_path", f.absolutePath).apply()
                             csvBrowseDialog?.dismiss()
@@ -139,7 +142,8 @@ class EasterEggActivity : AppCompatActivity() {
                 }
                 override fun getItemCount(): Int = files.size
             }
-            recycler.adapter = adapter; updateUpButton()
+            recycler.adapter = adapter
+            updateUpButton()
         }
         loadDir(currentDir!!)
 
@@ -150,8 +154,9 @@ class EasterEggActivity : AppCompatActivity() {
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
                 val parent = currentDir!!.parentFile ?: return@setOnClickListener
-                currentDir = parent; prefs.edit().putString("csv_browser_last_path", parent.absolutePath).apply()
-                loadDir(parent); tvPath.text = parent.absolutePath
+                currentDir = parent
+                prefs.edit().putString("csv_browser_last_path", parent.absolutePath).apply()
+                loadDir(parent)
             }
         }
         csvBrowseDialog = dialog
@@ -160,7 +165,8 @@ class EasterEggActivity : AppCompatActivity() {
 
     private fun updateUpButton() {
         val btn = csvBrowseDialog?.getButton(AlertDialog.BUTTON_NEGATIVE) ?: return
-        val isRoot = currentDir?.absolutePath == Environment.getExternalStorageDirectory().absolutePath
+        val root = Environment.getExternalStorageDirectory()
+        val isRoot = currentDir?.absolutePath == root.absolutePath
         btn.isEnabled = !isRoot
         btn.alpha = if (isRoot) 0.5f else 1.0f
     }

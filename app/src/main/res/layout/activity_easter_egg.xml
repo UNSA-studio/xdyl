@@ -84,37 +84,10 @@
                 android:visibility="gone"/>
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTestShizuku"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="测试 Shizuku（访问根目录）"
-                android:textColor="@android:color/black"
-                app:backgroundTint="@color/primary_light_blue"
-                android:layout_marginTop="16dp"/>
-
-            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnWhitelist"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:text="模组白名单"
-                android:textColor="@android:color/black"
-                app:backgroundTint="@color/primary_light_blue"
-                android:layout_marginTop="16dp"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnDownloadUrl"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="自定义下载地址"
-                android:textColor="@android:color/black"
-                app:backgroundTint="@color/primary_light_blue"
-                android:layout_marginTop="16dp"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAchievements"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="成就"
                 android:textColor="@android:color/black"
                 app:backgroundTint="@color/primary_light_blue"
                 android:layout_marginTop="16dp"/>
