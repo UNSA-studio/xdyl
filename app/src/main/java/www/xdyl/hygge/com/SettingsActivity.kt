@@ -30,8 +30,8 @@ class SettingsActivity : AppCompatActivity() {
             finish()
         }
 
-        binding.btnPingServer.setOnClickListener { startPing("82.157.155.86", binding.tvPingServerResult) }
-        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", binding.tvPingWifiResult) }
+        binding.btnPingServer.setOnClickListener { startPing("82.157.155.86", binding.tvPingServerResult, "Server") }
+        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", binding.tvPingWifiResult, "WiFi") }
 
         binding.swExtensionMode.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
@@ -73,9 +73,9 @@ class SettingsActivity : AppCompatActivity() {
         prefs.edit().putString("version_folder", version).putInt("thread_count", threads.coerceIn(20, 128)).apply()
     }
 
-    private fun startPing(address: String, textView: TextView) {
+    private fun startPing(address: String, textView: TextView, label: String) {
         textView.visibility = View.VISIBLE
-        textView.text = "正在 Ping..."
+        textView.text = "Pinging $label..."
         scope.launch {
             val result = withContext(Dispatchers.IO) { executePing(address) }
             textView.text = result
@@ -88,21 +88,9 @@ class SettingsActivity : AppCompatActivity() {
             val reader = BufferedReader(InputStreamReader(process.inputStream))
             val output = reader.readText()
             process.waitFor()
-            return desensitize(output)
-        } catch (e: Exception) { return "Ping 错误: ${e.message}" }
-    }
-
-    private fun desensitize(raw: String): String {
-        // 替换 IP 地址为 ***
-        val ipPattern = Regex("\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b")
-        val masked = ipPattern.replace(raw, "***")
-        // 提取丢包率和延迟
-        val loss = Regex("(\\d+)% packet loss").find(masked)?.groupValues?.get(1) ?: "N/A"
-        val rtt = Regex("min/avg/max/mdev = (\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)").find(masked)
-        return buildString {
-            append("丢包率: $loss%\n")
-            if (rtt != null) append("最小/平均/最大/mdev: ${rtt.groupValues[1]}/${rtt.groupValues[2]}/${rtt.groupValues[3]}/${rtt.groupValues[4]} ms")
-        }
+            // 只屏蔽 IP 地址，其余保留
+            return output.replace(Regex("\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b"), "***")
+        } catch (e: Exception) { return "Ping error: ${e.message}" }
     }
 
     override fun onDestroy() { super.onDestroy(); scope.cancel() }
