@@ -3,6 +3,8 @@ package www.xdyl.hygge.com
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.Environment
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -29,13 +31,15 @@ class EasterEggActivity : AppCompatActivity() {
 
         val editThreadLimit = findViewById<TextInputEditText>(R.id.etThreadLimit)
         editThreadLimit.setText(prefs.getInt("thread_limit", 256).toString())
-        editThreadLimit.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val value = editThreadLimit.text.toString().toIntOrNull()?.coerceIn(128, 1024) ?: 256
+        // 文本变化即保存
+        editThreadLimit.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                val value = s?.toString()?.toIntOrNull()?.coerceIn(128, 1024) ?: 256
                 prefs.edit().putInt("thread_limit", value).apply()
-                Toast.makeText(this, "线程数已更新", Toast.LENGTH_SHORT).show()
             }
-        }
+            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
+            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
+        })
 
         val switchNeoforge = findViewById<SwitchMaterial>(R.id.swNeoforgeCheck)
         switchNeoforge.isChecked = prefs.getBoolean("neoforge_check_enabled", true)
@@ -132,7 +136,6 @@ class EasterEggActivity : AppCompatActivity() {
                             currentDir = f
                             prefs.edit().putString("csv_browser_last_path", f.absolutePath).apply()
                             loadDir(f)
-                            enableBackButton(currentDir!!)
                         } else if (f.name.endsWith(".csv")) {
                             prefs.edit().putString("local_csv_path", f.absolutePath).apply()
                             csvBrowseDialog?.dismiss()
@@ -145,7 +148,8 @@ class EasterEggActivity : AppCompatActivity() {
                 override fun getItemCount(): Int = files.size
             }
             recycler.adapter = adapter
-            enableBackButton(dir)
+            // 更新返回按钮状态（传入当前目录）
+            updateBackButtonState(dir)
         }
         loadDir(currentDir!!)
 
@@ -165,10 +169,16 @@ class EasterEggActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun enableBackButton(dir: File) {
+    // 根据目录是否根目录来启用/禁用返回按钮
+    private fun updateBackButtonState(dir: File) {
         val btn = csvBrowseDialog?.getButton(AlertDialog.BUTTON_NEGATIVE) ?: return
         val root = Environment.getExternalStorageDirectory()
-        val isRoot = dir.absolutePath == root.absolutePath
+        // 使用 canonicalPath 避免符号链接问题
+        val isRoot = try {
+            dir.canonicalPath == root.canonicalPath
+        } catch (e: Exception) {
+            dir.absolutePath == root.absolutePath
+        }
         btn.isEnabled = !isRoot
         btn.alpha = if (isRoot) 0.5f else 1.0f
     }
