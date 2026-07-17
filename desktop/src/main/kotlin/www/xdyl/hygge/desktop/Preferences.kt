@@ -34,6 +34,11 @@ class Preferences {
         save()
     }
 
+    fun clear() {
+        props.clear()
+        file.delete()
+    }
+
     private fun save() {
         FileWriter(file).use { props.store(it, null) }
     }
