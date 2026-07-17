@@ -9,10 +9,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.platform.Font
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,11 +25,10 @@ import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.regex.Pattern
 
-// 自定义字体（Compose 1.6.0 正确方式）
+// 自定义字体 – Compose 1.6.0 桌面端正确方式
 val silverFontFamily = FontFamily(
-    Font(path = "font/silver.ttf", weight = FontWeight.Normal, style = FontStyle.Normal)
+    Font(resource = "font/silver.ttf")
 )
 
 val client = OkHttpClient.Builder()
@@ -59,7 +56,6 @@ fun main() = application {
     var localCsvPath by remember { mutableStateOf("") }
     var extensionMode by remember { mutableStateOf(false) }
 
-    // 加载保存的设置
     LaunchedEffect(Unit) {
         val lastPath = prefs.getString("launcher_root", null)
         if (lastPath != null) {
@@ -171,7 +167,7 @@ fun main() = application {
                     Button(onClick = { /* 白名单 */ }) { Text("模组白名单") }
                     Spacer(Modifier.height(8.dp))
                     Button(onClick = {
-                        prefs.clear()  // 现在 Preferences 支持 clear()
+                        prefs.clear()
                         exitApplication()
                     }) { Text("重置登记状态") }
                     Spacer(Modifier.height(8.dp))
