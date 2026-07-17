@@ -1,5 +1,4 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.gradle.api.tasks.JavaExec
 
 plugins {
     kotlin("jvm")
@@ -28,12 +27,5 @@ compose.desktop {
                 menu = true
             }
         }
-    }
-}
-
-// 动态配置所有 package 开头的任务（如 packageMsi、packageExe 等），仅在任务存在时执行
-tasks.matching { it.name.startsWith("package") }.configureEach {
-    if (this is JavaExec) {
-        args("--resource-dir", "${project.projectDir}/src/main/resources/wix")
     }
 }
