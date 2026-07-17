@@ -20,16 +20,17 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.awt.FileDialog
 import java.awt.Frame
+import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStreamReader
 import java.security.MessageDigest
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.regex.Pattern
 
-// 自定义字体 – Compose 1.6.0 桌面端正确方式
-val silverFontFamily = FontFamily(
-    Font(resource = "font/silver.ttf")
-)
+// 自定义字体
+val silverFontFamily = FontFamily(Font(resource = "font/silver.ttf"))
 
 val client = OkHttpClient.Builder()
     .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
@@ -57,6 +58,53 @@ fun main() = application {
     var extensionMode by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        // --- Java 8 检测与安装询问 ---
+        if (!prefs.getBoolean("java8_checked", false)) {
+            val java8Installed = try {
+                val process = ProcessBuilder("java", "-version").redirectErrorStream(true).start()
+                val reader = BufferedReader(InputStreamReader(process.inputStream))
+                val output = reader.readText()
+                process.waitFor()
+                output.contains("1.8") || output.contains("8.0")
+            } catch (e: Exception) { false }
+
+            if (!java8Installed) {
+                withContext(Dispatchers.Main) {
+                    AlertDialog(
+                        onDismissRequest = { prefs.putBoolean("java8_checked", true) },
+                        title = { Text("安装 Java 8") },
+                        text = { Text("检测到您尚未安装 Java 8。安装 Java 8 将允许您运行旧版本的 Minecraft。是否立即安装？") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                scope.launch(Dispatchers.IO) {
+                                    try {
+                                        val scriptStream = Thread.currentThread().contextClassLoader.getResourceAsStream("install_java.ps1")
+                                        if (scriptStream != null) {
+                                            val tempScript = File.createTempFile("java_install", ".ps1")
+                                            tempScript.deleteOnExit()
+                                            FileOutputStream(tempScript).use { output -> scriptStream.copyTo(output) }
+                                            ProcessBuilder("powershell", "-ExecutionPolicy", "Bypass", "-File", tempScript.absolutePath)
+                                                .inheritIO()
+                                                .start()
+                                                .waitFor()
+                                            prefs.putBoolean("java8_installed", true)
+                                        }
+                                    } catch (e: Exception) { /* ignore */ }
+                                    prefs.putBoolean("java8_checked", true)
+                                }
+                            }) { Text("安装") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { prefs.putBoolean("java8_checked", true) }) { Text("跳过") }
+                        }
+                    )
+                }
+            } else {
+                prefs.putBoolean("java8_checked", true)
+            }
+        }
+
+        // 加载保存的目录
         val lastPath = prefs.getString("launcher_root", null)
         if (lastPath != null) {
             val dir = File(lastPath)
@@ -74,7 +122,7 @@ fun main() = application {
         extensionMode = prefs.getBoolean("extension_mode", false)
     }
 
-    // ---- 设置窗口 ----
+    // ---------- 设置窗口 ----------
     if (showSettings) {
         Window(onCloseRequest = { showSettings = false }, title = "设置") {
             MaterialTheme(
@@ -123,9 +171,7 @@ fun main() = application {
                             }
                         }); Spacer(Modifier.width(8.dp)); Text("扩展模式", color = Color.White)
                     }
-                    if (extensionMode) {
-                        Button(onClick = { showExtension = true }) { Text("进入扩展页面") }
-                    }
+                    if (extensionMode) { Button(onClick = { showExtension = true }) { Text("进入扩展页面") } }
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = { /* 导出日志 */ }) { Text("导出日志") }
                     Button(onClick = { /* 错误代码 */ }) { Text("ERROR 错误代码") }
@@ -135,7 +181,7 @@ fun main() = application {
         }
     }
 
-    // ---- 扩展窗口 ----
+    // ---------- 扩展窗口 ----------
     if (showExtension) {
         Window(onCloseRequest = { showExtension = false }, title = "扩展页面") {
             MaterialTheme(
@@ -166,10 +212,7 @@ fun main() = application {
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = { /* 白名单 */ }) { Text("模组白名单") }
                     Spacer(Modifier.height(8.dp))
-                    Button(onClick = {
-                        prefs.clear()
-                        exitApplication()
-                    }) { Text("重置登记状态") }
+                    Button(onClick = { prefs.clear(); exitApplication() }) { Text("重置登记状态") }
                     Spacer(Modifier.height(8.dp))
                     Button(onClick = { showExtension = false }) { Text("关闭") }
                 }
@@ -177,7 +220,7 @@ fun main() = application {
         }
     }
 
-    // ---- 主窗口 ----
+    // ---------- 主窗口 ----------
     Window(
         onCloseRequest = ::exitApplication,
         title = "Nebula updater-NU 星云更新器-Windows端",
@@ -280,7 +323,7 @@ suspend fun installResourcePack(prefs: Preferences) {
     } catch (e: Exception) { /* ignore */ }
 }
 
-// --- 辅助函数 ---
+// ---------- 辅助函数 ----------
 fun findMinecraftModsDir(root: File, prefs: Preferences): File? {
     val mc = File(root, ".minecraft")
     val mcAlt = File(root, "minecraft")
