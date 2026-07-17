@@ -19,7 +19,6 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsBinding
     private lateinit var prefs: SharedPreferences
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private var isRestoringState = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,23 +32,19 @@ class SettingsActivity : AppCompatActivity() {
             finish()
         }
 
-        // 先加载状态，标记正在恢复
-        isRestoringState = true
+        // 先加载设置（此时监听器尚未绑定）
         loadPrefs()
-        // 恢复完成后才设置监听器，避免触发警告
+
+        // 绑定扩展模式开关监听器（确保在 loadPrefs 之后，避免初始化时触发）
         binding.swExtensionMode.setOnCheckedChangeListener { _, isChecked ->
-            // 如果正在恢复状态，不触发任何弹窗
-            if (isRestoringState) {
-                isRestoringState = false
-                return@setOnCheckedChangeListener
-            }
             if (isChecked) {
                 MaterialAlertDialogBuilder(this)
                     .setTitle("警告!")
                     .setMessage("您正在开启扩展模式，重启后生效。")
                     .setPositiveButton("开启并重启") { _, _ ->
                         prefs.edit().putBoolean("extension_mode", true).commit()
-                        finishAffinity(); System.exit(0)
+                        finishAffinity()
+                        System.exit(0)
                     }
                     .setNegativeButton("取消") { _, _ ->
                         // 取消时恢复开关为关闭状态
@@ -58,7 +53,7 @@ class SettingsActivity : AppCompatActivity() {
                         binding.btnExtensionPage.visibility = View.GONE
                     }
                     .setOnCancelListener {
-                        // 如果用户点击空白处取消，同样恢复
+                        // 点击空白处取消，同样恢复
                         prefs.edit().putBoolean("extension_mode", false).commit()
                         binding.swExtensionMode.isChecked = false
                         binding.btnExtensionPage.visibility = View.GONE
@@ -91,6 +86,7 @@ class SettingsActivity : AppCompatActivity() {
         val currentThreads = prefs.getInt("thread_limit", 256)
         binding.etThreadCount.setText(currentThreads.toString())
         val extensionEnabled = prefs.getBoolean("extension_mode", false)
+        // 注意：设置开关状态时不会触发监听器，因为监听器尚未绑定
         binding.swExtensionMode.isChecked = extensionEnabled
         binding.btnExtensionPage.visibility = if (extensionEnabled) View.VISIBLE else View.GONE
     }
