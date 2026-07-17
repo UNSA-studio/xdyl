@@ -1,4 +1,4 @@
-package www.xdyl.hygge.com
+package www.xdyl.hygge.desktop
 
 object Constants {
     const val BASE_URL = "http://82.157.155.86:5551/mods/"

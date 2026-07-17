@@ -1,4 +1,4 @@
-package www.xdyl.hygge.com
+package www.xdyl.hygge.desktop
 
 import java.io.File
 import java.io.FileInputStream

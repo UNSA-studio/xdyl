@@ -1,4 +1,4 @@
-package www.xdyl.hygge.com
+package www.xdyl.hygge.desktop
 
 import kotlinx.coroutines.*
 import okhttp3.*
