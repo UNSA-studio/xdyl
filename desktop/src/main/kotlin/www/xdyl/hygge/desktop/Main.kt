@@ -11,6 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,9 +27,12 @@ import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.regex.Pattern
 
-// 字体
-val silverFontFamily = FontFamily(Font("font/silver.ttf"))
+// 自定义字体（Compose 1.6.0 正确方式）
+val silverFontFamily = FontFamily(
+    Font(path = "font/silver.ttf", weight = FontWeight.Normal, style = FontStyle.Normal)
+)
 
 val client = OkHttpClient.Builder()
     .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
@@ -166,7 +171,7 @@ fun main() = application {
                     Button(onClick = { /* 白名单 */ }) { Text("模组白名单") }
                     Spacer(Modifier.height(8.dp))
                     Button(onClick = {
-                        prefs.clear()
+                        prefs.clear()  // 现在 Preferences 支持 clear()
                         exitApplication()
                     }) { Text("重置登记状态") }
                     Spacer(Modifier.height(8.dp))
@@ -279,7 +284,7 @@ suspend fun installResourcePack(prefs: Preferences) {
     } catch (e: Exception) { /* ignore */ }
 }
 
-// 以下是必须包含的辅助函数，直接复制自 Android 端，仅修改 package 和去掉 Android 引用
+// --- 辅助函数 ---
 fun findMinecraftModsDir(root: File, prefs: Preferences): File? {
     val mc = File(root, ".minecraft")
     val mcAlt = File(root, "minecraft")
