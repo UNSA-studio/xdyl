@@ -480,7 +480,9 @@ class MainActivity : AppCompatActivity() {
             try {
                 val launcherRoot = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath)!!)
                 val mc = File(launcherRoot, ".minecraft")
-                val packsDir = File(mc, "resourcepacks")
+                val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
+                    val versionDir = File(mc, "versions/${targetVersion}")
+                    val packsDir = File(versionDir, "resourcepacks")
                 if (!packsDir.exists()) packsDir.mkdirs()
 
                 val destFile = File(packsDir, "generated.zip")
