@@ -57,8 +57,10 @@ fun main() = application {
     var localCsvPath by remember { mutableStateOf("") }
     var extensionMode by remember { mutableStateOf(false) }
 
+    // Java 8 对话框状态
+    var showJavaDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
-        // --- Java 8 检测与安装询问 ---
         if (!prefs.getBoolean("java8_checked", false)) {
             val java8Installed = try {
                 val process = ProcessBuilder("java", "-version").redirectErrorStream(true).start()
@@ -69,42 +71,12 @@ fun main() = application {
             } catch (e: Exception) { false }
 
             if (!java8Installed) {
-                withContext(Dispatchers.Main) {
-                    AlertDialog(
-                        onDismissRequest = { prefs.putBoolean("java8_checked", true) },
-                        title = { Text("安装 Java 8") },
-                        text = { Text("检测到您尚未安装 Java 8。安装 Java 8 将允许您运行旧版本的 Minecraft。是否立即安装？") },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                scope.launch(Dispatchers.IO) {
-                                    try {
-                                        val scriptStream = Thread.currentThread().contextClassLoader.getResourceAsStream("install_java.ps1")
-                                        if (scriptStream != null) {
-                                            val tempScript = File.createTempFile("java_install", ".ps1")
-                                            tempScript.deleteOnExit()
-                                            FileOutputStream(tempScript).use { output -> scriptStream.copyTo(output) }
-                                            ProcessBuilder("powershell", "-ExecutionPolicy", "Bypass", "-File", tempScript.absolutePath)
-                                                .inheritIO()
-                                                .start()
-                                                .waitFor()
-                                            prefs.putBoolean("java8_installed", true)
-                                        }
-                                    } catch (e: Exception) { /* ignore */ }
-                                    prefs.putBoolean("java8_checked", true)
-                                }
-                            }) { Text("安装") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { prefs.putBoolean("java8_checked", true) }) { Text("跳过") }
-                        }
-                    )
-                }
+                showJavaDialog = true
             } else {
                 prefs.putBoolean("java8_checked", true)
             }
         }
 
-        // 加载保存的目录
         val lastPath = prefs.getString("launcher_root", null)
         if (lastPath != null) {
             val dir = File(lastPath)
@@ -227,6 +199,45 @@ fun main() = application {
         state = rememberWindowState(width = 800.dp, height = 600.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
+            // Java 8 对话框
+            if (showJavaDialog) {
+                AlertDialog(
+                    onDismissRequest = {
+                        showJavaDialog = false
+                        prefs.putBoolean("java8_checked", true)
+                    },
+                    title = { Text("安装 Java 8") },
+                    text = { Text("检测到您尚未安装 Java 8。安装 Java 8 将允许您运行旧版本的 Minecraft。是否立即安装？") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showJavaDialog = false
+                            scope.launch(Dispatchers.IO) {
+                                try {
+                                    val scriptStream = Thread.currentThread().contextClassLoader.getResourceAsStream("install_java.ps1")
+                                    if (scriptStream != null) {
+                                        val tempScript = File.createTempFile("java_install", ".ps1")
+                                        tempScript.deleteOnExit()
+                                        FileOutputStream(tempScript).use { output -> scriptStream.copyTo(output) }
+                                        ProcessBuilder("powershell", "-ExecutionPolicy", "Bypass", "-File", tempScript.absolutePath)
+                                            .inheritIO()
+                                            .start()
+                                            .waitFor()
+                                        prefs.putBoolean("java8_installed", true)
+                                    }
+                                } catch (e: Exception) { /* ignore */ }
+                                prefs.putBoolean("java8_checked", true)
+                            }
+                        }) { Text("安装") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            showJavaDialog = false
+                            prefs.putBoolean("java8_checked", true)
+                        }) { Text("跳过") }
+                    }
+                )
+            }
+
             MaterialTheme(
                 colorScheme = darkColorScheme(
                     primary = Color(0xFFA0C4FF), onPrimary = Color.Black,
