@@ -28,6 +28,8 @@ import okhttp3.Request
 import www.xdyl.hygge.com.databinding.ActivityMainBinding
 import java.io.File
 import java.io.FileOutputStream
+import java.net.URLDecoder
+import java.net.URLEncoder
 import java.security.MessageDigest
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
@@ -338,7 +340,10 @@ class MainActivity : AppCompatActivity() {
             val files = mutableListOf<String>()
             while (matcher.find()) {
                 val link = matcher.group(1)
-                if (link != null && link.endsWith(".jar")) files.add(link)
+                if (link != null && link.endsWith(".jar")) {
+                    // URL 解码，以便与 CSV 中的中文文件名匹配
+                    files.add(URLDecoder.decode(link, "UTF-8"))
+                }
             }
             LogManager.log("从服务器获取到 ${files.size} 个文件")
             files
@@ -415,7 +420,10 @@ class MainActivity : AppCompatActivity() {
                             sem.acquire()
                             try {
                                 val file = File(modsDir, mod.fileName)
-                                downloadWithRetry(Constants.BASE_URL + mod.fileName, mod.size, file)
+                                // 对文件名进行 URL 编码，以正确下载中文文件名
+                                val encodedName = URLEncoder.encode(mod.fileName, "UTF-8").replace("+", "%20")
+                                val url = Constants.BASE_URL + encodedName
+                                downloadWithRetry(url, mod.size, file)
                                 if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256))
                                     throw RuntimeException("校验失败")
                                 completed++
@@ -433,6 +441,7 @@ class MainActivity : AppCompatActivity() {
                     }.joinAll()
                 }
 
+                // 清理孤儿文件
                 if (prefs.getBoolean("clean_orphan_files", true)) {
                     withContext(Dispatchers.IO) {
                         val whiteList = prefs.getStringSet("mod_whitelist", emptySet()) ?: emptySet()
@@ -481,25 +490,17 @@ class MainActivity : AppCompatActivity() {
                 val launcherRoot = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath)!!)
                 val mc = File(launcherRoot, ".minecraft")
                 val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
-                    val versionDir = File(mc, "versions/${targetVersion}")
-                    val packsDir = File(versionDir, "resourcepacks")
+                val versionDir = File(mc, "versions/$targetVersion")
+                val packsDir = File(versionDir, "resourcepacks")
                 if (!packsDir.exists()) packsDir.mkdirs()
-
                 val destFile = File(packsDir, "generated.zip")
                 if (!destFile.exists()) {
                     resources.openRawResource(R.raw.generated).use { input ->
-                        FileOutputStream(destFile).use { output ->
-                            input.copyTo(output)
-                        }
+                        FileOutputStream(destFile).use { output -> input.copyTo(output) }
                     }
                     LogManager.log("材质包已安装到 ${destFile.absolutePath}")
                     withContext(Dispatchers.Main) {
                         Toast.makeText(this@MainActivity, "材质包已安装", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    LogManager.log("材质包已存在，跳过安装")
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MainActivity, "材质包已存在", Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
