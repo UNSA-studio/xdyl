@@ -1,15 +1,21 @@
 package www.xdyl.hygge.desktop
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.platform.Font
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -17,8 +23,6 @@ import androidx.compose.ui.window.*
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.awt.FileDialog
-import java.awt.Frame
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
@@ -27,7 +31,9 @@ import java.net.URLEncoder
 import java.security.MessageDigest
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.regex.Pattern
+
+// 自定义字体
+val silverFontFamily = FontFamily(Font(resource = "font/silver.ttf"))
 
 val client = OkHttpClient.Builder()
     .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
@@ -54,8 +60,6 @@ fun main() = application {
     var useLocalCsv by remember { mutableStateOf(false) }
     var localCsvPath by remember { mutableStateOf("") }
     var extensionMode by remember { mutableStateOf(false) }
-
-    // Java 8 对话框状态
     var showJavaDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -67,20 +71,14 @@ fun main() = application {
                 process.waitFor()
                 output.contains("1.8") || output.contains("8.0")
             } catch (e: Exception) { false }
-
-            if (!java8Installed) {
-                showJavaDialog = true
-            } else {
-                prefs.putBoolean("java8_checked", true)
-            }
+            if (!java8Installed) showJavaDialog = true
+            else prefs.putBoolean("java8_checked", true)
         }
 
         val lastPath = prefs.getString("launcher_root", null)
         if (lastPath != null) {
             val dir = File(lastPath)
-            if (dir.exists() && dir.isDirectory) {
-                targetModsDir = findMinecraftModsDir(dir, prefs)
-            }
+            if (dir.exists() && dir.isDirectory) targetModsDir = findMinecraftModsDir(dir, prefs)
         }
         versionName = prefs.getString("version_folder", "1.21.1-NeoForge") ?: "1.21.1-NeoForge"
         threadCount = prefs.getInt("thread_limit", 256)
@@ -92,69 +90,77 @@ fun main() = application {
         extensionMode = prefs.getBoolean("extension_mode", false)
     }
 
-    // ---------- 自定义文件浏览器窗口 ----------
+    // ========== 自定义文件浏览器 ==========
     if (showFileBrowser) {
-        Window(onCloseRequest = { showFileBrowser = false }, title = "选择启动器根目录", state = rememberWindowState(width = 800.dp, height = 600.dp)) {
+        var currentDir by remember { mutableStateOf(File.listRoots().firstOrNull() ?: File("C:\\")) }
+        var files by remember { mutableStateOf(currentDir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()) }
+
+        Window(onCloseRequest = { showFileBrowser = false }, title = "选择启动器根目录", state = rememberWindowState(width = 900.dp, height = 700.dp)) {
             MaterialTheme(
                 colorScheme = darkColorScheme(
                     primary = Color(0xFFA0C4FF), onPrimary = Color.Black,
                     background = Color(0xFF1E1E1E), surface = Color(0xFF2A2A2A), onSurface = Color.White
                 )
             ) {
-                var currentDir by remember { mutableStateOf(File.listRoots().firstOrNull() ?: File("C:\\")) }
-                val files = remember(currentDir) { currentDir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList() }
-                Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-                    Text("当前目录: ${currentDir.absolutePath}", color = Color.White, fontSize = 18.sp)
+                Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
+                    Text("当前目录: ${currentDir.absolutePath}", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
                     Spacer(Modifier.height(8.dp))
-                    // 路径导航
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Button(onClick = {
-                            // 根目录列表
-                            currentDir = File.listRoots().firstOrNull() ?: File("C:\\")
-                        }) { Text("根目录") }
-                        Button(onClick = {
+                    // 返回上级按钮（仅非根目录可用）
+                    val isRoot = currentDir.parentFile == null
+                    Button(
+                        onClick = {
                             val parent = currentDir.parentFile
-                            if (parent != null) currentDir = parent
-                        }) { Text("返回上级") }
+                            if (parent != null) {
+                                currentDir = parent
+                                files = currentDir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
+                            }
+                        },
+                        enabled = !isRoot,
+                        modifier = Modifier.height(48.dp)
+                    ) {
+                        Text("返回上级", fontSize = 20.sp)
                     }
                     Spacer(Modifier.height(8.dp))
                     // 文件列表
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        val scrollState = rememberScrollState()
-                        Column(modifier = Modifier.verticalScroll(scrollState)) {
-                            files.forEach { file ->
-                                TextButton(
-                                    onClick = {
-                                        if (file.isDirectory) {
-                                            currentDir = file
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = if (file.isDirectory) "📁 ${file.name}" else "📄 ${file.name}",
-                                        color = Color.White,
-                                        fontSize = 20.sp
-                                    )
-                                }
+                    LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        items(files) { file ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    if (file.isDirectory) {
+                                        currentDir = file
+                                        files = currentDir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
+                                    }
+                                }.padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = file.name,
+                                    color = if (file.isDirectory) Color(0xFFA0C4FF) else Color.White,
+                                    fontSize = 22.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
                         }
                     }
                     Spacer(Modifier.height(16.dp))
-                    Button(onClick = {
-                        // 选择当前文件夹
-                        prefs.putString("launcher_root", currentDir.absolutePath)
-                        targetModsDir = findMinecraftModsDir(currentDir, prefs)
-                        showFileBrowser = false
-                    }) { Text("选择此文件夹") }
+                    Button(
+                        onClick = {
+                            prefs.putString("launcher_root", currentDir.absolutePath)
+                            targetModsDir = findMinecraftModsDir(currentDir, prefs)
+                            showFileBrowser = false
+                        },
+                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                    ) {
+                        Text("选择此文件夹", fontSize = 24.sp)
+                    }
                 }
             }
         }
     }
 
-    // ---------- 设置窗口 ----------
+    // ========== 设置窗口 ==========
     if (showSettings) {
-        Window(onCloseRequest = { showSettings = false }, title = "设置", state = rememberWindowState(width = 800.dp, height = 700.dp)) {
+        Window(onCloseRequest = { showSettings = false }, title = "设置", state = rememberWindowState(width = 900.dp, height = 800.dp)) {
             MaterialTheme(
                 colorScheme = darkColorScheme(
                     primary = Color(0xFFA0C4FF), onPrimary = Color.Black,
@@ -163,11 +169,9 @@ fun main() = application {
             ) {
                 Column(modifier = Modifier.padding(24.dp).fillMaxSize().verticalScroll(rememberScrollState())) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = { showSettings = false }) {
-                            Text("← 返回", color = MaterialTheme.colorScheme.primary, fontSize = 24.sp)
-                        }
+                        TextButton(onClick = { showSettings = false }) { Text("← 返回", color = MaterialTheme.colorScheme.primary, fontSize = 24.sp) }
                         Spacer(Modifier.width(8.dp))
-                        Text("设置", color = MaterialTheme.colorScheme.primary, fontSize = 32.sp)
+                        Text("设置", color = MaterialTheme.colorScheme.primary, fontSize = 36.sp, fontFamily = silverFontFamily)
                     }
                     Spacer(Modifier.height(24.dp))
                     OutlinedTextField(value = versionName, onValueChange = { versionName = it; prefs.putString("version_folder", it) }, label = { Text("Minecraft 版本文件夹名", fontSize = 20.sp) }, singleLine = true, modifier = Modifier.fillMaxWidth(), textStyle = LocalTextStyle.current.copy(fontSize = 22.sp))
@@ -180,9 +184,7 @@ fun main() = application {
                         singleLine = true, modifier = Modifier.fillMaxWidth(), textStyle = LocalTextStyle.current.copy(fontSize = 22.sp)
                     )
                     Spacer(Modifier.height(24.dp))
-                    Button(onClick = { showFileBrowser = true }, modifier = Modifier.fillMaxWidth().height(56.dp)) {
-                        Text("选择游戏目录", fontSize = 24.sp)
-                    }
+                    Button(onClick = { showFileBrowser = true }, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("选择游戏目录", fontSize = 24.sp) }
                     Spacer(Modifier.height(16.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = neoforgeCheckEnabled, onCheckedChange = { neoforgeCheckEnabled = it; prefs.putBoolean("neoforge_check_enabled", it) }); Spacer(Modifier.width(8.dp)); Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp) }
                     Spacer(Modifier.height(8.dp))
@@ -208,9 +210,9 @@ fun main() = application {
         }
     }
 
-    // ---------- 扩展窗口 ----------
+    // ========== 扩展窗口 ==========
     if (showExtension) {
-        Window(onCloseRequest = { showExtension = false }, title = "扩展页面", state = rememberWindowState(width = 800.dp, height = 700.dp)) {
+        Window(onCloseRequest = { showExtension = false }, title = "扩展页面", state = rememberWindowState(width = 900.dp, height = 800.dp)) {
             MaterialTheme(
                 colorScheme = darkColorScheme(
                     primary = Color(0xFFA0C4FF), onPrimary = Color.Black,
@@ -218,7 +220,7 @@ fun main() = application {
                 )
             ) {
                 Column(modifier = Modifier.padding(24.dp).fillMaxSize().verticalScroll(rememberScrollState())) {
-                    Text("扩展页面", color = MaterialTheme.colorScheme.primary, fontSize = 32.sp)
+                    Text("扩展页面", color = MaterialTheme.colorScheme.primary, fontSize = 36.sp, fontFamily = silverFontFamily)
                     Spacer(Modifier.height(24.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = unlockThread, onCheckedChange = { unlockThread = it; prefs.putBoolean("unlock_thread_limit", it) }); Spacer(Modifier.width(8.dp)); Text("解锁线程数上限至 1024", color = Color.White, fontSize = 22.sp) }
                     Spacer(Modifier.height(8.dp))
@@ -229,8 +231,8 @@ fun main() = application {
                     Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = useLocalCsv, onCheckedChange = { useLocalCsv = it; prefs.putBoolean("use_local_csv", it) }); Spacer(Modifier.width(8.dp)); Text("使用本地 CSV", color = Color.White, fontSize = 22.sp) }
                     if (useLocalCsv) {
                         Button(onClick = {
-                            val dialog = FileDialog(Frame(), "选择 CSV 文件", FileDialog.LOAD)
-                            dialog.file = "*.csv"; dialog.mode = FileDialog.LOAD; dialog.isVisible = true
+                            val dialog = java.awt.FileDialog(java.awt.Frame(), "选择 CSV 文件", java.awt.FileDialog.LOAD)
+                            dialog.file = "*.csv"; dialog.mode = java.awt.FileDialog.LOAD; dialog.isVisible = true
                             val file = dialog.file
                             if (file != null) { val selectedFile = File(dialog.directory, file); if (selectedFile.exists()) { localCsvPath = selectedFile.absolutePath; prefs.putString("local_csv_path", localCsvPath) } }
                         }, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("浏览...", fontSize = 24.sp) }
@@ -245,11 +247,11 @@ fun main() = application {
         }
     }
 
-    // ---------- 主窗口 ----------
+    // ========== 主窗口 ==========
     Window(
         onCloseRequest = ::exitApplication,
         title = "Nebula updater-NU 星云更新器-Windows端",
-        state = rememberWindowState(width = 1000.dp, height = 800.dp)
+        state = rememberWindowState(width = 1100.dp, height = 900.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
             if (showJavaDialog) {
@@ -284,14 +286,18 @@ fun main() = application {
                 )
             ) {
                 Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
-                    Column {
-                        Text("Nebula updater-NU", color = MaterialTheme.colorScheme.primary, fontSize = 36.sp)
-                        Text("星云更新器-Windows端", color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), fontSize = 24.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column {
+                            Text("Nebula updater-NU", color = MaterialTheme.colorScheme.primary, fontSize = 40.sp, fontFamily = silverFontFamily)
+                            Text("星云更新器-Windows端", color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), fontSize = 28.sp, fontFamily = silverFontFamily)
+                        }
+                        Spacer(Modifier.weight(1f))
+                        IconButton(onClick = { showSettings = true }) {
+                            Text("⚙️", fontSize = 32.sp)
+                        }
                     }
                     Spacer(Modifier.height(32.dp))
-                    Button(onClick = { showFileBrowser = true }, modifier = Modifier.fillMaxWidth().height(64.dp)) {
-                        Text("选择游戏目录", fontSize = 28.sp)
-                    }
+                    Button(onClick = { showFileBrowser = true }, modifier = Modifier.fillMaxWidth().height(64.dp)) { Text("选择游戏目录", fontSize = 28.sp) }
                     Spacer(Modifier.height(20.dp))
                     Button(
                         onClick = {
@@ -345,11 +351,11 @@ fun main() = application {
                     Spacer(Modifier.height(24.dp))
                     LinearProgressIndicator(
                         progress = { (progress / 100f).coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().height(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(6.dp)),
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                     )
-                    Text(statusText, color = MaterialTheme.colorScheme.secondary, fontSize = 20.sp)
+                    Text(statusText, color = MaterialTheme.colorScheme.secondary, fontSize = 22.sp)
                     Spacer(Modifier.height(12.dp))
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         val scrollState = rememberScrollState()
@@ -361,6 +367,7 @@ fun main() = application {
     }
 }
 
+// ---------- 辅助函数 ----------
 suspend fun installResourcePack(prefs: Preferences) {
     try {
         val launcherRoot = File(prefs.getString("launcher_root", System.getProperty("user.home")))
