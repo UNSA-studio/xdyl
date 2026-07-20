@@ -9,6 +9,7 @@ plugins {
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
+    implementation(compose.materialIconsExtended)  // 用于设置图标
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.7.3")
@@ -19,7 +20,7 @@ compose.desktop {
         mainClass = "www.xdyl.hygge.desktop.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Msi)
-            packageName = "NebulaUpdater"      // 显示名称、安装文件夹名称
+            packageName = "NebulaUpdater"
             packageVersion = "1.0.0"
             windows {
                 iconFile.set(project.file("src/main/resources/icon.ico"))
@@ -31,10 +32,8 @@ compose.desktop {
     }
 }
 
-// 为 packageMsi 任务添加自定义 jpackage 参数（仅在 Windows 环境下生效）
 tasks.matching { it.name.startsWith("package") }.configureEach {
     if (this is JavaExec) {
-        // --install-dir 设置默认安装根目录下的子文件夹名，例如 C:\Users\...\AppData\Local\NebulaUpdater
         args("--install-dir", "NebulaUpdater")
     }
 }
