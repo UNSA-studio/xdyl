@@ -1,6 +1,7 @@
 package www.xdyl.hygge.desktop
 
-import androidx.compose.foundation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,11 +16,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.platform.Font
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.*
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -32,8 +36,10 @@ import java.security.MessageDigest
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
 
-// 自定义字体
-val silverFontFamily = FontFamily(Font("font/silver.ttf"))
+// 自定义字体（Compose 1.6.0 桌面正确用法）
+val silverFontFamily = FontFamily(
+    Font(path = "font/silver.ttf", weight = FontWeight.Normal, style = FontStyle.Normal)
+)
 
 val client = OkHttpClient.Builder()
     .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
@@ -156,7 +162,11 @@ fun main() = application {
                                             }
                                         }.joinAll()
                                     }
-                                    if (cleanOrphanFiles) { /* 清理逻辑 */ }
+                                    if (cleanOrphanFiles) {
+                                        val csvFiles = csvMods.map { it.fileName }.toSet(); val modFiles = targetModsDir!!.listFiles()?.filter { it.extension == "jar" } ?: emptyList(); var deleted = 0
+                                        for (file in modFiles) { if (file.name !in csvFiles) { if (file.delete()) { deleted++; LogManager.log("Deleted orphan: ${file.name}") } } }
+                                        if (deleted > 0) logBuilder.appendLine("Cleaned $deleted orphan files")
+                                    }
                                     if (failed.get() > 0) logBuilder.appendLine("Error: ERROR05")
                                     else {
                                         logBuilder.appendLine("Update completed!")
@@ -269,7 +279,7 @@ fun MainScreen(
         Spacer(Modifier.height(12.dp))
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             val scrollState = rememberScrollState()
-            Text(logText, modifier = Modifier.verticalScroll(scrollState).padding(8.dp).fillMaxWidth(), fontSize = 18.sp, color = Color.LightGray, maxLines = Int.MaxValue, overflow = TextOverflow.Clip)
+            Text(logText, modifier = Modifier.verticalScroll(scrollState).padding(8.dp).fillMaxWidth(), fontSize = 18.sp, color = Color.LightGray, maxLines = Int.MAX_VALUE, overflow = TextOverflow.Clip)
         }
     }
 }
