@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.gradle.api.tasks.JavaExec
 
 plugins {
     kotlin("jvm")
@@ -18,19 +19,22 @@ compose.desktop {
         mainClass = "www.xdyl.hygge.desktop.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Msi)
-            packageName = "NebulaUpdater"
+            packageName = "NebulaUpdater"      // 显示名称、安装文件夹名称
             packageVersion = "1.0.0"
             windows {
                 iconFile.set(project.file("src/main/resources/icon.ico"))
                 menuGroup = "NebulaUpdater"
                 shortcut = true
                 menu = true
-                // 添加 jpackage 参数，固定安装目录并创建快捷方式
-                jpackageArgs += listOf(
-                    "--win-shortcut",
-                    "--install-dir", "NebulaUpdater"  // 安装到用户选择的目录下的 NebulaUpdater 子文件夹
-                )
             }
         }
+    }
+}
+
+// 为 packageMsi 任务添加自定义 jpackage 参数（仅在 Windows 环境下生效）
+tasks.matching { it.name.startsWith("package") }.configureEach {
+    if (this is JavaExec) {
+        // --install-dir 设置默认安装根目录下的子文件夹名，例如 C:\Users\...\AppData\Local\NebulaUpdater
+        args("--install-dir", "NebulaUpdater")
     }
 }
