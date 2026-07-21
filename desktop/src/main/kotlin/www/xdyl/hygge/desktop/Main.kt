@@ -18,8 +18,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,7 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 // 自定义字体（Compose 1.6.0 桌面正确用法）
 val silverFontFamily = FontFamily(
-    Font(path = "font/silver.ttf", weight = FontWeight.Normal, style = FontStyle.Normal)
+    Font(resource = "font/silver.ttf")
 )
 
 val client = OkHttpClient.Builder()
@@ -55,7 +53,7 @@ fun main() = application {
     var progress by remember { mutableStateOf(0f) }
     var statusText by remember { mutableStateOf("") }
     var downloading by remember { mutableStateOf(false) }
-    var currentScreen by remember { mutableStateOf("main") }  // main, settings, extension, fileBrowser
+    var currentScreen by remember { mutableStateOf("main") }
     var versionName by remember { mutableStateOf("1.21.1-NeoForge") }
     var threadCount by remember { mutableStateOf(256) }
     var neoforgeCheckEnabled by remember { mutableStateOf(true) }
@@ -100,7 +98,6 @@ fun main() = application {
         state = rememberWindowState(width = 1100.dp, height = 900.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
-            // Java 8 安装询问
             if (showJavaDialog) {
                 AlertDialog(
                     onDismissRequest = { showJavaDialog = false; prefs.putBoolean("java8_checked", true) },
@@ -130,7 +127,6 @@ fun main() = application {
                 )
             }
 
-            // 根据 currentScreen 显示不同界面
             when (currentScreen) {
                 "main" -> MainScreen(
                     targetModsDir = targetModsDir,
