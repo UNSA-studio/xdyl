@@ -1,5 +1,6 @@
 package www.xdyl.hygge.desktop
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,16 +26,14 @@ import androidx.compose.ui.window.*
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStreamReader
 import java.net.URLEncoder
 import java.security.MessageDigest
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
 
-// 自定义字体（已验证可编译）
+// 自定义字体
 val silverFontFamily = FontFamily(Font(resource = "font/silver.ttf"))
 
 val client = OkHttpClient.Builder()
@@ -51,7 +50,7 @@ fun main() = application {
     var progress by remember { mutableStateOf(0f) }
     var statusText by remember { mutableStateOf("") }
     var downloading by remember { mutableStateOf(false) }
-    var currentScreen by remember { mutableStateOf("main") }  // 统一界面状态
+    var currentScreen by remember { mutableStateOf("main") }
     var versionName by remember { mutableStateOf("1.21.1-NeoForge") }
     var threadCount by remember { mutableStateOf(256) }
     var neoforgeCheckEnabled by remember { mutableStateOf(true) }
@@ -60,21 +59,8 @@ fun main() = application {
     var useLocalCsv by remember { mutableStateOf(false) }
     var localCsvPath by remember { mutableStateOf("") }
     var extensionMode by remember { mutableStateOf(false) }
-    var showJavaDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        if (!prefs.getBoolean("java8_checked", false)) {
-            val java8Installed = try {
-                val process = ProcessBuilder("java", "-version").redirectErrorStream(true).start()
-                val reader = BufferedReader(InputStreamReader(process.inputStream))
-                val output = reader.readText()
-                process.waitFor()
-                output.contains("1.8") || output.contains("8.0")
-            } catch (e: Exception) { false }
-            if (!java8Installed) showJavaDialog = true
-            else prefs.putBoolean("java8_checked", true)
-        }
-
         val lastPath = prefs.getString("launcher_root", null)
         if (lastPath != null) {
             val dir = File(lastPath)
@@ -96,97 +82,114 @@ fun main() = application {
         state = rememberWindowState(width = 1100.dp, height = 900.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
-            if (showJavaDialog) {
-                AlertDialog(
-                    onDismissRequest = { showJavaDialog = false; prefs.putBoolean("java8_checked", true) },
-                    title = { Text("安装 Java 8", fontSize = 24.sp) },
-                    text = { Text("检测到您尚未安装 Java 8。安装 Java 8 将允许您运行旧版本的 Minecraft。是否立即安装？", fontSize = 20.sp) },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            showJavaDialog = false
-                            scope.launch(Dispatchers.IO) {
-                                try {
-                                    val scriptStream = Thread.currentThread().contextClassLoader.getResourceAsStream("install_java.ps1")
-                                    if (scriptStream != null) {
-                                        val tempScript = File.createTempFile("java_install", ".ps1")
-                                        tempScript.deleteOnExit()
-                                        FileOutputStream(tempScript).use { output -> scriptStream.copyTo(output) }
-                                        ProcessBuilder("powershell", "-ExecutionPolicy", "Bypass", "-File", tempScript.absolutePath).inheritIO().start().waitFor()
-                                        prefs.putBoolean("java8_installed", true)
-                                    }
-                                } catch (_: Exception) {}
-                                prefs.putBoolean("java8_checked", true)
+            // 统一的界面切换（带淡入淡出动画）
+            AnimatedContent(targetState = currentScreen, transitionSpec = {
+                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+            }) { screen ->
+                when (screen) {
+                    "main" -> MainScreen(
+                        targetModsDir = targetModsDir,
+                        onSelectDir = { currentScreen = "fileBrowser" },
+                        onStartDownload = {
+                            if (!downloading && targetModsDir != null) {
+                                downloading = true
+                                scope.launch {
+                                    try {
+                                        val serverFiles = fetchDesktopServerFileList()
+                                        val csvMods = if (useLocalCsv && localCsvPath.isNotEmpty()) parseCsvFromFile(File(localCsvPath)) else parseDesktopCsvMods()
+                                        val toDownload = filterOutUnchangedModsDesktop(targetModsDir!!, csvMods)
+                                        if (toDownload.isEmpty()) { logBuilder.appendLine("All mods are up-to-date!"); logText = logBuilder.toString(); downloading = false; return@launch }
+                                        logBuilder.appendLine("Downloading ${toDownload.size} mods..."); logText = logBuilder.toString()
+                                        val sem = Semaphore(threadCount.coerceIn(1, 1024)); val failed = AtomicInteger(0); var completed = 0; val total = toDownload.size
+                                        withContext(Dispatchers.IO) {
+                                            toDownload.map { mod ->
+                                                launch {
+                                                    sem.acquire()
+                                                    try {
+                                                        val file = File(targetModsDir!!, mod.fileName)
+                                                        val encodedName = URLEncoder.encode(mod.fileName, "UTF-8").replace("+", "%20")
+                                                        val url = Constants.BASE_URL + encodedName
+                                                        val manager = DownloadManager(url, mod.size, 1, false)
+                                                        manager.download(file) { pct -> progress = pct.toFloat() }
+                                                        if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256)) throw RuntimeException("Checksum mismatch")
+                                                        completed++; progress = (completed * 100f) / total; statusText = "$completed/$total"
+                                                    } catch (e: Exception) { LogManager.log("Failed ${mod.fileName}: ${e.message}"); failed.incrementAndGet() } finally { sem.release() }
+                                                }
+                                            }.joinAll()
+                                        }
+                                        if (cleanOrphanFiles) {
+                                            val csvFiles = csvMods.map { it.fileName }.toSet(); val modFiles = targetModsDir!!.listFiles()?.filter { it.extension == "jar" } ?: emptyList(); var deleted = 0
+                                            for (file in modFiles) { if (file.name !in csvFiles) { if (file.delete()) { deleted++; LogManager.log("Deleted orphan: ${file.name}") } } }
+                                            if (deleted > 0) logBuilder.appendLine("Cleaned $deleted orphan files")
+                                        }
+                                        if (failed.get() > 0) logBuilder.appendLine("Error: ERROR05")
+                                        else {
+                                            logBuilder.appendLine("Update completed!")
+                                            if (!prefs.getBoolean("has_completed_first_update", false)) {
+                                                prefs.putBoolean("has_completed_first_update", true)
+                                                installResourcePack(prefs)
+                                            }
+                                        }
+                                        logText = logBuilder.toString()
+                                    } catch (e: Exception) { logBuilder.appendLine("Exception: ${e.message}") } finally { downloading = false }
+                                }
                             }
-                        }) { Text("安装", fontSize = 22.sp) }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showJavaDialog = false; prefs.putBoolean("java8_checked", true) }) { Text("跳过", fontSize = 22.sp) }
-                    }
-                )
-            }
-
-            when (currentScreen) {
-                "main" -> MainScreen(
-                    targetModsDir = targetModsDir,
-                    onSelectDir = { currentScreen = "fileBrowser" },
-                    onStartDownload = {
-                        if (!downloading && targetModsDir != null) {
-                            downloading = true
-                            scope.launch { /* 下载逻辑保持不变 */ }
-                        }
-                    },
-                    downloading = downloading,
-                    logText = logText,
-                    progress = progress,
-                    statusText = statusText,
-                    onSettings = { currentScreen = "settings" }
-                )
-                "settings" -> SettingsScreen(
-                    versionName = versionName,
-                    onVersionChange = { versionName = it; prefs.putString("version_folder", it) },
-                    threadCount = threadCount,
-                    onThreadChange = { threadCount = it; prefs.putInt("thread_limit", it) },
-                    maxThreads = if (unlockThread) 1024 else 128,
-                    neoforgeCheckEnabled = neoforgeCheckEnabled,
-                    onNeoforgeChange = { neoforgeCheckEnabled = it; prefs.putBoolean("neoforge_check_enabled", it) },
-                    cleanOrphanFiles = cleanOrphanFiles,
-                    onCleanOrphanChange = { cleanOrphanFiles = it; prefs.putBoolean("clean_orphan_files", it) },
-                    extensionMode = extensionMode,
-                    onExtensionChange = { enabled ->
-                        if (enabled) { prefs.putBoolean("extension_mode", true); exitApplication() }
-                        else prefs.putBoolean("extension_mode", false)
-                    },
-                    onSelectDir = { currentScreen = "fileBrowser" },
-                    onBack = { currentScreen = "main" },
-                    onExtensionPage = { currentScreen = "extension" }
-                )
-                "extension" -> ExtensionScreen(
-                    unlockThread = unlockThread,
-                    onUnlockChange = { unlockThread = it; prefs.putBoolean("unlock_thread_limit", it) },
-                    neoforgeCheckEnabled = neoforgeCheckEnabled,
-                    onNeoforgeChange = { neoforgeCheckEnabled = it; prefs.putBoolean("neoforge_check_enabled", it) },
-                    cleanOrphanFiles = cleanOrphanFiles,
-                    onCleanOrphanChange = { cleanOrphanFiles = it; prefs.putBoolean("clean_orphan_files", it) },
-                    useLocalCsv = useLocalCsv,
-                    onLocalCsvChange = { useLocalCsv = it; prefs.putBoolean("use_local_csv", it) },
-                    localCsvPath = localCsvPath,
-                    onPickCsv = {
-                        val dialog = java.awt.FileDialog(java.awt.Frame(), "选择 CSV 文件", java.awt.FileDialog.LOAD)
-                        dialog.file = "*.csv"; dialog.isVisible = true
-                        val file = dialog.file
-                        if (file != null) { val selectedFile = File(dialog.directory, file); if (selectedFile.exists()) { localCsvPath = selectedFile.absolutePath; prefs.putString("local_csv_path", localCsvPath) } }
-                    },
-                    onReset = { prefs.clear(); exitApplication() },
-                    onBack = { currentScreen = "settings" }
-                )
-                "fileBrowser" -> FileBrowserScreen(
-                    onSelect = { dir ->
-                        prefs.putString("launcher_root", dir.absolutePath)
-                        targetModsDir = findMinecraftModsDir(dir, prefs)
-                        currentScreen = "main"
-                    },
-                    onBack = { currentScreen = "main" }
-                )
+                        },
+                        downloading = downloading,
+                        logText = logText,
+                        progress = progress,
+                        statusText = statusText,
+                        onSettings = { currentScreen = "settings" }
+                    )
+                    "settings" -> SettingsScreen(
+                        versionName = versionName,
+                        onVersionChange = { versionName = it; prefs.putString("version_folder", it) },
+                        threadCount = threadCount,
+                        onThreadChange = { threadCount = it; prefs.putInt("thread_limit", it) },
+                        maxThreads = if (unlockThread) 1024 else 128,
+                        neoforgeCheckEnabled = neoforgeCheckEnabled,
+                        onNeoforgeChange = { neoforgeCheckEnabled = it; prefs.putBoolean("neoforge_check_enabled", it) },
+                        cleanOrphanFiles = cleanOrphanFiles,
+                        onCleanOrphanChange = { cleanOrphanFiles = it; prefs.putBoolean("clean_orphan_files", it) },
+                        extensionMode = extensionMode,
+                        onExtensionChange = { enabled ->
+                            if (enabled) { prefs.putBoolean("extension_mode", true); exitApplication() }
+                            else prefs.putBoolean("extension_mode", false)
+                        },
+                        onSelectDir = { currentScreen = "fileBrowser" },
+                        onBack = { currentScreen = "main" },
+                        onExtensionPage = { currentScreen = "extension" }
+                    )
+                    "extension" -> ExtensionScreen(
+                        unlockThread = unlockThread,
+                        onUnlockChange = { unlockThread = it; prefs.putBoolean("unlock_thread_limit", it) },
+                        neoforgeCheckEnabled = neoforgeCheckEnabled,
+                        onNeoforgeChange = { neoforgeCheckEnabled = it; prefs.putBoolean("neoforge_check_enabled", it) },
+                        cleanOrphanFiles = cleanOrphanFiles,
+                        onCleanOrphanChange = { cleanOrphanFiles = it; prefs.putBoolean("clean_orphan_files", it) },
+                        useLocalCsv = useLocalCsv,
+                        onLocalCsvChange = { useLocalCsv = it; prefs.putBoolean("use_local_csv", it) },
+                        localCsvPath = localCsvPath,
+                        onPickCsv = {
+                            val dialog = java.awt.FileDialog(java.awt.Frame(), "选择 CSV 文件", java.awt.FileDialog.LOAD)
+                            dialog.file = "*.csv"; dialog.isVisible = true
+                            val file = dialog.file
+                            if (file != null) { val selectedFile = File(dialog.directory, file); if (selectedFile.exists()) { localCsvPath = selectedFile.absolutePath; prefs.putString("local_csv_path", localCsvPath) } }
+                        },
+                        onReset = { prefs.clear(); exitApplication() },
+                        onBack = { currentScreen = "settings" }
+                    )
+                    "fileBrowser" -> FileBrowserScreen(
+                        onSelect = { dir ->
+                            val targetDir = if (dir.name.equals("NebulaUpdater", true)) dir else File(dir, "NebulaUpdater")
+                            if (!targetDir.exists()) targetDir.mkdirs()
+                            prefs.putString("launcher_root", targetDir.absolutePath)
+                            targetModsDir = findMinecraftModsDir(targetDir, prefs)
+                            currentScreen = "main"
+                        },
+                        onBack = { currentScreen = "main" }
+                    )
+                }
             }
         }
     }
@@ -216,12 +219,19 @@ fun MainScreen(
             }
         }
         Spacer(Modifier.height(32.dp))
-        Button(onClick = onSelectDir, modifier = Modifier.fillMaxWidth().height(64.dp)) { Text("选择游戏目录", fontSize = 28.sp) }
+        Button(
+            onClick = onSelectDir,
+            modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+        ) { Text("选择游戏目录", fontSize = 28.sp) }
         Spacer(Modifier.height(20.dp))
         Button(
             onClick = onStartDownload,
             enabled = targetModsDir != null && !downloading,
-            modifier = Modifier.fillMaxWidth().height(64.dp)
+            modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
         ) { Text("开始下载", fontSize = 28.sp) }
         Spacer(Modifier.height(24.dp))
         LinearProgressIndicator(
@@ -264,29 +274,80 @@ fun SettingsScreen(
             Text("设置", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
         }
         Spacer(Modifier.height(24.dp))
-        OutlinedTextField(value = versionName, onValueChange = onVersionChange, label = { Text("Minecraft 版本文件夹名", fontSize = 20.sp) }, singleLine = true, modifier = Modifier.fillMaxWidth(), textStyle = LocalTextStyle.current.copy(fontSize = 22.sp))
+        OutlinedTextField(
+            value = versionName,
+            onValueChange = onVersionChange,
+            label = { Text("Minecraft 版本文件夹名", fontSize = 20.sp, color = Color.Gray) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            textStyle = LocalTextStyle.current.copy(fontSize = 22.sp, color = Color.White),
+            colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, cursorColor = Color(0xFFA0C4FF))
+        )
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
             value = threadCount.toString(),
             onValueChange = { v -> v.toIntOrNull()?.let { onThreadChange(it.coerceIn(20, maxThreads)) } },
-            label = { Text("下载线程数 (20-$maxThreads)", fontSize = 20.sp) },
-            singleLine = true, modifier = Modifier.fillMaxWidth(), textStyle = LocalTextStyle.current.copy(fontSize = 22.sp)
+            label = { Text("下载线程数 (20-$maxThreads)", fontSize = 20.sp, color = Color.Gray) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            textStyle = LocalTextStyle.current.copy(fontSize = 22.sp, color = Color.White),
+            colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, cursorColor = Color(0xFFA0C4FF))
         )
         Spacer(Modifier.height(24.dp))
-        Button(onClick = onSelectDir, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("选择游戏目录", fontSize = 24.sp) }
-        Spacer(Modifier.height(16.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = neoforgeCheckEnabled, onCheckedChange = onNeoforgeChange); Spacer(Modifier.width(8.dp)); Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp) }
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange); Spacer(Modifier.width(8.dp)); Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp) }
+        Button(
+            onClick = onSelectDir,
+            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+        ) { Text("选择游戏目录", fontSize = 24.sp) }
         Spacer(Modifier.height(16.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = extensionMode, onCheckedChange = onExtensionChange); Spacer(Modifier.width(8.dp)); Text("扩展模式", color = Color.White, fontSize = 22.sp)
+            Switch(checked = neoforgeCheckEnabled, onCheckedChange = onNeoforgeChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
+            Spacer(Modifier.width(8.dp))
+            Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp)
         }
-        if (extensionMode) { Button(onClick = onExtensionPage, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("进入扩展页面", fontSize = 24.sp) } }
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
+            Spacer(Modifier.width(8.dp))
+            Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp)
+        }
+        Spacer(Modifier.height(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(checked = extensionMode, onCheckedChange = onExtensionChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
+            Spacer(Modifier.width(8.dp))
+            Text("扩展模式", color = Color.White, fontSize = 22.sp)
+        }
+        if (extensionMode) {
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = onExtensionPage,
+                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+            ) { Text("进入扩展页面", fontSize = 24.sp) }
+        }
         Spacer(Modifier.height(24.dp))
-        Button(onClick = { /* 导出日志 */ }, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("导出日志", fontSize = 24.sp) }
-        Button(onClick = { /* 错误代码 */ }, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("ERROR 错误代码", fontSize = 24.sp) }
-        Button(onClick = { /* 关于 */ }, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("关于软件", fontSize = 24.sp) }
+        Button(
+            onClick = { /* 导出日志 */ },
+            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+        ) { Text("导出日志", fontSize = 24.sp) }
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = { /* 错误代码 */ },
+            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+        ) { Text("ERROR 错误代码", fontSize = 24.sp) }
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = { /* 关于 */ },
+            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+        ) { Text("关于软件", fontSize = 24.sp) }
     }
 }
 
@@ -313,20 +374,56 @@ fun ExtensionScreen(
             Text("扩展页面", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
         }
         Spacer(Modifier.height(24.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = unlockThread, onCheckedChange = onUnlockChange); Spacer(Modifier.width(8.dp)); Text("解锁线程数上限至 1024", color = Color.White, fontSize = 22.sp) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(checked = unlockThread, onCheckedChange = onUnlockChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
+            Spacer(Modifier.width(8.dp))
+            Text("解锁线程数上限至 1024", color = Color.White, fontSize = 22.sp)
+        }
         Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = neoforgeCheckEnabled, onCheckedChange = onNeoforgeChange); Spacer(Modifier.width(8.dp)); Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(checked = neoforgeCheckEnabled, onCheckedChange = onNeoforgeChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
+            Spacer(Modifier.width(8.dp))
+            Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp)
+        }
         Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange); Spacer(Modifier.width(8.dp)); Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
+            Spacer(Modifier.width(8.dp))
+            Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp)
+        }
         Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = useLocalCsv, onCheckedChange = onLocalCsvChange); Spacer(Modifier.width(8.dp)); Text("使用本地 CSV", color = Color.White, fontSize = 22.sp) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Switch(checked = useLocalCsv, onCheckedChange = onLocalCsvChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
+            Spacer(Modifier.width(8.dp))
+            Text("使用本地 CSV", color = Color.White, fontSize = 22.sp)
+        }
         if (useLocalCsv) {
-            Button(onClick = onPickCsv, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("浏览...", fontSize = 24.sp) }
-            if (localCsvPath.isNotEmpty()) Text("已选择: $localCsvPath", color = Color.White, fontSize = 20.sp)
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = onPickCsv,
+                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+            ) { Text("浏览...", fontSize = 24.sp) }
+            if (localCsvPath.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                Text("已选择: $localCsvPath", color = Color.White, fontSize = 20.sp)
+            }
         }
         Spacer(Modifier.height(24.dp))
-        Button(onClick = { /* 白名单 */ }, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("模组白名单", fontSize = 24.sp) }
-        Button(onClick = onReset, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("重置登记状态", fontSize = 24.sp) }
+        Button(
+            onClick = { /* 白名单 */ },
+            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+        ) { Text("模组白名单", fontSize = 24.sp) }
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = onReset,
+            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+        ) { Text("重置登记状态", fontSize = 24.sp) }
     }
 }
 
@@ -338,6 +435,9 @@ fun FileBrowserScreen(
 ) {
     var currentDir by remember { mutableStateOf(File.listRoots().firstOrNull() ?: File("C:\\")) }
     var files by remember { mutableStateOf(currentDir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()) }
+
+    // 过滤隐藏文件和临时文件
+    val hiddenFiles = files.filter { !it.name.startsWith(".") && !listOf("tmp","temp","log","bak","old").any { ext -> it.extension.equals(ext, true) } }
 
     Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -358,11 +458,13 @@ fun FileBrowserScreen(
                 }
             },
             enabled = !isRoot,
-            modifier = Modifier.height(48.dp)
+            modifier = Modifier.height(48.dp).padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
         ) { Text("返回上级", fontSize = 20.sp) }
         Spacer(Modifier.height(8.dp))
         LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            items(files) { file ->
+            items(hiddenFiles) { file ->
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable {
                         if (file.isDirectory) {
@@ -381,7 +483,12 @@ fun FileBrowserScreen(
             }
         }
         Spacer(Modifier.height(16.dp))
-        Button(onClick = { onSelect(currentDir) }, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("选择此文件夹", fontSize = 24.sp) }
+        Button(
+            onClick = { onSelect(currentDir) },
+            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+        ) { Text("选择此文件夹", fontSize = 24.sp) }
     }
 }
 
