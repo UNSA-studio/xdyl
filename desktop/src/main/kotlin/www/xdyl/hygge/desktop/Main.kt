@@ -1,6 +1,7 @@
 package www.xdyl.hygge.desktop
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -33,7 +34,7 @@ import java.security.MessageDigest
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
 
-// 自定义字体
+// 自定义字体（已验证可编译）
 val silverFontFamily = FontFamily(Font(resource = "font/silver.ttf"))
 
 val client = OkHttpClient.Builder()
@@ -82,7 +83,7 @@ fun main() = application {
         state = rememberWindowState(width = 1100.dp, height = 900.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
-            // 统一的界面切换（带淡入淡出动画）
+            // 带淡入淡出动画的界面切换
             AnimatedContent(targetState = currentScreen, transitionSpec = {
                 fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
             }) { screen ->
