@@ -1,4 +1,4 @@
-name: Android & Windows & iOS CI
+name: Android & Windows CI
 
 on:
   push:
@@ -57,20 +57,3 @@ jobs:
       with:
         name: xdyl-windows-msi
         path: desktop/build/compose/binaries/main/msi/*.msi
-
-  ios:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-    - name: Build iOS framework (shared module)
-      run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
-    - name: Upload iOS framework
-      uses: actions/upload-artifact@v4
-      with:
-        name: ios-framework
-        path: shared/build/bin/iosSimulatorArm64/debugFramework/shared.framework

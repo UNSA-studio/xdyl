@@ -15,5 +15,3 @@ dependencyResolutionManagement {
 rootProject.name = "xdyl"
 include(":app")
 include(":desktop")
-include(":shared")
-include(":iosApp")
