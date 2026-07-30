@@ -6,7 +6,6 @@ plugins {
 
 kotlin {
     androidTarget()
-    // 使用 applyDefaultHierarchyTemplate 替代直接调用 ios
     applyDefaultHierarchyTemplate()
     listOf(
         iosX64(),

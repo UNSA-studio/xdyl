@@ -1,3 +1,5 @@
 package www.xdyl.hygge.shared
 
-expect fun getPlatformName(): String
+expect fun getLauncherRoot(): String
+expect fun getMinecraftDir(start: String): String?
+expect fun installResourcePack(prefs: Preferences)

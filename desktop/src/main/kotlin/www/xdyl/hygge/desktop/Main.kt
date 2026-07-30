@@ -444,7 +444,6 @@ fun FileBrowserScreen(
     var currentDir by remember { mutableStateOf(File.listRoots().firstOrNull() ?: File("C:\\")) }
     var files by remember { mutableStateOf(currentDir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()) }
 
-    // 过滤隐藏文件和临时文件
     val hiddenFiles = files.filter { !it.name.startsWith(".") && !listOf("tmp","temp","log","bak","old").any { ext -> it.extension.equals(ext, true) } }
 
     Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
