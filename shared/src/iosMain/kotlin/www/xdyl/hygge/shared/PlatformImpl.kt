@@ -1,3 +1,5 @@
 package www.xdyl.hygge.shared
 
-actual fun getPlatformName(): String = "iOS"
+import androidx.compose.ui.window.ComposeUIViewController
+
+fun MainViewController() = ComposeUIViewController { MainScreen() }

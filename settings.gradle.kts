@@ -3,7 +3,6 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
-        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
 }
 dependencyResolutionManagement {
@@ -11,11 +10,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     }
 }
 rootProject.name = "xdyl"
 include(":app")
-include(":desktop")   // 新增桌面模块
+include(":desktop")
 include(":shared")
 include(":iosApp")

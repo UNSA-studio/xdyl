@@ -6,14 +6,18 @@ plugins {
 
 kotlin {
     androidTarget()
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
-    ios {
-        binaries.framework {
+    // 使用 applyDefaultHierarchyTemplate 替代直接调用 ios
+    applyDefaultHierarchyTemplate()
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { target ->
+        target.binaries.framework {
             baseName = "shared"
         }
     }
+
     sourceSets {
         val commonMain by getting {
             dependencies {

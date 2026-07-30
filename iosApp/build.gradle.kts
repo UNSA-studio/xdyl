@@ -4,14 +4,17 @@ plugins {
 }
 
 kotlin {
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
-    ios {
-        binaries.framework {
+    applyDefaultHierarchyTemplate()
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { target ->
+        target.binaries.framework {
             baseName = "iosApp"
         }
     }
+
     sourceSets {
         val iosMain by getting {
             dependencies {
