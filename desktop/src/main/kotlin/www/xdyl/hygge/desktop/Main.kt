@@ -34,7 +34,7 @@ import java.security.MessageDigest
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
 
-// 自定义字体（已验证可编译）
+// 自定义字体
 val silverFontFamily = FontFamily(Font(resource = "font/silver.ttf"))
 
 val client = OkHttpClient.Builder()
@@ -83,7 +83,6 @@ fun main() = application {
         state = rememberWindowState(width = 1100.dp, height = 900.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
-            // 带淡入淡出动画的界面切换
             AnimatedContent(targetState = currentScreen, transitionSpec = {
                 fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
             }) { screen ->
@@ -284,6 +283,7 @@ fun SettingsScreen(
             textStyle = LocalTextStyle.current.copy(fontSize = 22.sp, color = Color.White),
             colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, cursorColor = Color(0xFFA0C4FF))
         )
+        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
             value = threadCount.toString(),
@@ -294,12 +294,13 @@ fun SettingsScreen(
             textStyle = LocalTextStyle.current.copy(fontSize = 22.sp, color = Color.White),
             colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, cursorColor = Color(0xFFA0C4FF))
         )
-        Spacer(Modifier.height(24.dp))
-        Button(
+        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
+        Spacer(Modifier.height(16.dp))
+        OutlinedButton(
             onClick = onSelectDir,
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
         ) { Text("选择游戏目录", fontSize = 24.sp) }
         Spacer(Modifier.height(16.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -307,12 +308,14 @@ fun SettingsScreen(
             Spacer(Modifier.width(8.dp))
             Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp)
         }
+        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
             Spacer(Modifier.width(8.dp))
             Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp)
         }
+        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(16.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = extensionMode, onCheckedChange = onExtensionChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
@@ -329,25 +332,25 @@ fun SettingsScreen(
             ) { Text("进入扩展页面", fontSize = 24.sp) }
         }
         Spacer(Modifier.height(24.dp))
-        Button(
+        OutlinedButton(
             onClick = { /* 导出日志 */ },
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
         ) { Text("导出日志", fontSize = 24.sp) }
         Spacer(Modifier.height(8.dp))
-        Button(
+        OutlinedButton(
             onClick = { /* 错误代码 */ },
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
         ) { Text("ERROR 错误代码", fontSize = 24.sp) }
         Spacer(Modifier.height(8.dp))
-        Button(
+        OutlinedButton(
             onClick = { /* 关于 */ },
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
         ) { Text("关于软件", fontSize = 24.sp) }
     }
 }
@@ -380,18 +383,21 @@ fun ExtensionScreen(
             Spacer(Modifier.width(8.dp))
             Text("解锁线程数上限至 1024", color = Color.White, fontSize = 22.sp)
         }
+        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = neoforgeCheckEnabled, onCheckedChange = onNeoforgeChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
             Spacer(Modifier.width(8.dp))
             Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp)
         }
+        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
             Spacer(Modifier.width(8.dp))
             Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp)
         }
+        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = useLocalCsv, onCheckedChange = onLocalCsvChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
@@ -411,19 +417,20 @@ fun ExtensionScreen(
                 Text("已选择: $localCsvPath", color = Color.White, fontSize = 20.sp)
             }
         }
+        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(24.dp))
-        Button(
+        OutlinedButton(
             onClick = { /* 白名单 */ },
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
         ) { Text("模组白名单", fontSize = 24.sp) }
         Spacer(Modifier.height(8.dp))
-        Button(
+        OutlinedButton(
             onClick = onReset,
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
         ) { Text("重置登记状态", fontSize = 24.sp) }
     }
 }

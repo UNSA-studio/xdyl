@@ -17,3 +17,5 @@ dependencyResolutionManagement {
 rootProject.name = "xdyl"
 include(":app")
 include(":desktop")   // 新增桌面模块
+include(":shared")
+include(":iosApp")

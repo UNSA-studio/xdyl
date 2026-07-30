@@ -1,0 +1,909 @@
+{
+  "category": {
+    "id": "ED",
+    "name": "存在哲思与宿命",
+    "name_en": "Existence & Destiny"
+  },
+  "quotes": [
+    {
+      "id": "ED001",
+      "chinese": "生存还是毁灭，这是个问题。",
+      "english": "To be, or not to be: that is the question.",
+      "author": "威廉·莎士比亚",
+      "author_en": "William Shakespeare",
+      "source": "《哈姆雷特》",
+      "source_en": "Hamlet"
+    },
+    {
+      "id": "ED002",
+      "chinese": "存在先于本质。",
+      "english": "Existence precedes essence.",
+      "author": "让-保罗·萨特",
+      "author_en": "Jean-Paul Sartre",
+      "source": "《存在与虚无》",
+      "source_en": "Being and Nothingness"
+    },
+    {
+      "id": "ED003",
+      "chinese": "必须想象西西弗是幸福的。",
+      "english": "One must imagine Sisyphus happy.",
+      "author": "阿尔贝·加缪",
+      "author_en": "Albert Camus",
+      "source": "《西西弗神话》",
+      "source_en": "The Myth of Sisyphus"
+    },
+    {
+      "id": "ED004",
+      "chinese": "人注定是自由的。",
+      "english": "Man is condemned to be free.",
+      "author": "让-保罗·萨特",
+      "author_en": "Jean-Paul Sartre",
+      "source": "《存在与虚无》",
+      "source_en": "Being and Nothingness"
+    },
+    {
+      "id": "ED005",
+      "chinese": "上帝死了。上帝已死，而我们杀死了他。",
+      "english": "God is dead. God remains dead. And we have killed him.",
+      "author": "弗里德里希·尼采",
+      "author_en": "Friedrich Nietzsche",
+      "source": "《快乐的科学》",
+      "source_en": "The Gay Science"
+    },
+    {
+      "id": "ED006",
+      "chinese": "杀不死我的，使我更强大。",
+      "english": "That which does not kill us makes us stronger.",
+      "author": "弗里德里希·尼采",
+      "author_en": "Friedrich Nietzsche",
+      "source": "《偶像的黄昏》",
+      "source_en": "Twilight of the Idols"
+    },
+    {
+      "id": "ED007",
+      "chinese": "顺应自然地生活。",
+      "english": "Live in accordance with nature.",
+      "author": "马可·奥勒留",
+      "author_en": "Marcus Aurelius",
+      "source": "《沉思录》",
+      "source_en": "Meditations"
+    },
+    {
+      "id": "ED008",
+      "chinese": "死亡与我们无关。",
+      "english": "Death is nothing to us.",
+      "author": "伊壁鸠鲁",
+      "author_en": "Epicurus",
+      "source": "《致梅瑙凯的信》",
+      "source_en": "Letter to Menoeceus"
+    },
+    {
+      "id": "ED009",
+      "chinese": "只要我还在呼吸，我就抱有希望。",
+      "english": "While I breathe, I hope.",
+      "author": "西塞罗",
+      "author_en": "Cicero",
+      "source": "《致阿提库斯书信》",
+      "source_en": "Letters to Atticus"
+    },
+    {
+      "id": "ED010",
+      "chinese": "生命短暂，艺术长存，机会稍纵即逝，经验多有误导，判断最是艰难。",
+      "english": "Life is short, art long, opportunity fleeting, experience treacherous, judgment difficult.",
+      "author": "希波克拉底",
+      "author_en": "Hippocrates",
+      "source": "《格言集》",
+      "source_en": "Aphorisms"
+    },
+    {
+      "id": "ED011",
+      "chinese": "我们就是梦的材料，而我们这短暂的一生，也不过是梦中之梦。",
+      "english": "We are such stuff as dreams are made on, and our little life is rounded with a sleep.",
+      "author": "威廉·莎士比亚",
+      "author_en": "William Shakespeare",
+      "source": "《暴风雨》",
+      "source_en": "The Tempest"
+    },
+    {
+      "id": "ED012",
+      "chinese": "全世界是一个舞台，所有的男男女女不过是演员。",
+      "english": "All the world's a stage, and all the men and women merely players.",
+      "author": "威廉·莎士比亚",
+      "author_en": "William Shakespeare",
+      "source": "《皆大欢喜》",
+      "source_en": "As You Like It"
+    },
+    {
+      "id": "ED013",
+      "chinese": "熄灭吧，熄灭吧，短命的烛火！人生不过是一个行走的影子。",
+      "english": "Out, out, brief candle! Life's but a walking shadow.",
+      "author": "威廉·莎士比亚",
+      "author_en": "William Shakespeare",
+      "source": "《麦克白》",
+      "source_en": "Macbeth"
+    },
+    {
+      "id": "ED014",
+      "chinese": "不要温顺地走进那个良夜。",
+      "english": "Do not go gentle into that good night.",
+      "author": "迪伦·托马斯",
+      "author_en": "Dylan Thomas",
+      "source": "《乡村安眠》",
+      "source_en": "In Country Sleep"
+    },
+    {
+      "id": "ED015",
+      "chinese": "因为我不能为死亡停留，他便仁慈地为我停下。",
+      "english": "Because I could not stop for Death, he kindly stopped for me.",
+      "author": "艾米莉·狄金森",
+      "author_en": "Emily Dickinson",
+      "source": "《诗479号》",
+      "source_en": "Poem 479"
+    },
+    {
+      "id": "ED016",
+      "chinese": "我赞美我自己，歌颂我自己。",
+      "english": "I celebrate myself, and sing myself.",
+      "author": "沃尔特·惠特曼",
+      "author_en": "Walt Whitman",
+      "source": "《自我之歌》",
+      "source_en": "Song of Myself"
+    },
+    {
+      "id": "ED017",
+      "chinese": "这树林可爱、幽暗而深邃，但我还有诺言要去兑现，睡前还有漫长的路要赶。",
+      "english": "The woods are lovely, dark and deep, But I have promises to keep, And miles to go before I sleep.",
+      "author": "罗伯特·弗罗斯特",
+      "author_en": "Robert Frost",
+      "source": "《雪夜林边小驻》",
+      "source_en": "Stopping by Woods on a Snowy Evening"
+    },
+    {
+      "id": "ED018",
+      "chinese": "林中有两条路，我选择了人迹罕至的那一条，一切便从此不同。",
+      "english": "Two roads diverged in a wood, and I— I took the one less traveled by, And that has made all the difference.",
+      "author": "罗伯特·弗罗斯特",
+      "author_en": "Robert Frost",
+      "source": "《未选择的路》",
+      "source_en": "The Road Not Taken"
+    },
+    {
+      "id": "ED019",
+      "chinese": "四月是最残忍的月份。",
+      "english": "April is the cruellest month.",
+      "author": "T·S·艾略特",
+      "author_en": "T.S. Eliot",
+      "source": "《荒原》",
+      "source_en": "The Waste Land"
+    },
+    {
+      "id": "ED020",
+      "chinese": "我将让你看到一把尘土中的恐惧。",
+      "english": "I will show you fear in a handful of dust.",
+      "author": "T·S·艾略特",
+      "author_en": "T.S. Eliot",
+      "source": "《荒原》",
+      "source_en": "The Waste Land"
+    },
+    {
+      "id": "ED021",
+      "chinese": "死神，不要骄傲，虽然有人称你为强大而可畏，但你并非如此。",
+      "english": "Death be not proud, though some have called thee Mighty and dreadful, for thou art not so.",
+      "author": "约翰·多恩",
+      "author_en": "John Donne",
+      "source": "《神圣十四行诗第10首》",
+      "source_en": "Holy Sonnet 10"
+    },
+    {
+      "id": "ED022",
+      "chinese": "丧钟为谁而鸣？它为你而鸣。",
+      "english": "For whom the bell tolls; it tolls for thee.",
+      "author": "约翰·多恩",
+      "author_en": "John Donne",
+      "source": "《紧急时刻的祈祷》",
+      "source_en": "Devotions upon Emergent Occasions"
+    },
+    {
+      "id": "ED023",
+      "chinese": "心灵自有其位，在它自身之中，能将地狱变天堂，天堂变地狱。",
+      "english": "The mind is its own place, and in itself can make a Heaven of Hell, a Hell of Heaven.",
+      "author": "约翰·弥尔顿",
+      "author_en": "John Milton",
+      "source": "《失乐园》",
+      "source_en": "Paradise Lost"
+    },
+    {
+      "id": "ED024",
+      "chinese": "宁愿在地狱称王，也不愿在天堂为奴。",
+      "english": "Better to reign in Hell than serve in Heaven.",
+      "author": "约翰·弥尔顿",
+      "author_en": "John Milton",
+      "source": "《失乐园》",
+      "source_en": "Paradise Lost"
+    },
+    {
+      "id": "ED025",
+      "chinese": "惊异是哲学家的情感，哲学始于惊异。",
+      "english": "Wonder is the feeling of a philosopher, and philosophy begins in wonder.",
+      "author": "柏拉图",
+      "author_en": "Plato",
+      "source": "《泰阿泰德篇》",
+      "source_en": "Theaetetus"
+    },
+    {
+      "id": "ED026",
+      "chinese": "未经审视的人生不值得过。",
+      "english": "The unexamined life is not worth living.",
+      "author": "苏格拉底",
+      "author_en": "Socrates",
+      "source": "柏拉图《申辩篇》",
+      "source_en": "Plato's Apology"
+    },
+    {
+      "id": "ED027",
+      "chinese": "幸福取决于我们自己。",
+      "english": "Happiness depends upon ourselves.",
+      "author": "亚里士多德",
+      "author_en": "Aristotle",
+      "source": "《尼各马可伦理学》",
+      "source_en": "Nicomachean Ethics"
+    },
+    {
+      "id": "ED028",
+      "chinese": "我们反复做的是我们本身。优秀不是一种行为，而是一种习惯。",
+      "english": "We are what we repeatedly do. Excellence, then, is not an act, but a habit.",
+      "author": "亚里士多德",
+      "author_en": "Aristotle",
+      "source": "《尼各马可伦理学》",
+      "source_en": "Nicomachean Ethics"
+    },
+    {
+      "id": "ED029",
+      "chinese": "重要的不是生命的长度，而是生命的深度。",
+      "english": "It is not length of life, but depth of life.",
+      "author": "拉尔夫·沃尔多·爱默生",
+      "author_en": "Ralph Waldo Emerson",
+      "source": "《散文集》",
+      "source_en": "Essays"
+    },
+    {
+      "id": "ED030",
+      "chinese": "对死亡的恐惧源于对生命的恐惧。活得很充实的人随时准备死去。",
+      "english": "The fear of death follows from the fear of life. A man who lives fully is prepared to die at any time.",
+      "author": "马克·吐温",
+      "author_en": "Mark Twain",
+      "source": "《马克·吐温书信》",
+      "source_en": "Mark Twain's Letters"
+    },
+    {
+      "id": "ED031",
+      "chinese": "你人生中最重要的两天，是你出生的那天和你找到为什么出生的那天。",
+      "english": "The two most important days in your life are the day you are born and the day you find out why.",
+      "author": "马克·吐温",
+      "author_en": "Mark Twain",
+      "source": "《马克·吐温语录》",
+      "source_en": "Mark Twain Quotes"
+    },
+    {
+      "id": "ED032",
+      "chinese": "生命的奥秘不是要去解决的问题，而是要去体验的现实。",
+      "english": "The mystery of life is not a problem to be solved, but a reality to be experienced.",
+      "author": "弗兰克·赫伯特",
+      "author_en": "Frank Herbert",
+      "source": "《沙丘》",
+      "source_en": "Dune"
+    },
+    {
+      "id": "ED033",
+      "chinese": "生活只能向后理解，但必须向前生活。",
+      "english": "Life can only be understood backwards; but it must be lived forwards.",
+      "author": "索伦·克尔凯郭尔",
+      "author_en": "Søren Kierkegaard",
+      "source": "《克尔凯郭尔日记》",
+      "source_en": "Journals"
+    },
+    {
+      "id": "ED034",
+      "chinese": "在冬天的深处，我终于学会了在我心中有一个不可战胜的夏天。",
+      "english": "In the depth of winter, I finally learned that within me there lay an invincible summer.",
+      "author": "阿尔贝·加缪",
+      "author_en": "Albert Camus",
+      "source": "《重返蒂巴萨》",
+      "source_en": "Return to Tipasa"
+    },
+    {
+      "id": "ED035",
+      "chinese": "我们就是我们的选择。",
+      "english": "We are our choices.",
+      "author": "让-保罗·萨特",
+      "author_en": "Jean-Paul Sartre",
+      "source": "《存在主义是一种人道主义》",
+      "source_en": "Existentialism Is a Humanism"
+    },
+    {
+      "id": "ED036",
+      "chinese": "女人不是天生的，而是被塑造出来的。",
+      "english": "One is not born, but rather becomes, a woman.",
+      "author": "西蒙·德·波伏娃",
+      "author_en": "Simone de Beauvoir",
+      "source": "《第二性》",
+      "source_en": "The Second Sex"
+    },
+    {
+      "id": "ED037",
+      "chinese": "我们是抛入存在的。",
+      "english": "We are thrown into existence.",
+      "author": "马丁·海德格尔",
+      "author_en": "Martin Heidegger",
+      "source": "《存在与时间》",
+      "source_en": "Being and Time"
+    },
+    {
+      "id": "ED038",
+      "chinese": "一本书必须是劈开我们内心冰封大海的斧头。",
+      "english": "A book must be the axe for the frozen sea within us.",
+      "author": "弗朗茨·卡夫卡",
+      "author_en": "Franz Kafka",
+      "source": "《卡夫卡书信》",
+      "source_en": "Kafka's Letters"
+    },
+    {
+      "id": "ED039",
+      "chinese": "人类存在的奥秘不在于活着，而在于找到活下去的理由。",
+      "english": "The mystery of human existence lies not in just staying alive, but in finding something to live for.",
+      "author": "费奥多尔·陀思妥耶夫斯基",
+      "author_en": "Fyodor Dostoevsky",
+      "source": "《卡拉马佐夫兄弟》",
+      "source_en": "The Brothers Karamazov"
+    },
+    {
+      "id": "ED040",
+      "chinese": "重要的是不要停止质疑。好奇心有其存在的理由。",
+      "english": "The important thing is not to stop questioning. Curiosity has its own reason for existing.",
+      "author": "阿尔伯特·爱因斯坦",
+      "author_en": "Albert Einstein",
+      "source": "《爱因斯坦演讲》",
+      "source_en": "Einstein's Speeches"
+    },
+    {
+      "id": "ED041",
+      "chinese": "仰望星空，而不是低头看脚。试着理解你所看到的，并思考宇宙为何存在。",
+      "english": "Look up at the stars and not down at your feet. Try to make sense of what you see, and wonder about what makes the universe exist.",
+      "author": "斯蒂芬·霍金",
+      "author_en": "Stephen Hawking",
+      "source": "《大问题简短回答》",
+      "source_en": "Brief Answers to the Big Questions"
+    },
+    {
+      "id": "ED042",
+      "chinese": "我们是宇宙认识自身的一种方式。",
+      "english": "We are a way for the cosmos to know itself.",
+      "author": "卡尔·萨根",
+      "author_en": "Carl Sagan",
+      "source": "《宇宙》",
+      "source_en": "Cosmos"
+    },
+    {
+      "id": "ED043",
+      "chinese": "这些无限空间的永恒沉默令我恐惧。",
+      "english": "The eternal silence of these infinite spaces frightens me.",
+      "author": "布莱兹·帕斯卡",
+      "author_en": "Blaise Pascal",
+      "source": "《思想录》",
+      "source_en": "Pensées"
+    },
+    {
+      "id": "ED044",
+      "chinese": "我们所有的尊严在于思想。",
+      "english": "All our dignity consists in thought.",
+      "author": "布莱兹·帕斯卡",
+      "author_en": "Blaise Pascal",
+      "source": "《思想录》",
+      "source_en": "Pensées"
+    },
+    {
+      "id": "ED045",
+      "chinese": "重要的不是你遭遇了什么，而是你如何应对。",
+      "english": "It's not what happens to you, but how you react to it that matters.",
+      "author": "爱比克泰德",
+      "author_en": "Epictetus",
+      "source": "《手册》",
+      "source_en": "Enchiridion"
+    },
+    {
+      "id": "ED046",
+      "chinese": "运气是准备遇见了机会。",
+      "english": "Luck is what happens when preparation meets opportunity.",
+      "author": "塞涅卡",
+      "author_en": "Seneca",
+      "source": "《塞涅卡语录》",
+      "source_en": "Seneca Quotes"
+    },
+    {
+      "id": "ED047",
+      "chinese": "滴水穿石，不是靠力量，而是靠坚持不懈。",
+      "english": "Dripping water hollows out stone, not through force but through persistence.",
+      "author": "奥维德",
+      "author_en": "Ovid",
+      "source": "《变形记》",
+      "source_en": "Metamorphoses"
+    },
+    {
+      "id": "ED048",
+      "chinese": "爱征服一切。",
+      "english": "Love conquers all.",
+      "author": "维吉尔",
+      "author_en": "Virgil",
+      "source": "《牧歌》",
+      "source_en": "Eclogues"
+    },
+    {
+      "id": "ED049",
+      "chinese": "道可道，非常道。",
+      "english": "The Tao that can be told is not the eternal Tao.",
+      "author": "老子",
+      "author_en": "Lao Tzu",
+      "source": "《道德经》",
+      "source_en": "Tao Te Ching"
+    },
+    {
+      "id": "ED050",
+      "chinese": "我们即是我们所思。我们的一切皆源于我们的思想。",
+      "english": "We are what we think. All that we are arises with our thoughts.",
+      "author": "佛陀",
+      "author_en": "Buddha",
+      "source": "《法句经》",
+      "source_en": "Dhammapada"
+    },
+    {
+      "id": "ED051",
+      "chinese": "像明天就要死去一样活着，像永远活着一样求知。",
+      "english": "Live as if you were to die tomorrow. Learn as if you were to live forever.",
+      "author": "圣雄甘地",
+      "author_en": "Mahatma Gandhi",
+      "source": "《甘地语录》",
+      "source_en": "Gandhi Quotes"
+    },
+    {
+      "id": "ED052",
+      "chinese": "我们必须接受有限的失望，但永不失去无限的希望。",
+      "english": "We must accept finite disappointment, but never lose infinite hope.",
+      "author": "马丁·路德·金",
+      "author_en": "Martin Luther King Jr.",
+      "source": "《从此山向前》演讲",
+      "source_en": "Keep Moving From This Mountain"
+    },
+    {
+      "id": "ED053",
+      "chinese": "对自己完全诚实是一种良好的练习。",
+      "english": "Being entirely honest with oneself is a good exercise.",
+      "author": "西格蒙德·弗洛伊德",
+      "author_en": "Sigmund Freud",
+      "source": "《弗洛伊德书信》",
+      "source_en": "Freud's Letters"
+    },
+    {
+      "id": "ED054",
+      "chinese": "未来属于那些相信自己梦想之美的人。",
+      "english": "The future belongs to those who believe in the beauty of their dreams.",
+      "author": "埃莉诺·罗斯福",
+      "author_en": "Eleanor Roosevelt",
+      "source": "《这是我的故事》",
+      "source_en": "This Is My Story"
+    },
+    {
+      "id": "ED055",
+      "chinese": "我们身后和面前的一切，与我们内心的一切相比，都是微不足道的。",
+      "english": "What lies behind us and what lies before us are tiny matters compared to what lies within us.",
+      "author": "拉尔夫·沃尔多·爱默生",
+      "author_en": "Ralph Waldo Emerson",
+      "source": "《散文集》",
+      "source_en": "Essays"
+    },
+    {
+      "id": "ED056",
+      "chinese": "我们都在阴沟里，但有些人却在仰望星空。",
+      "english": "We are all in the gutter, but some of us are looking at the stars.",
+      "author": "奥斯卡·王尔德",
+      "author_en": "Oscar Wilde",
+      "source": "《温德米尔夫人的扇子》",
+      "source_en": "Lady Windermere's Fan"
+    },
+    {
+      "id": "ED057",
+      "chinese": "大自然不急不缓，却完成了一切。",
+      "english": "Nature does not hurry, yet everything is accomplished.",
+      "author": "老子",
+      "author_en": "Lao Tzu",
+      "source": "《道德经》",
+      "source_en": "Tao Te Ching"
+    },
+    {
+      "id": "ED058",
+      "chinese": "蝴蝶不数月份，只数片刻，而它拥有足够的时间。",
+      "english": "The butterfly counts not months but moments, and has time enough.",
+      "author": "拉宾德拉纳特·泰戈尔",
+      "author_en": "Rabindranath Tagore",
+      "source": "《流萤集》",
+      "source_en": "Fireflies"
+    },
+    {
+      "id": "ED059",
+      "chinese": "我睡着时梦见生活是欢乐。我醒来时看到生活是服务。我行动时发现服务即是欢乐。",
+      "english": "I slept and dreamt that life was joy. I awoke and saw that life was service. I acted and behold, service was joy.",
+      "author": "拉宾德拉纳特·泰戈尔",
+      "author_en": "Rabindranath Tagore",
+      "source": "《吉檀迦利》",
+      "source_en": "Gitanjali"
+    },
+    {
+      "id": "ED060",
+      "chinese": "世界上最美的东西是看不见也摸不着的——它们必须用心去感受。",
+      "english": "The most beautiful things in the world cannot be seen or even touched - they must be felt with the heart.",
+      "author": "海伦·凯勒",
+      "author_en": "Helen Keller",
+      "source": "《海伦·凯勒语录》",
+      "source_en": "Helen Keller Quotes"
+    },
+    {
+      "id": "ED061",
+      "chinese": "生命不是以我们呼吸的次数来衡量，而是以那些令我们屏息的时刻来衡量。",
+      "english": "Life is not measured by the number of breaths we take, but by the moments that take our breath away.",
+      "author": "玛雅·安杰卢",
+      "author_en": "Maya Angelou",
+      "source": "《玛雅·安杰卢语录》",
+      "source_en": "Maya Angelou Quotes"
+    },
+    {
+      "id": "ED062",
+      "chinese": "我们不是拥有灵性体验的人类。我们是拥有人类体验的灵性存在。",
+      "english": "We are not human beings having a spiritual experience. We are spiritual beings having a human experience.",
+      "author": "皮埃尔·泰亚尔·德·夏尔丹",
+      "author_en": "Pierre Teilhard de Chardin",
+      "source": "《夏尔丹语录》",
+      "source_en": "Teilhard de Chardin Quotes"
+    },
+    {
+      "id": "ED063",
+      "chinese": "一知半解是危险的事。",
+      "english": "A little learning is a dangerous thing.",
+      "author": "亚历山大·蒲柏",
+      "author_en": "Alexander Pope",
+      "source": "《批评论》",
+      "source_en": "An Essay on Criticism"
+    },
+    {
+      "id": "ED064",
+      "chinese": "希望永驻于人类心中。",
+      "english": "Hope springs eternal in the human breast.",
+      "author": "亚历山大·蒲柏",
+      "author_en": "Alexander Pope",
+      "source": "《人论》",
+      "source_en": "An Essay on Man"
+    },
+    {
+      "id": "ED065",
+      "chinese": "生命是什么？是黑夜中萤火虫的闪光，是冬日里野牛的呼吸，是草地上掠过又消失在日落中的小小影子。",
+      "english": "What is life? It is the flash of a firefly in the night. It is the breath of a buffalo in the wintertime. It is the little shadow which runs across the grass and loses itself in the sunset.",
+      "author": "克劳福特",
+      "author_en": "Crowfoot",
+      "source": "《克劳福特语录》",
+      "source_en": "Crowfoot Quotes"
+    },
+    {
+      "id": "ED066",
+      "chinese": "生活中最大的荣耀不在于从不跌倒，而在于每次跌倒后都能站起来。",
+      "english": "The greatest glory in living lies not in never falling, but in rising every time we fall.",
+      "author": "纳尔逊·曼德拉",
+      "author_en": "Nelson Mandela",
+      "source": "《漫漫自由路》",
+      "source_en": "Long Walk to Freedom"
+    },
+    {
+      "id": "ED067",
+      "chinese": "我们必须放下我们计划好的生活，才能接受等待着我们的那一个。",
+      "english": "We must let go of the life we have planned, so as to accept the one that is waiting for us.",
+      "author": "约瑟夫·坎贝尔",
+      "author_en": "Joseph Campbell",
+      "source": "《英雄之旅》",
+      "source_en": "The Hero's Journey"
+    },
+    {
+      "id": "ED068",
+      "chinese": "一生的特权是成为真正的自己。",
+      "english": "The privilege of a lifetime is to become who you truly are.",
+      "author": "卡尔·荣格",
+      "author_en": "Carl Jung",
+      "source": "《人格的发展》",
+      "source_en": "The Development of Personality"
+    },
+    {
+      "id": "ED069",
+      "chinese": "传播光明有两种方式：做蜡烛，或做反射光的镜子。",
+      "english": "There are two ways of spreading light: to be the candle or the mirror that reflects it.",
+      "author": "伊迪丝·华顿",
+      "author_en": "Edith Wharton",
+      "source": "《伊迪丝·华顿书信》",
+      "source_en": "Edith Wharton's Letters"
+    },
+    {
+      "id": "ED070",
+      "chinese": "看到美的灵魂有时必须独自前行。",
+      "english": "The soul that sees beauty may sometimes walk alone.",
+      "author": "约翰·沃尔夫冈·冯·歌德",
+      "author_en": "Johann Wolfgang von Goethe",
+      "source": "《威廉·迈斯特的学徒岁月》",
+      "source_en": "Wilhelm Meister's Apprenticeship"
+    },
+    {
+      "id": "ED071",
+      "chinese": "知道是不够的；我们必须应用。意愿是不够的；我们必须行动。",
+      "english": "Knowing is not enough; we must apply. Willing is not enough; we must do.",
+      "author": "约翰·沃尔夫冈·冯·歌德",
+      "author_en": "Johann Wolfgang von Goethe",
+      "source": "《歌德格言与反思》",
+      "source_en": "Maxims and Reflections"
+    },
+    {
+      "id": "ED072",
+      "chinese": "一个人若知道为何而活，就能忍受几乎任何如何活的方式。",
+      "english": "He who has a why to live for can bear almost any how.",
+      "author": "弗里德里希·尼采",
+      "author_en": "Friedrich Nietzsche",
+      "source": "《偶像的黄昏》",
+      "source_en": "Twilight of the Idols"
+    },
+    {
+      "id": "ED073",
+      "chinese": "虚空的虚空，凡事都是虚空。",
+      "english": "Vanity of vanities, says the Preacher, vanity of vanities! All is vanity.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·传道书》1:2",
+      "source_en": "The Bible, Ecclesiastes 1:2"
+    },
+    {
+      "id": "ED074",
+      "chinese": "凡事都有定期，天下万物都有定时。",
+      "english": "For everything there is a season, and a time for every matter under heaven.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·传道书》3:1",
+      "source_en": "The Bible, Ecclesiastes 3:1"
+    },
+    {
+      "id": "ED075",
+      "chinese": "生有时，死有时。",
+      "english": "A time to be born, and a time to die.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·传道书》3:2",
+      "source_en": "The Bible, Ecclesiastes 3:2"
+    },
+    {
+      "id": "ED076",
+      "chinese": "活着的人知道必死，死了的人毫无所知。",
+      "english": "The living know that they will die, but the dead know nothing.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·传道书》9:5",
+      "source_en": "The Bible, Ecclesiastes 9:5"
+    },
+    {
+      "id": "ED077",
+      "chinese": "快跑的未必能赢，力战的未必得胜。",
+      "english": "The race is not to the swift, nor the battle to the strong.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·传道书》9:11",
+      "source_en": "The Bible, Ecclesiastes 9:11"
+    },
+    {
+      "id": "ED078",
+      "chinese": "尘土仍归于地，灵仍归于赐灵的上帝。",
+      "english": "The dust returns to the earth as it was, and the spirit returns to God who gave it.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·传道书》12:7",
+      "source_en": "The Bible, Ecclesiastes 12:7"
+    },
+    {
+      "id": "ED079",
+      "chinese": "已有的事，后必再有；已行的事，后必再行。日光之下，并无新事。",
+      "english": "The thing that has been, it is that which shall be; and that which is done is that which shall be done: and there is no new thing under the sun.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·传道书》1:9",
+      "source_en": "The Bible, Ecclesiastes 1:9"
+    },
+    {
+      "id": "ED080",
+      "chinese": "因为多有智慧，就多有愁烦；加增知识的，就加增忧伤。",
+      "english": "For in much wisdom is much grief: and he that increaseth knowledge increaseth sorrow.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·传道书》1:18",
+      "source_en": "The Bible, Ecclesiastes 1:18"
+    },
+    {
+      "id": "ED081",
+      "chinese": "凡临到众人的事都是一样：义人和恶人都遭遇一样的事。",
+      "english": "All share a common destiny—the righteous and the wicked alike.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·传道书》9:2",
+      "source_en": "The Bible, Ecclesiastes 9:2"
+    },
+    {
+      "id": "ED082",
+      "chinese": "凡事都有定期和定理。",
+      "english": "There is a time and a way for everything.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·传道书》8:6",
+      "source_en": "The Bible, Ecclesiastes 8:6"
+    },
+    {
+      "id": "ED083",
+      "chinese": "每个灵魂都要尝死的滋味。",
+      "english": "Every soul shall taste death.",
+      "author": "真主",
+      "author_en": "Allah",
+      "source": "《古兰经》3:185",
+      "source_en": "Quran 3:185"
+    },
+    {
+      "id": "ED084",
+      "chinese": "所以，不要为明天忧虑，因为明天自有明天的忧虑。",
+      "english": "Therefore do not worry about tomorrow, for tomorrow will worry about itself.",
+      "author": "耶稣基督",
+      "author_en": "Jesus Christ",
+      "source": "《圣经·马太福音》6:34",
+      "source_en": "The Bible, Matthew 6:34"
+    },
+    {
+      "id": "ED085",
+      "chinese": "你本是尘土，仍要归于尘土。",
+      "english": "For dust you are and to dust you will return.",
+      "author": "摩西",
+      "author_en": "Moses",
+      "source": "《圣经·创世记》3:19",
+      "source_en": "The Bible, Genesis 3:19"
+    },
+    {
+      "id": "ED086",
+      "chinese": "所有的江河都流归大海，海却不满；江河从何处流，仍归何处。",
+      "english": "All the rivers run into the sea, yet the sea is not full; to the place from which the rivers come, there they return again.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·传道书》1:7",
+      "source_en": "The Bible, Ecclesiastes 1:7"
+    },
+    {
+      "id": "ED087",
+      "chinese": "生命就是当你忙着做其他计划时发生的事。",
+      "english": "Life is what happens when you're busy making other plans.",
+      "author": "约翰·列侬",
+      "author_en": "John Lennon",
+      "source": "《美丽男孩》",
+      "source_en": "Beautiful Boy"
+    },
+    {
+      "id": "ED088",
+      "chinese": "我们在这里是为了嘲笑命运，活得如此精彩，以至于死神都不敢带我们走。",
+      "english": "We are here to laugh at the odds and live our lives so well that Death will tremble to take us.",
+      "author": "查尔斯·布考斯基",
+      "author_en": "Charles Bukowski",
+      "source": "《布考斯基语录》",
+      "source_en": "Charles Bukowski Quotes"
+    },
+    {
+      "id": "ED089",
+      "chinese": "宇宙没有义务让你理解它。",
+      "english": "The universe is under no obligation to make sense to you.",
+      "author": "尼尔·德格拉斯·泰森",
+      "author_en": "Neil deGrasse Tyson",
+      "source": "《给忙碌者的天体物理学》",
+      "source_en": "Astrophysics for People in a Hurry"
+    },
+    {
+      "id": "ED090",
+      "chinese": "我们DNA中的氮，牙齿中的钙，血液中的铁，苹果派中的碳——都是在坍缩的恒星内部制造的。我们是星尘。",
+      "english": "The nitrogen in our DNA, the calcium in our teeth, the iron in our blood, the carbon in our apple pies were made in the interiors of collapsing stars. We are made of starstuff.",
+      "author": "卡尔·萨根",
+      "author_en": "Carl Sagan",
+      "source": "《宇宙》",
+      "source_en": "Cosmos"
+    },
+    {
+      "id": "ED091",
+      "chinese": "活着就是受苦，生存就是在苦难中找到意义。",
+      "english": "To live is to suffer, to survive is to find some meaning in the suffering.",
+      "author": "弗里德里希·尼采",
+      "author_en": "Friedrich Nietzsche",
+      "source": "《尼采语录》",
+      "source_en": "Nietzsche Quotes"
+    },
+    {
+      "id": "ED092",
+      "chinese": "生命的意义是找到你的天赋。生命的目标是把它奉献出去。",
+      "english": "The meaning of life is to find your gift. The purpose of life is to give it away.",
+      "author": "巴勃罗·毕加索",
+      "author_en": "Pablo Picasso",
+      "source": "《毕加索语录》",
+      "source_en": "Picasso Quotes"
+    },
+    {
+      "id": "ED093",
+      "chinese": "死亡是美之母。",
+      "english": "Death is the mother of beauty.",
+      "author": "华莱士·史蒂文斯",
+      "author_en": "Wallace Stevens",
+      "source": "《星期日早晨》",
+      "source_en": "Sunday Morning"
+    },
+    {
+      "id": "ED094",
+      "chinese": "我们必须愿意放下我们计划好的生活，才能拥有等待着我们的那一个。",
+      "english": "We must be willing to let go of the life we planned so as to have the life that is waiting for us.",
+      "author": "约瑟夫·坎贝尔",
+      "author_en": "Joseph Campbell",
+      "source": "《英雄之旅》",
+      "source_en": "The Hero's Journey"
+    },
+    {
+      "id": "ED095",
+      "chinese": "我们都在同一片天空下，但我们并非都有相同的地平线。",
+      "english": "We are all under the same sky, but we do not all have the same horizon.",
+      "author": "康拉德·阿登纳",
+      "author_en": "Konrad Adenauer",
+      "source": "《阿登纳语录》",
+      "source_en": "Adenauer Quotes"
+    },
+    {
+      "id": "ED096",
+      "chinese": "星星是永恒的街灯。",
+      "english": "The stars are the street lights of eternity.",
+      "author": "谚语",
+      "author_en": "Proverb",
+      "source": "西方民间谚语",
+      "source_en": "Western Folklore"
+    },
+    {
+      "id": "ED097",
+      "chinese": "命运不是机会的问题，而是选择的问题。它不是等待的事，而是争取的事。",
+      "english": "Destiny is not a matter of chance; it is a matter of choice. It is not a thing to be waited for, it is a thing to be achieved.",
+      "author": "威廉·詹宁斯·布莱恩",
+      "author_en": "William Jennings Bryan",
+      "source": "《布莱恩演讲》",
+      "source_en": "Bryan Speeches"
+    },
+    {
+      "id": "ED098",
+      "chinese": "人是万物的尺度。",
+      "english": "Man is the measure of all things.",
+      "author": "普罗泰戈拉",
+      "author_en": "Protagoras",
+      "source": "《普罗泰戈拉残篇》",
+      "source_en": "Protagoras Fragments"
+    },
+    {
+      "id": "ED099",
+      "chinese": "命运带领愿意跟随的人，拖拽拒绝的人。",
+      "english": "Fate leads the willing, and drags along the reluctant.",
+      "author": "塞涅卡",
+      "author_en": "Seneca",
+      "source": "《塞涅卡书信集》",
+      "source_en": "Epistulae Morales"
+    },
+    {
+      "id": "ED100",
+      "chinese": "死亡不是生命的终结，只是生命的一部分。",
+      "english": "Death is not the end of life, just a part of it.",
+      "author": "保罗·柯艾略",
+      "author_en": "Paulo Coelho",
+      "source": "《牧羊少年奇幻之旅》",
+      "source_en": "The Alchemist"
+    }
+  ]
+}

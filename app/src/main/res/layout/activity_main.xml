@@ -6,7 +6,7 @@
     android:background="@color/background_dark"
     android:padding="16dp">
 
-    <!-- 标题两行 -->
+    <!-- 标题区域 -->
     <LinearLayout
         android:id="@+id/titleContainer"
         android:layout_width="wrap_content"
@@ -47,6 +47,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- 选择目录和下载按钮 -->
     <androidx.cardview.widget.CardView
         android:id="@+id/cardSelect"
         android:layout_width="0dp"
@@ -121,6 +122,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/progressBar" />
 
+    <!-- 日志区域（权重1，会填充剩余空间直到名言面板） -->
     <ScrollView
         android:id="@+id/logScroll"
         android:layout_width="0dp"
@@ -128,7 +130,7 @@
         android:layout_marginTop="12dp"
         android:background="#1E1E1E"
         android:padding="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/cardQuote"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvStatus">
@@ -144,6 +146,82 @@
             android:padding="4dp" />
     </ScrollView>
 
+    <!-- 每日名言面板 -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardQuote"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="#2A2A2A"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:id="@+id/tvQuoteTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="今日名言 - WH"
+                android:textColor="@color/primary_light_blue"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvQuoteChinese"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:lineSpacingExtra="2dp"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:id="@+id/tvQuoteEnglish"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#CCFFFFFF"
+                android:textSize="14sp"
+                android:lineSpacingExtra="2dp"
+                android:layout_marginLeft="16dp"
+                android:layout_marginTop="4dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:id="@+id/tvQuoteAuthor"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-作者 / 出处"
+                    android:textColor="#B0FFFFFF"
+                    android:textSize="13sp"
+                    android:layout_marginLeft="8dp" />
+
+                <TextView
+                    android:id="@+id/tvQuoteAuthorEn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-Author / Source"
+                    android:textColor="#B0FFFFFF"
+                    android:textSize="13sp"
+                    android:layout_marginLeft="8dp"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- 绿色覆盖层 -->
     <View
         android:id="@+id/greenOverlay"
         android:layout_width="0dp"

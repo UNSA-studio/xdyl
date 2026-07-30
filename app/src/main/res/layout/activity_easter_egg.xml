@@ -27,60 +27,225 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="16dp"/>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/swUnlockThread"
+            <!-- 解锁线程上限 -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="解锁线程数上限至 1024"
-                android:textColor="@android:color/white"
-                android:layout_marginTop="16dp"
-                android:checked="false"/>
+                app:cardBackgroundColor="#2A2A2A"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="#3A3A3A">
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/swNeoforgeCheck"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="开启 NeoForge 版本检查"
-                android:textColor="@android:color/white"
-                android:layout_marginTop="16dp"
-                android:checked="true"/>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="12dp">
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/swCleanOrphanFiles"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="更新后自动清理多余文件"
-                android:textColor="@android:color/white"
-                android:layout_marginTop="16dp"
-                android:checked="true"/>
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_unlock"
+                        android:tint="@color/primary_light_blue"
+                        android:contentDescription="解锁"/>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/swLocalCsv"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="使用本地 CSV 文件"
-                android:textColor="@android:color/white"
-                android:layout_marginTop="16dp"
-                android:checked="false"/>
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/swUnlockThread"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="解锁线程数上限至 1024"
+                        android:textColor="@android:color/white"
+                        android:layout_marginStart="12dp"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPickCsv"
+            <View
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="选择 CSV 文件"
-                android:textColor="@android:color/black"
-                app:backgroundTint="@color/primary_light_blue"
+                android:layout_height="1dp"
+                android:background="#3A3A3A"
                 android:layout_marginTop="12dp"
-                android:visibility="gone"/>
+                android:layout_marginBottom="12dp"/>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnWhitelist"
+            <!-- NeoForge 检查 -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="模组白名单"
-                android:textColor="@android:color/black"
-                app:backgroundTint="@color/primary_light_blue"
-                android:layout_marginTop="16dp"/>
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="#2A2A2A"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="#3A3A3A">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="12dp">
+
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_check"
+                        android:tint="@color/primary_light_blue"
+                        android:contentDescription="检查"/>
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/swNeoforgeCheck"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="开启 NeoForge 版本检查"
+                        android:textColor="@android:color/white"
+                        android:layout_marginStart="12dp"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#3A3A3A"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="12dp"/>
+
+            <!-- 清理孤儿文件 -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="#2A2A2A"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="#3A3A3A">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="12dp">
+
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_clean"
+                        android:tint="@color/primary_light_blue"
+                        android:contentDescription="清理"/>
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/swCleanOrphanFiles"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="更新后自动清理多余文件"
+                        android:textColor="@android:color/white"
+                        android:layout_marginStart="12dp"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#3A3A3A"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="12dp"/>
+
+            <!-- 本地 CSV -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="#2A2A2A"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="#3A3A3A">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@drawable/ic_csv"
+                            android:tint="@color/primary_light_blue"
+                            android:contentDescription="CSV"/>
+
+                        <com.google.android.material.switchmaterial.SwitchMaterial
+                            android:id="@+id/swLocalCsv"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="使用本地 CSV 文件"
+                            android:textColor="@android:color/white"
+                            android:layout_marginStart="12dp"/>
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnPickCsv"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="选择 CSV 文件"
+                        android:textColor="@android:color/black"
+                        app:backgroundTint="@color/primary_light_blue"
+                        android:layout_marginTop="8dp"
+                        android:visibility="gone"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#3A3A3A"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="12dp"/>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="#2A2A2A"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="#3A3A3A">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="12dp">
+
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_whitelist"
+                        android:tint="@color/primary_light_blue"
+                        android:contentDescription="白名单"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnWhitelist"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:text="模组白名单"
+                        android:textColor="@android:color/black"
+                        app:backgroundTint="@color/primary_light_blue"
+                        android:layout_marginStart="12dp"
+                        android:textSize="16sp"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnReset"
@@ -89,7 +254,8 @@
                 android:text="重置登记状态"
                 android:textColor="@android:color/black"
                 app:backgroundTint="@color/primary_light_blue"
-                android:layout_marginTop="16dp"/>
+                android:layout_marginTop="16dp"
+                android:textSize="16sp"/>
         </LinearLayout>
     </ScrollView>
 </FrameLayout>
