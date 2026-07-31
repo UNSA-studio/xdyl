@@ -55,7 +55,6 @@ class MainActivity : AppCompatActivity() {
     private var tvPath: TextView? = null
     private var recyclerView: RecyclerView? = null
 
-    // 每日名言数据
     private val quoteCategories = listOf("WH", "RW", "HC", "ED", "CE", "AC")
     private val categoryNames = mapOf(
         "WH" to "警世箴言",
@@ -66,9 +65,7 @@ class MainActivity : AppCompatActivity() {
         "AC" to "行动召唤"
     )
 
-    companion object {
-        var instance: MainActivity? = null
-    }
+    companion object { var instance: MainActivity? = null }
 
     data class ModInfo(val fileName: String, val size: Long, val md5: String, val sha256: String)
     data class Quote(val chinese: String, val english: String, val author: String, val authorEn: String, val source: String, val sourceEn: String)
@@ -79,13 +76,10 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         instance = this
-
         binding.tvTitleLine1.text = "Nebula updater-NU"
         binding.tvTitleLine2.text = "星云更新器-Android端"
-
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         binding.tvLog.movementMethod = ScrollingMovementMethod()
-
         requestStoragePermissions()
         loadDailyQuote()
 
@@ -102,8 +96,7 @@ class MainActivity : AppCompatActivity() {
                         MaterialAlertDialogBuilder(this)
                             .setTitle("NeoForge 版本过低")
                             .setMessage("需要更新 NeoForge 驱动至 21.1.235 或更高版本。")
-                            .setPositiveButton("确定", null)
-                            .show()
+                            .setPositiveButton("确定", null).show()
                     }
                 }
             } else {
@@ -130,37 +123,25 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
                 startActivity(Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
-            } else {
-                restoreLastDirectory()
-            }
+            } else { restoreLastDirectory() }
         } else {
             val permissions = arrayOf(
                 android.Manifest.permission.READ_EXTERNAL_STORAGE,
                 android.Manifest.permission.WRITE_EXTERNAL_STORAGE
             )
-            when {
-                ContextCompat.checkSelfPermission(this, permissions[0]) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(this, permissions[1]) == PackageManager.PERMISSION_GRANTED -> {
-                    restoreLastDirectory()
-                }
-                else -> {
-                    requestPermissionLauncher.launch(permissions)
-                }
+            if (ContextCompat.checkSelfPermission(this, permissions[0]) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, permissions[1]) == PackageManager.PERMISSION_GRANTED) {
+                restoreLastDirectory()
+            } else {
+                requestPermissionLauncher.launch(permissions)
             }
         }
     }
 
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-            val allGranted = permissions.values.all { it }
-            if (allGranted) {
-                LogManager.log("用户授予了存储权限")
-                restoreLastDirectory()
-            } else {
-                LogManager.log("用户拒绝了存储权限")
-                Toast.makeText(this, "存储权限被拒绝，部分功能不可用", Toast.LENGTH_LONG).show()
-            }
-        }
+    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+        if (permissions.values.all { it }) { LogManager.log("用户授予了存储权限"); restoreLastDirectory() }
+        else { LogManager.log("用户拒绝了存储权限"); Toast.makeText(this, "存储权限被拒绝，部分功能不可用", Toast.LENGTH_LONG).show() }
+    }
 
     private fun restoreLastDirectory() {
         val lastPath = prefs.getString("launcher_root", null)
@@ -174,10 +155,10 @@ class MainActivity : AppCompatActivity() {
                     binding.btnStartDownload.isEnabled = true
                     LogManager.log("成功恢复 mods 目录: ${found.absolutePath}")
                     return
-                }
-            }
+                } else { LogManager.log("未能在 $lastPath 下找到 mods 目录") }
+            } else { LogManager.log("上次保存的路径无效: $lastPath") }
         }
-        LogManager.log("没有可恢复的目录")
+        LogManager.log("没有可恢复的目录，请手动选择")
     }
 
     // ========== 每日名言 ==========
@@ -194,32 +175,20 @@ class MainActivity : AppCompatActivity() {
                         val quotesArray = jsonObject.getJSONArray("quotes")
                         for (i in 0 until quotesArray.length()) {
                             val obj = quotesArray.getJSONObject(i)
-                            val quote = Quote(
-                                chinese = obj.getString("chinese"),
-                                english = obj.getString("english"),
-                                author = obj.getString("author"),
-                                authorEn = obj.getString("author_en"),
-                                source = obj.getString("source"),
-                                sourceEn = obj.getString("source_en")
-                            )
-                            allQuotes.add(Pair(cat, quote))
+                            allQuotes.add(Pair(cat, Quote(
+                                obj.getString("chinese"), obj.getString("english"),
+                                obj.getString("author"), obj.getString("author_en"),
+                                obj.getString("source"), obj.getString("source_en")
+                            )))
                         }
                     }
                     if (allQuotes.isNotEmpty()) {
-                        val randomIndex = Random().nextInt(allQuotes.size)
-                        val (cat, quote) = allQuotes[randomIndex]
-                        withContext(Dispatchers.Main) {
-                            displayQuote(cat, quote)
-                        }
-                        prefs.edit()
-                            .putString("quote_date", today)
-                            .putString("quote_cat", cat)
-                            .putInt("quote_index", randomIndex)
-                            .apply()
+                        val (cat, quote) = allQuotes[Random().nextInt(allQuotes.size)]
+                        withContext(Dispatchers.Main) { displayQuote(cat, quote) }
+                        prefs.edit().putString("quote_date", today).putString("quote_cat", cat)
+                            .putInt("quote_index", allQuotes.indexOfFirst { it.first == cat && it.second == quote }).apply()
                     }
-                } catch (e: Exception) {
-                    LogManager.log("加载名言失败: ${e.message}")
-                }
+                } catch (e: Exception) { LogManager.log("加载名言失败: ${e.message}") }
             }
         } else {
             val cat = prefs.getString("quote_cat", quoteCategories[0]) ?: quoteCategories[0]
@@ -227,34 +196,22 @@ class MainActivity : AppCompatActivity() {
             scope.launch(Dispatchers.IO) {
                 try {
                     val jsonStr = assets.open("$cat.json").bufferedReader().readText()
-                    val jsonObject = JSONObject(jsonStr)
-                    val quotesArray = jsonObject.getJSONArray("quotes")
-                    if (index >= 0 && index < quotesArray.length()) {
+                    val quotesArray = JSONObject(jsonStr).getJSONArray("quotes")
+                    if (index in 0 until quotesArray.length()) {
                         val obj = quotesArray.getJSONObject(index)
-                        val quote = Quote(
-                            chinese = obj.getString("chinese"),
-                            english = obj.getString("english"),
-                            author = obj.getString("author"),
-                            authorEn = obj.getString("author_en"),
-                            source = obj.getString("source"),
-                            sourceEn = obj.getString("source_en")
-                        )
-                        withContext(Dispatchers.Main) { displayQuote(cat, quote) }
-                    } else {
-                        prefs.edit().putString("quote_date", "").apply()
-                        loadDailyQuote()
-                    }
-                } catch (e: Exception) {
-                    LogManager.log("恢复名言失败: ${e.message}")
-                    prefs.edit().putString("quote_date", "").apply()
-                    loadDailyQuote()
-                }
+                        withContext(Dispatchers.Main) { displayQuote(cat, Quote(
+                            obj.getString("chinese"), obj.getString("english"),
+                            obj.getString("author"), obj.getString("author_en"),
+                            obj.getString("source"), obj.getString("source_en")
+                        )) }
+                    } else { prefs.edit().putString("quote_date", "").apply(); loadDailyQuote() }
+                } catch (e: Exception) { LogManager.log("恢复名言失败: ${e.message}"); prefs.edit().putString("quote_date", "").apply(); loadDailyQuote() }
             }
         }
     }
 
     private fun displayQuote(category: String, quote: Quote) {
-        binding.tvQuoteTitle.text = "随机名言 - ${categoryNames[category] ?: category}"
+        binding.tvQuoteTitle.text = "今日名言 - ${categoryNames[category] ?: category}"
         binding.tvQuoteChinese.text = quote.chinese
         binding.tvQuoteEnglish.text = quote.english
         binding.tvQuoteAuthor.text = "- ${quote.author} / ${quote.source}"
@@ -262,19 +219,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ========== 文件浏览器 ==========
-    private class FileAdapter(private var files: List<File>, private val onItemClick: (File) -> Unit) :
-        RecyclerView.Adapter<FileAdapter.VH>() {
+    private class FileAdapter(private var files: List<File>, private val onItemClick: (File) -> Unit) : RecyclerView.Adapter<FileAdapter.VH>() {
         class VH(val tv: TextView) : RecyclerView.ViewHolder(tv)
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
             val tv = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false) as TextView
-            tv.setBackgroundColor(0xFF1E1E1E.toInt())
-            tv.setTextColor(0xFFFFFFFF.toInt())
-            return VH(tv)
+            tv.setBackgroundColor(0xFF1E1E1E.toInt()); tv.setTextColor(0xFFFFFFFF.toInt()); return VH(tv)
         }
-        override fun onBindViewHolder(holder: VH, position: Int) {
-            holder.tv.text = files[position].name
-            holder.itemView.setOnClickListener { onItemClick(files[position]) }
-        }
+        override fun onBindViewHolder(holder: VH, position: Int) { holder.tv.text = files[position].name; holder.itemView.setOnClickListener { onItemClick(files[position]) } }
         override fun getItemCount() = files.size
         fun setFiles(newFiles: List<File>) { files = newFiles; notifyDataSetChanged() }
     }
@@ -282,107 +233,70 @@ class MainActivity : AppCompatActivity() {
     private fun showFileBrowser() {
         currentBrowseDir = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath))
         val view = layoutInflater.inflate(R.layout.dialog_file_browser, null)
-        tvPath = view.findViewById(R.id.tvPath)
-        recyclerView = view.findViewById(R.id.recyclerView)
-        recyclerView!!.layoutManager = LinearLayoutManager(this)
-        recyclerView!!.itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator()
-
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setView(view)
-            .setPositiveButton("选择此文件夹") { _, _ ->
-                prefs.edit().putString("launcher_root", currentBrowseDir.absolutePath).apply()
-                handleSelectedFolder(currentBrowseDir)
-            }
-            .setNegativeButton("返回上级", null)
-            .create()
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener { navigateUp() }
-            loadDirectory(currentBrowseDir)
-        }
-        fileBrowserDialog = dialog
-        dialog.show()
+        tvPath = view.findViewById(R.id.tvPath); recyclerView = view.findViewById(R.id.recyclerView)
+        recyclerView!!.layoutManager = LinearLayoutManager(this); recyclerView!!.itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator()
+        val dialog = MaterialAlertDialogBuilder(this).setView(view)
+            .setPositiveButton("选择此文件夹") { _, _ -> prefs.edit().putString("launcher_root", currentBrowseDir.absolutePath).apply(); handleSelectedFolder(currentBrowseDir) }
+            .setNegativeButton("返回上级", null).create()
+        dialog.setOnShowListener { dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener { navigateUp() }; loadDirectory(currentBrowseDir) }
+        fileBrowserDialog = dialog; dialog.show()
     }
 
     private fun loadDirectory(dir: File) {
         scope.launch(Dispatchers.IO) {
             val files = dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
             withContext(Dispatchers.Main) {
-                fileAdapter = FileAdapter(files) { file -> if (file.isDirectory) navigateToDirectory(file) }
-                recyclerView!!.adapter = fileAdapter
-                tvPath!!.text = dir.absolutePath
-                updateUpButtonState()
+                fileAdapter = FileAdapter(files) { if (it.isDirectory) navigateToDirectory(it) }
+                recyclerView!!.adapter = fileAdapter; tvPath!!.text = dir.absolutePath; updateUpButtonState()
             }
         }
     }
 
     private fun navigateToDirectory(dir: File) {
-        recyclerView!!.animate()
-            .translationX(-recyclerView!!.width.toFloat())
-            .setDuration(250)
-            .setListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    currentBrowseDir = dir
-                    loadDirectory(dir)
-                    recyclerView!!.translationX = recyclerView!!.width.toFloat()
-                    recyclerView!!.animate().translationX(0f).setDuration(250).setListener(null).start()
-                }
-            })
+        recyclerView!!.animate().translationX(-recyclerView!!.width.toFloat()).setDuration(250).setListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                currentBrowseDir = dir; loadDirectory(dir)
+                recyclerView!!.translationX = recyclerView!!.width.toFloat()
+                recyclerView!!.animate().translationX(0f).setDuration(250).setListener(null).start()
+            }
+        })
     }
-
     private fun navigateUp() {
         val parent = currentBrowseDir.parentFile ?: return
-        recyclerView!!.animate()
-            .translationX(recyclerView!!.width.toFloat())
-            .setDuration(250)
-            .setListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    currentBrowseDir = parent
-                    loadDirectory(parent)
-                    recyclerView!!.translationX = -recyclerView!!.width.toFloat()
-                    recyclerView!!.animate().translationX(0f).setDuration(250).setListener(null).start()
-                }
-            })
+        recyclerView!!.animate().translationX(recyclerView!!.width.toFloat()).setDuration(250).setListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                currentBrowseDir = parent; loadDirectory(parent)
+                recyclerView!!.translationX = -recyclerView!!.width.toFloat()
+                recyclerView!!.animate().translationX(0f).setDuration(250).setListener(null).start()
+            }
+        })
     }
 
     private fun updateUpButtonState() {
         val btn = fileBrowserDialog?.getButton(AlertDialog.BUTTON_NEGATIVE) ?: return
         val isRoot = currentBrowseDir.absolutePath == Environment.getExternalStorageDirectory().absolutePath
-        btn.isEnabled = !isRoot
-        btn.alpha = if (isRoot) 0.5f else 1.0f
+        btn.isEnabled = !isRoot; btn.alpha = if (isRoot) 0.5f else 1.0f
     }
 
     private fun handleSelectedFolder(folder: File) {
         val modsDir = findMinecraftModsDir(folder)
-        if (modsDir != null) {
-            targetModsDir = modsDir
-            binding.btnStartDownload.isEnabled = true
-            Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show()
-        } else {
-            showError(Constants.ERROR01)
-        }
+        if (modsDir != null) { targetModsDir = modsDir; binding.btnStartDownload.isEnabled = true; Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show() }
+        else showError(Constants.ERROR01)
         fileBrowserDialog?.dismiss()
     }
 
     private fun findMinecraftModsDir(launcherRoot: File): File? {
-        val mc = File(launcherRoot, ".minecraft")
-        val mcAlt = File(launcherRoot, "minecraft")
+        val mc = File(launcherRoot, ".minecraft"); val mcAlt = File(launcherRoot, "minecraft")
         val minecraftDir = when { mc.exists() -> mc; mcAlt.exists() -> mcAlt; else -> return null }
-        val versionsDir = File(minecraftDir, "versions")
-        if (!versionsDir.exists()) return null
+        val versionsDir = File(minecraftDir, "versions"); if (!versionsDir.exists()) return null
         val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
-        val targetDir = File(versionsDir, targetVersion)
-        if (!targetDir.exists()) return null
-        val modsDir = File(targetDir, "mods")
-        if (!modsDir.exists()) modsDir.mkdirs()
-        return modsDir
+        val targetDir = File(versionsDir, targetVersion); if (!targetDir.exists()) return null
+        val modsDir = File(targetDir, "mods"); if (!modsDir.exists()) modsDir.mkdirs(); return modsDir
     }
 
     private fun showError(errorCode: String) {
         LogManager.log("错误: $errorCode")
-        MaterialAlertDialogBuilder(this)
-            .setTitle("意外错误!")
-            .setMessage("错误码: $errorCode\n请查看是否是您的问题,如不是,请联系开发者")
-            .setPositiveButton("确定", null).show()
+        MaterialAlertDialogBuilder(this).setTitle("意外错误!").setMessage("错误码: $errorCode\n请查看是否是您的问题,如不是,请联系开发者").setPositiveButton("确定", null).show()
     }
 
     // ========== NeoForge 检查 ==========
@@ -395,62 +309,34 @@ class MainActivity : AppCompatActivity() {
                     val mc = findMinecraftDir(File(launcherRoot)) ?: return@withContext false
                     val versionDir = File(File(mc, "versions"), targetVersion)
                     if (!versionDir.exists()) return@withContext false
-                    val jsonFile = File(versionDir, "$targetVersion.json")
-                    if (!jsonFile.exists()) return@withContext false
+                    val jsonFile = File(versionDir, "$targetVersion.json"); if (!jsonFile.exists()) return@withContext false
                     val jsonContent = jsonFile.readText()
-                    val versionPattern = Regex("\"--fml\\.neoForgeVersion\",\\s*\"(\\d+\\.\\d+\\.\\d+)\"")
-                    val match = versionPattern.find(jsonContent) ?: return@withContext false
-                    val installedVersion = match.groupValues[1]
-                    compareVersion(installedVersion, "21.1.235") >= 0
-                } catch (e: Exception) {
-                    LogManager.log("NeoForge 检查异常: ${e.message}")
-                    false
-                }
+                    val match = Regex("\"--fml\\.neoForgeVersion\",\\s*\"(\\d+\\.\\d+\\.\\d+)\"").find(jsonContent) ?: return@withContext false
+                    compareVersion(match.groupValues[1], "21.1.235") >= 0
+                } catch (e: Exception) { LogManager.log("NeoForge 检查异常: ${e.message}"); false }
             }
             callback(result)
         }
     }
-
     private fun findMinecraftDir(start: File): File? {
-        val mc = File(start, ".minecraft")
-        if (mc.exists()) return mc
-        val mcAlt = File(start, "minecraft")
-        return if (mcAlt.exists()) mcAlt else null
+        val mc = File(start, ".minecraft"); if (mc.exists()) return mc
+        val mcAlt = File(start, "minecraft"); return if (mcAlt.exists()) mcAlt else null
     }
-
     private fun compareVersion(v1: String, v2: String): Int {
-        val parts1 = v1.split(".").map { it.toIntOrNull() ?: 0 }
-        val parts2 = v2.split(".").map { it.toIntOrNull() ?: 0 }
-        for (i in 0 until maxOf(parts1.size, parts2.size)) {
-            val a = parts1.getOrElse(i) { 0 }
-            val b = parts2.getOrElse(i) { 0 }
-            if (a != b) return a - b
-        }
+        val p1 = v1.split(".").map { it.toIntOrNull() ?: 0 }; val p2 = v2.split(".").map { it.toIntOrNull() ?: 0 }
+        for (i in 0 until maxOf(p1.size, p2.size)) { val a = p1.getOrElse(i) { 0 }; val b = p2.getOrElse(i) { 0 }; if (a != b) return a - b }
         return 0
     }
 
     // ========== 下载与日志 ==========
     private suspend fun fetchServerFileList(): List<String> = withContext(Dispatchers.IO) {
         try {
-            val request = Request.Builder().url(Constants.BASE_URL).build()
-            val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: ""
-            if (response.code != 200) return@withContext emptyList()
-            val pattern = Pattern.compile("<a href=\"([^\"]+)\">")
-            val matcher = pattern.matcher(body)
-            val files = mutableListOf<String>()
-            while (matcher.find()) {
-                val link = matcher.group(1)
-                if (link != null && link.endsWith(".jar")) {
-                    files.add(java.net.URLDecoder.decode(link, "UTF-8"))
-                }
-            }
-            LogManager.log("从服务器获取到 ${files.size} 个文件")
-            files
-        } catch (e: Exception) {
-            LogManager.log("获取服务器文件列表失败: ${e.message}")
-            emptyList()
-        }
+            val request = Request.Builder().url(Constants.BASE_URL).build(); val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: ""; if (response.code != 200) return@withContext emptyList()
+            val matcher = Pattern.compile("<a href=\"([^\"]+)\">").matcher(body); val files = mutableListOf<String>()
+            while (matcher.find()) matcher.group(1)?.let { if (it.endsWith(".jar")) files.add(java.net.URLDecoder.decode(it, "UTF-8")) }
+            LogManager.log("服务器文件数: ${files.size}"); files
+        } catch (e: Exception) { LogManager.log("获取服务器文件列表失败: ${e.message}"); emptyList() }
     }
 
     private fun getCsvContent(): String {
@@ -466,91 +352,55 @@ class MainActivity : AppCompatActivity() {
         for (attempt in 1..maxRetries) {
             try {
                 DownloadManager(url, size, 1, useRange = false).download(destFile) { }
-                appendLog("[OK] ${destFile.name}")
-                return
-            } catch (e: Exception) {
-                lastEx = e
-                appendLog("[RETRY $attempt] ${destFile.name}")
-                delay((1000L * attempt).coerceAtMost(5000))
-            }
+                appendLog("[OK] ${destFile.name}"); return
+            } catch (e: Exception) { lastEx = e; appendLog("[RETRY $attempt] ${destFile.name}"); delay((1000L * attempt).coerceAtMost(5000)) }
         }
-        appendLog("[FAILED] ${destFile.name}")
-        throw lastEx!!
+        appendLog("[FAILED] ${destFile.name}"); throw lastEx!!
     }
 
     private fun startUpdateProcess() {
         if (isProcessing) return
+        // 增强：如果 targetModsDir 为空，尝试用保存的启动器路径再次定位
+        if (targetModsDir == null) {
+            LogManager.log("targetModsDir 为 null，尝试自动恢复...")
+            restoreLastDirectory()
+        }
         val modsDir = targetModsDir ?: run { showError(Constants.ERROR01); return }
-        isProcessing = true
-        binding.btnStartDownload.isEnabled = false
-        binding.progressBar.visibility = View.VISIBLE
-        binding.progressBar.progress = 0
-        binding.tvLog.text = "Checking mods..."
-        LogManager.log("开始更新")
+        isProcessing = true; binding.btnStartDownload.isEnabled = false
+        binding.progressBar.visibility = View.VISIBLE; binding.progressBar.progress = 0
+        binding.tvLog.text = "Checking mods..."; LogManager.log("开始更新")
 
         val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
+        LogManager.log("实际并发下载数: $threadCount")
         scope.launch {
             try {
-                val serverFiles = fetchServerFileList()
-                if (serverFiles.isEmpty()) { showError(Constants.ERROR01); return@launch }
-                val csvMods = getCsvContent().lines().drop(1).filter { it.isNotBlank() }.map { line ->
-                    val parts = line.split(",")
-                    ModInfo(parts[0].trim('"').removePrefix("./"), parts[2].toLong(), parts[3].trim('"'), parts[4].trim('"'))
+                val serverFiles = fetchServerFileList(); if (serverFiles.isEmpty()) { showError(Constants.ERROR01); return@launch }
+                val csvMods = getCsvContent().lines().drop(1).filter { it.isNotBlank() }.map {
+                    val p = it.split(","); ModInfo(p[0].trim('"').removePrefix("./"), p[2].toLong(), p[3].trim('"'), p[4].trim('"'))
                 }
-                val csvSet = csvMods.map { it.fileName }.toSet()
-                val allServerMods = serverFiles.filter { csvSet.contains(it) }
+                val csvSet = csvMods.map { it.fileName }.toSet(); val allServerMods = serverFiles.filter { csvSet.contains(it) }
                 val toDownload = filterOutUnchangedMods(modsDir, csvMods.filter { it.fileName in allServerMods })
-                if (toDownload.isEmpty()) {
-                    appendLog("All mods are up-to-date!")
-                    binding.progressBar.visibility = View.GONE
-                    isProcessing = false
-                    binding.btnStartDownload.isEnabled = true
-                    return@launch
-                }
+                if (toDownload.isEmpty()) { appendLog("All mods are up-to-date!"); binding.progressBar.visibility = View.GONE; isProcessing = false; binding.btnStartDownload.isEnabled = true; return@launch }
 
                 binding.tvLog.text = "Downloading ${toDownload.size} mods..."
-                val sem = Semaphore(threadCount)
-                val failed = AtomicInteger(0)
-                var completed = 0
-                val total = toDownload.size
-
+                val sem = Semaphore(threadCount); val failed = AtomicInteger(0); var completed = 0; val total = toDownload.size
                 withContext(Dispatchers.IO) {
-                    toDownload.map { mod ->
-                        launch {
-                            sem.acquire()
-                            try {
-                                val file = File(modsDir, mod.fileName)
-                                val encodedName = URLEncoder.encode(mod.fileName, "UTF-8").replace("+", "%20")
-                                val url = Constants.BASE_URL + encodedName
-                                downloadWithRetry(url, mod.size, file)
-                                if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256))
-                                    throw RuntimeException("校验失败")
-                                completed++
-                                withContext(Dispatchers.Main) {
-                                    binding.progressBar.progress = (completed * 100) / total
-                                    binding.tvStatus.text = "$completed/$total"
-                                }
-                            } catch (e: Exception) {
-                                LogManager.log("下载失败 ${mod.fileName}: ${e.message}")
-                                failed.incrementAndGet()
-                            } finally {
-                                sem.release()
-                            }
-                        }
-                    }.joinAll()
+                    toDownload.map { mod -> launch { sem.acquire()
+                        try {
+                            val file = File(modsDir, mod.fileName)
+                            val encodedName = URLEncoder.encode(mod.fileName, "UTF-8").replace("+", "%20")
+                            downloadWithRetry(Constants.BASE_URL + encodedName, mod.size, file)
+                            if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256)) throw RuntimeException("校验失败")
+                            completed++; withContext(Dispatchers.Main) { binding.progressBar.progress = (completed * 100) / total; binding.tvStatus.text = "$completed/$total" }
+                        } catch (e: Exception) { LogManager.log("下载失败 ${mod.fileName}: ${e.message}"); failed.incrementAndGet() } finally { sem.release() }
+                    } }.joinAll()
                 }
 
                 if (prefs.getBoolean("clean_orphan_files", true)) {
                     withContext(Dispatchers.IO) {
                         val whiteList = prefs.getStringSet("mod_whitelist", emptySet()) ?: emptySet()
-                        val csvFiles = csvMods.map { it.fileName }.toSet()
-                        val modFiles = modsDir.listFiles()?.filter { it.extension == "jar" } ?: emptyList()
-                        var deleted = 0
-                        for (file in modFiles) {
-                            if (file.name !in csvFiles && file.name !in whiteList) {
-                                if (file.delete()) { deleted++; LogManager.log("已删除孤儿文件: ${file.name}") }
-                            }
-                        }
+                        val modFiles = modsDir.listFiles()?.filter { it.extension == "jar" } ?: emptyList(); var deleted = 0
+                        for (f in modFiles) if (f.name !in csvSet && f.name !in whiteList) { if (f.delete()) { deleted++; LogManager.log("已删除孤儿文件: ${f.name}") } }
                         if (deleted > 0) appendLog("Cleaned $deleted files")
                     }
                 }
@@ -558,28 +408,16 @@ class MainActivity : AppCompatActivity() {
                 if (failed.get() > 0) showError(Constants.ERROR05)
                 else {
                     appendLog("Update completed!")
-                    // 检查材质包是否存在
                     val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
-                    val resourcePackFile = File(modsDir, "../$targetVersion/resourcepacks/generated.zip")
-                    if (!resourcePackFile.exists()) {
+                    if (!File(modsDir, "../$targetVersion/resourcepacks/generated.zip").exists()) {
                         withContext(Dispatchers.Main) {
-                            MaterialAlertDialogBuilder(this@MainActivity)
-                                .setTitle("安装服务器材质包")
-                                .setMessage("是否要安装 Server 材质包？\n注意！这是必要，如不装，进服将下载材质包，在这里安装可以加快速度。")
-                                .setPositiveButton("好的") { _, _ ->
-                                    scope.launch { installResourcePack() }
-                                }
-                                .setNegativeButton("取消", null)
-                                .show()
+                            MaterialAlertDialogBuilder(this@MainActivity).setTitle("安装服务器材质包").setMessage("是否要安装 Server 材质包？\n注意！这是必要，如不装，进服将下载材质包，在这里安装可以加快速度。")
+                                .setPositiveButton("好的") { scope.launch { installResourcePack() } }.setNegativeButton("取消", null).show()
                         }
                     }
                 }
-            } catch (e: Exception) {
-                showError(Constants.ERROR03)
-            } finally {
-                isProcessing = false
-                binding.btnStartDownload.isEnabled = true
-            }
+            } catch (e: Exception) { showError(Constants.ERROR03) }
+            finally { isProcessing = false; binding.btnStartDownload.isEnabled = true }
         }
     }
 
@@ -610,35 +448,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-    private suspend fun filterOutUnchangedMods(modsDir: File, csvMods: List<ModInfo>): List<ModInfo> = withContext(Dispatchers.IO) {
-        val toDownload = mutableListOf<ModInfo>()
-        for (mod in csvMods) {
-            val localFile = File(modsDir, mod.fileName)
-            if (!localFile.exists() || localFile.length() != mod.size) toDownload.add(mod)
-            else {
-                val localMd5 = calculateMD5(localFile)
-                if (localMd5 != null && localMd5.equals(mod.md5, true)) LogManager.log("跳过未变化的模组: ${mod.fileName}")
-                else toDownload.add(mod)
-            }
+    private suspend fun filterOutUnchangedMods(modsDir: File, csvMods: List<ModInfo>) = withContext(Dispatchers.IO) {
+        csvMods.filterNot { mod ->
+            val local = File(modsDir, mod.fileName)
+            local.exists() && local.length() == mod.size && calculateMD5(local) == mod.md5
         }
-        toDownload
     }
-
-    private fun calculateMD5(file: File): String? = try {
-        val digest = MessageDigest.getInstance("MD5")
-        file.inputStream().use { fis -> val buffer = ByteArray(8192); var len: Int; while (fis.read(buffer).also { len = it } != -1) digest.update(buffer, 0, len) }
-        digest.digest().joinToString("") { "%02x".format(it) }
+    private fun calculateMD5(file: File) = try {
+        val digest = MessageDigest.getInstance("MD5"); file.inputStream().use { fis -> val buf = ByteArray(8192); var len: Int
+            while (fis.read(buf).also { len = it } != -1) digest.update(buf, 0, len) }; digest.digest().joinToString("") { "%02x".format(it) }
     } catch (e: Exception) { null }
 
-    fun appendLog(msg: String) {
-        runOnUiThread {
-            val current = binding.tvLog.text.toString()
-            binding.tvLog.text = "$current\n$msg"
-            binding.logScroll.post { binding.logScroll.fullScroll(View.FOCUS_DOWN) }
-        }
-    }
-
+    fun appendLog(msg: String) { runOnUiThread { binding.tvLog.text = "${binding.tvLog.text}\n$msg"; binding.logScroll.post { binding.logScroll.fullScroll(View.FOCUS_DOWN) } } }
     private fun exportLogToFile() {
         scope.launch(Dispatchers.IO) {
             try {
@@ -653,6 +474,5 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
     override fun onDestroy() { instance = null; job.cancel(); super.onDestroy() }
 }
