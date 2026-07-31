@@ -1,6 +1,5 @@
 package www.xdyl.hygge.com
 
-import org.json.JSONObject
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.content.Intent
@@ -26,7 +25,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONArray
+import org.json.JSONObject
 import www.xdyl.hygge.com.databinding.ActivityMainBinding
 import java.io.File
 import java.io.FileOutputStream
@@ -88,7 +87,7 @@ class MainActivity : AppCompatActivity() {
         binding.tvLog.movementMethod = ScrollingMovementMethod()
 
         requestStoragePermissions()
-        loadDailyQuote()  // 加载每日名言
+        loadDailyQuote()
 
         binding.btnSelectDir.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
@@ -102,7 +101,7 @@ class MainActivity : AppCompatActivity() {
                     else {
                         MaterialAlertDialogBuilder(this)
                             .setTitle("NeoForge 版本过低")
-                            .setMessage("需要更新 NeoForge 驱动至 21.1.228 或更高版本。")
+                            .setMessage("需要更新 NeoForge 驱动至 21.1.235 或更高版本。")
                             .setPositiveButton("确定", null)
                             .show()
                     }
@@ -124,28 +123,114 @@ class MainActivity : AppCompatActivity() {
             prefs.edit().putBoolean("request_export_log", false).apply()
             exportLogToFile()
         }
-        // 再次检查是否需要刷新名言
         loadDailyQuote()
     }
 
-    private fun requestStoragePermissions() { /* 保持不变 */ }
+    private fun requestStoragePermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                startActivity(Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+            } else {
+                restoreLastDirectory()
+            }
+        } else {
+            val permissions = arrayOf(
+                android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+            when {
+                ContextCompat.checkSelfPermission(this, permissions[0]) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, permissions[1]) == PackageManager.PERMISSION_GRANTED -> {
+                    restoreLastDirectory()
+                }
+                else -> {
+                    requestPermissionLauncher.launch(permissions)
+                }
+            }
+        }
+    }
 
-    private fun restoreLastDirectory() { /* 保持不变 */ }
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            val allGranted = permissions.values.all { it }
+            if (allGranted) {
+                LogManager.log("用户授予了存储权限")
+                restoreLastDirectory()
+            } else {
+                LogManager.log("用户拒绝了存储权限")
+                Toast.makeText(this, "存储权限被拒绝，部分功能不可用", Toast.LENGTH_LONG).show()
+            }
+        }
+
+    private fun restoreLastDirectory() {
+        val lastPath = prefs.getString("launcher_root", null)
+        if (lastPath != null) {
+            LogManager.log("尝试恢复上次选择的目录: $lastPath")
+            val dir = File(lastPath)
+            if (dir.exists() && dir.isDirectory) {
+                val found = findMinecraftModsDir(dir)
+                if (found != null) {
+                    targetModsDir = found
+                    binding.btnStartDownload.isEnabled = true
+                    LogManager.log("成功恢复 mods 目录: ${found.absolutePath}")
+                    return
+                }
+            }
+        }
+        LogManager.log("没有可恢复的目录")
+    }
 
     // ========== 每日名言 ==========
     private fun loadDailyQuote() {
-    val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
-    val lastDate = prefs.getString("quote_date", "")
-    if (lastDate != today) {
-        scope.launch(Dispatchers.IO) {
-            try {
-                val allQuotes = mutableListOf<Pair<String, Quote>>()
-                for (cat in quoteCategories) {
+        val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
+        val lastDate = prefs.getString("quote_date", "")
+        if (lastDate != today) {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val allQuotes = mutableListOf<Pair<String, Quote>>()
+                    for (cat in quoteCategories) {
+                        val jsonStr = assets.open("$cat.json").bufferedReader().readText()
+                        val jsonObject = JSONObject(jsonStr)
+                        val quotesArray = jsonObject.getJSONArray("quotes")
+                        for (i in 0 until quotesArray.length()) {
+                            val obj = quotesArray.getJSONObject(i)
+                            val quote = Quote(
+                                chinese = obj.getString("chinese"),
+                                english = obj.getString("english"),
+                                author = obj.getString("author"),
+                                authorEn = obj.getString("author_en"),
+                                source = obj.getString("source"),
+                                sourceEn = obj.getString("source_en")
+                            )
+                            allQuotes.add(Pair(cat, quote))
+                        }
+                    }
+                    if (allQuotes.isNotEmpty()) {
+                        val randomIndex = Random().nextInt(allQuotes.size)
+                        val (cat, quote) = allQuotes[randomIndex]
+                        withContext(Dispatchers.Main) {
+                            displayQuote(cat, quote)
+                        }
+                        prefs.edit()
+                            .putString("quote_date", today)
+                            .putString("quote_cat", cat)
+                            .putInt("quote_index", randomIndex)
+                            .apply()
+                    }
+                } catch (e: Exception) {
+                    LogManager.log("加载名言失败: ${e.message}")
+                }
+            }
+        } else {
+            val cat = prefs.getString("quote_cat", quoteCategories[0]) ?: quoteCategories[0]
+            val index = prefs.getInt("quote_index", 0)
+            scope.launch(Dispatchers.IO) {
+                try {
                     val jsonStr = assets.open("$cat.json").bufferedReader().readText()
                     val jsonObject = JSONObject(jsonStr)
                     val quotesArray = jsonObject.getJSONArray("quotes")
-                    for (i in 0 until quotesArray.length()) {
-                        val obj = quotesArray.getJSONObject(i)
+                    if (index >= 0 && index < quotesArray.length()) {
+                        val obj = quotesArray.getJSONObject(index)
                         val quote = Quote(
                             chinese = obj.getString("chinese"),
                             english = obj.getString("english"),
@@ -154,53 +239,19 @@ class MainActivity : AppCompatActivity() {
                             source = obj.getString("source"),
                             sourceEn = obj.getString("source_en")
                         )
-                        allQuotes.add(Pair(cat, quote))
+                        withContext(Dispatchers.Main) { displayQuote(cat, quote) }
+                    } else {
+                        prefs.edit().putString("quote_date", "").apply()
+                        loadDailyQuote()
                     }
+                } catch (e: Exception) {
+                    LogManager.log("恢复名言失败: ${e.message}")
+                    prefs.edit().putString("quote_date", "").apply()
+                    loadDailyQuote()
                 }
-                if (allQuotes.isNotEmpty()) {
-                    val randomIndex = Random().nextInt(allQuotes.size)
-                    val (cat, quote) = allQuotes[randomIndex]
-                    withContext(Dispatchers.Main) {
-                        displayQuote(cat, quote)
-                    }
-                    prefs.edit()
-                        .putString("quote_date", today)
-                        .putString("quote_cat", cat)
-                        .putInt("quote_index", randomIndex)
-                        .apply()
-                }
-            } catch (e: Exception) {
-                LogManager.log("加载名言失败: ${e.message}")
-            }
-        }
-    } else {
-        val cat = prefs.getString("quote_cat", quoteCategories[0]) ?: quoteCategories[0]
-        val index = prefs.getInt("quote_index", 0)
-        scope.launch(Dispatchers.IO) {
-            try {
-                val jsonStr = assets.open("$cat.json").bufferedReader().readText()
-                val jsonObject = JSONObject(jsonStr)
-                val quotesArray = jsonObject.getJSONArray("quotes")
-                if (index < quotesArray.length()) {
-                    val obj = quotesArray.getJSONObject(index)
-                    val quote = Quote(
-                        chinese = obj.getString("chinese"),
-                        english = obj.getString("english"),
-                        author = obj.getString("author"),
-                        authorEn = obj.getString("author_en"),
-                        source = obj.getString("source"),
-                        sourceEn = obj.getString("source_en")
-                    )
-                    withContext(Dispatchers.Main) {
-                        displayQuote(cat, quote)
-                    }
-                }
-            } catch (e: Exception) {
-                LogManager.log("恢复名言失败: ${e.message}")
             }
         }
     }
-}
 
     private fun displayQuote(category: String, quote: Quote) {
         binding.tvQuoteTitle.text = "今日名言 - ${categoryNames[category] ?: category}"
@@ -350,7 +401,7 @@ class MainActivity : AppCompatActivity() {
                     val versionPattern = Regex("\"--fml\\.neoForgeVersion\",\\s*\"(\\d+\\.\\d+\\.\\d+)\"")
                     val match = versionPattern.find(jsonContent) ?: return@withContext false
                     val installedVersion = match.groupValues[1]
-                    compareVersion(installedVersion, "21.1.228") >= 0
+                    compareVersion(installedVersion, "21.1.235") >= 0
                 } catch (e: Exception) {
                     LogManager.log("NeoForge 检查异常: ${e.message}")
                     false
@@ -507,9 +558,10 @@ class MainActivity : AppCompatActivity() {
                 if (failed.get() > 0) showError(Constants.ERROR05)
                 else {
                     appendLog("Update completed!")
-                                    val packsDir = File(targetModsDir, "../resourcepacks/generated.zip")
-                                    val resourcePackExists = packsDir.exists()
-                    if (!prefs.getBoolean("has_completed_first_update", false) && !resourcePackExists) {
+                    // 检查材质包是否存在
+                    val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
+                    val resourcePackFile = File(modsDir, "../$targetVersion/resourcepacks/generated.zip")
+                    if (!resourcePackFile.exists()) {
                         withContext(Dispatchers.Main) {
                             MaterialAlertDialogBuilder(this@MainActivity)
                                 .setTitle("安装服务器材质包")
