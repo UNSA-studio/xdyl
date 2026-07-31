@@ -133,56 +133,18 @@ class MainActivity : AppCompatActivity() {
 
     // ========== 每日名言 ==========
     private fun loadDailyQuote() {
-        val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
-        val lastDate = prefs.getString("quote_date", "")
-        if (lastDate != today) {
-            // 日期不同，重新随机选择
-            scope.launch(Dispatchers.IO) {
-                try {
-                    val allQuotes = mutableListOf<Pair<String, Quote>>() // category, quote
-                    for (cat in quoteCategories) {
-                        val json = assets.open("$cat.json").bufferedReader().readText()
-                        val array = JSONArray(json)
-                        for (i in 0 until array.length()) {
-                            val obj = array.getJSONObject(i)
-                            val quote = Quote(
-                                chinese = obj.getString("chinese"),
-                                english = obj.getString("english"),
-                                author = obj.getString("author"),
-                                authorEn = obj.getString("author_en"),
-                                source = obj.getString("source"),
-                                sourceEn = obj.getString("source_en")
-                            )
-                            allQuotes.add(Pair(cat, quote))
-                        }
-                    }
-                    if (allQuotes.isNotEmpty()) {
-                        val randomIndex = Random().nextInt(allQuotes.size)
-                        val (cat, quote) = allQuotes[randomIndex]
-                        withContext(Dispatchers.Main) {
-                            displayQuote(cat, quote)
-                        }
-                        // 保存当前选择的索引和日期
-                        prefs.edit()
-                            .putString("quote_date", today)
-                            .putString("quote_cat", cat)
-                            .putInt("quote_index", randomIndex)
-                            .apply()
-                    }
-                } catch (e: Exception) {
-                    LogManager.log("加载名言失败: ${e.message}")
-                }
-            }
-        } else {
-            // 日期相同，从SharedPreferences恢复上次的选择
-            val cat = prefs.getString("quote_cat", quoteCategories[0]) ?: quoteCategories[0]
-            val index = prefs.getInt("quote_index", 0)
-            scope.launch(Dispatchers.IO) {
-                try {
-                    val json = assets.open("$cat.json").bufferedReader().readText()
-                    val array = JSONArray(json)
-                    if (index < array.length()) {
-                        val obj = array.getJSONObject(index)
+    val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
+    val lastDate = prefs.getString("quote_date", "")
+    if (lastDate != today) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val allQuotes = mutableListOf<Pair<String, Quote>>()
+                for (cat in quoteCategories) {
+                    val jsonStr = assets.open("$cat.json").bufferedReader().readText()
+                    val jsonObject = JSONObject(jsonStr)
+                    val quotesArray = jsonObject.getJSONArray("quotes")
+                    for (i in 0 until quotesArray.length()) {
+                        val obj = quotesArray.getJSONObject(i)
                         val quote = Quote(
                             chinese = obj.getString("chinese"),
                             english = obj.getString("english"),
@@ -191,16 +153,54 @@ class MainActivity : AppCompatActivity() {
                             source = obj.getString("source"),
                             sourceEn = obj.getString("source_en")
                         )
-                        withContext(Dispatchers.Main) {
-                            displayQuote(cat, quote)
-                        }
+                        allQuotes.add(Pair(cat, quote))
                     }
-                } catch (e: Exception) {
-                    LogManager.log("恢复名言失败: ${e.message}")
                 }
+                if (allQuotes.isNotEmpty()) {
+                    val randomIndex = Random().nextInt(allQuotes.size)
+                    val (cat, quote) = allQuotes[randomIndex]
+                    withContext(Dispatchers.Main) {
+                        displayQuote(cat, quote)
+                    }
+                    prefs.edit()
+                        .putString("quote_date", today)
+                        .putString("quote_cat", cat)
+                        .putInt("quote_index", randomIndex)
+                        .apply()
+                }
+            } catch (e: Exception) {
+                LogManager.log("加载名言失败: ${e.message}")
+            }
+        }
+    } else {
+        // 恢复上次的引用
+        val cat = prefs.getString("quote_cat", quoteCategories[0]) ?: quoteCategories[0]
+        val index = prefs.getInt("quote_index", 0)
+        scope.launch(Dispatchers.IO) {
+            try {
+                val jsonStr = assets.open("$cat.json").bufferedReader().readText()
+                val jsonObject = JSONObject(jsonStr)
+                val quotesArray = jsonObject.getJSONArray("quotes")
+                if (index < quotesArray.length()) {
+                    val obj = quotesArray.getJSONObject(index)
+                    val quote = Quote(
+                        chinese = obj.getString("chinese"),
+                        english = obj.getString("english"),
+                        author = obj.getString("author"),
+                        authorEn = obj.getString("author_en"),
+                        source = obj.getString("source"),
+                        sourceEn = obj.getString("source_en")
+                    )
+                    withContext(Dispatchers.Main) {
+                        displayQuote(cat, quote)
+                    }
+                }
+            } catch (e: Exception) {
+                LogManager.log("恢复名言失败: ${e.message}")
             }
         }
     }
+}
 
     private fun displayQuote(category: String, quote: Quote) {
         binding.tvQuoteTitle.text = "今日名言 - ${categoryNames[category] ?: category}"
@@ -507,8 +507,9 @@ class MainActivity : AppCompatActivity() {
                 if (failed.get() > 0) showError(Constants.ERROR05)
                 else {
                     appendLog("Update completed!")
-                    if (!prefs.getBoolean("has_completed_first_update", false)) {
-                        prefs.edit().putBoolean("has_completed_first_update", true).apply()
+                                    val packsDir = File(targetModsDir, "../resourcepacks/generated.zip")
+                                    val resourcePackExists = packsDir.exists()
+                    if (!prefs.getBoolean("has_completed_first_update", false) && !resourcePackExists) {
                         withContext(Dispatchers.Main) {
                             MaterialAlertDialogBuilder(this@MainActivity)
                                 .setTitle("安装服务器材质包")

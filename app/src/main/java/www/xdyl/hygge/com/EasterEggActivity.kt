@@ -70,8 +70,6 @@ class EasterEggActivity : AppCompatActivity() {
         btnWhitelist.setOnClickListener { showWhitelistDialog() }
 
         // 重置按钮
-        val btnReset = findViewById<MaterialButton>(R.id.btnReset)
-        btnReset.setOnClickListener {
             MaterialAlertDialogBuilder(this)
                 .setTitle("重置确认")
                 .setMessage("将清除所有设置、路径记忆、白名单、标记状态等，恢复到初始状态。此操作不可撤销！")
