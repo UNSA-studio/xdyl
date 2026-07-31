@@ -1,3 +1,4 @@
+import org.json.JSONObject
 package www.xdyl.hygge.com
 
 import android.animation.Animator
@@ -173,7 +174,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     } else {
-        // 恢复上次的引用
         val cat = prefs.getString("quote_cat", quoteCategories[0]) ?: quoteCategories[0]
         val index = prefs.getInt("quote_index", 0)
         scope.launch(Dispatchers.IO) {
