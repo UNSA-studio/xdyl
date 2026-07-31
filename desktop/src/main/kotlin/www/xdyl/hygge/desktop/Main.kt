@@ -2,6 +2,7 @@ package www.xdyl.hygge.desktop
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -176,7 +177,6 @@ fun main() = application {
                             val file = dialog.file
                             if (file != null) { val selectedFile = File(dialog.directory, file); if (selectedFile.exists()) { localCsvPath = selectedFile.absolutePath; prefs.putString("local_csv_path", localCsvPath) } }
                         },
-                        onReset = { prefs.clear(); exitApplication() },
                         onBack = { currentScreen = "settings" }
                     )
                     "fileBrowser" -> FileBrowserScreen(
@@ -368,7 +368,6 @@ fun ExtensionScreen(
     onLocalCsvChange: (Boolean) -> Unit,
     localCsvPath: String,
     onPickCsv: () -> Unit,
-    onReset: () -> Unit,
     onBack: () -> Unit
 ) {
     Column(modifier = Modifier.padding(24.dp).fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -425,13 +424,6 @@ fun ExtensionScreen(
             border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
         ) { Text("模组白名单", fontSize = 24.sp) }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = onReset,
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("重置登记状态", fontSize = 24.sp) }
     }
 }
 

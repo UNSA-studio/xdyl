@@ -247,15 +247,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnReset"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="重置登记状态"
-                android:textColor="@android:color/black"
-                app:backgroundTint="@color/primary_light_blue"
-                android:layout_marginTop="16dp"
-                android:textSize="16sp"/>
+            <!-- 不再有重置按钮 -->
         </LinearLayout>
     </ScrollView>
 </FrameLayout>
