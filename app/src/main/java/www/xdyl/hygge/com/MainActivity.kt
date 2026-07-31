@@ -360,7 +360,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun startUpdateProcess() {
         if (isProcessing) return
-        // 增强：如果 targetModsDir 为空，尝试用保存的启动器路径再次定位
+        // 如果 targetModsDir 为空，尝试恢复
         if (targetModsDir == null) {
             LogManager.log("targetModsDir 为 null，尝试自动恢复...")
             restoreLastDirectory()
@@ -409,10 +409,15 @@ class MainActivity : AppCompatActivity() {
                 else {
                     appendLog("Update completed!")
                     val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
-                    if (!File(modsDir, "../$targetVersion/resourcepacks/generated.zip").exists()) {
+                    val resourcePackFile = File(modsDir, "../$targetVersion/resourcepacks/generated.zip")
+                    if (!resourcePackFile.exists()) {
                         withContext(Dispatchers.Main) {
-                            MaterialAlertDialogBuilder(this@MainActivity).setTitle("安装服务器材质包").setMessage("是否要安装 Server 材质包？\n注意！这是必要，如不装，进服将下载材质包，在这里安装可以加快速度。")
-                                .setPositiveButton("好的") { scope.launch { installResourcePack() } }.setNegativeButton("取消", null).show()
+                            MaterialAlertDialogBuilder(this@MainActivity)
+                                .setTitle("安装服务器材质包")
+                                .setMessage("是否要安装 Server 材质包？\n注意！这是必要，如不装，进服将下载材质包，在这里安装可以加快速度。")
+                                .setPositiveButton("好的") { _, _ -> scope.launch { installResourcePack() } }
+                                .setNegativeButton("取消", null)
+                                .show()
                         }
                     }
                 }
@@ -436,30 +441,37 @@ class MainActivity : AppCompatActivity() {
                         FileOutputStream(destFile).use { output -> input.copyTo(output) }
                     }
                     LogManager.log("材质包已安装到 ${destFile.absolutePath}")
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MainActivity, "材质包已安装", Toast.LENGTH_SHORT).show()
-                    }
+                    withContext(Dispatchers.Main) { Toast.makeText(this@MainActivity, "材质包已安装", Toast.LENGTH_SHORT).show() }
                 }
             } catch (e: Exception) {
                 LogManager.log("安装材质包失败: ${e.message}")
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "安装材质包失败: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                withContext(Dispatchers.Main) { Toast.makeText(this@MainActivity, "安装材质包失败: ${e.message}", Toast.LENGTH_LONG).show() }
             }
         }
     }
+
     private suspend fun filterOutUnchangedMods(modsDir: File, csvMods: List<ModInfo>) = withContext(Dispatchers.IO) {
         csvMods.filterNot { mod ->
             val local = File(modsDir, mod.fileName)
             local.exists() && local.length() == mod.size && calculateMD5(local) == mod.md5
         }
     }
+
     private fun calculateMD5(file: File) = try {
-        val digest = MessageDigest.getInstance("MD5"); file.inputStream().use { fis -> val buf = ByteArray(8192); var len: Int
-            while (fis.read(buf).also { len = it } != -1) digest.update(buf, 0, len) }; digest.digest().joinToString("") { "%02x".format(it) }
+        val digest = MessageDigest.getInstance("MD5")
+        file.inputStream().use { fis -> val buf = ByteArray(8192); var len: Int
+            while (fis.read(buf).also { len = it } != -1) digest.update(buf, 0, len) }
+        digest.digest().joinToString("") { "%02x".format(it) }
     } catch (e: Exception) { null }
 
-    fun appendLog(msg: String) { runOnUiThread { binding.tvLog.text = "${binding.tvLog.text}\n$msg"; binding.logScroll.post { binding.logScroll.fullScroll(View.FOCUS_DOWN) } } }
+    fun appendLog(msg: String) {
+        runOnUiThread {
+            val current = binding.tvLog.text.toString()
+            binding.tvLog.text = "$current\n$msg"
+            binding.logScroll.post { binding.logScroll.fullScroll(View.FOCUS_DOWN) }
+        }
+    }
+
     private fun exportLogToFile() {
         scope.launch(Dispatchers.IO) {
             try {
@@ -474,5 +486,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
     override fun onDestroy() { instance = null; job.cancel(); super.onDestroy() }
 }
