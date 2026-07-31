@@ -1,5 +1,8 @@
 package www.xdyl.hygge.com
 
+import android.content.Context
+import java.io.File
+
 object Constants {
     const val BASE_URL = "http://82.157.155.86:5551/mods/"
     const val TARGET_VERSION_DIR = "1.21.1-NeoForge"
@@ -184,4 +187,10 @@ object Constants {
         ERROR08 to "无法从服务器获取文件列表。请确认服务器连接是否正常。",
         ERROR10 to "发生未知错误。请导出日志并联系开发者，日志路径位于应用内部存储的 Download 文件夹。"
     )
+}
+
+// 新增：从本地文件动态加载CSV，如果不存在则使用硬编码
+fun loadCsvContent(context: Context): String {
+    val file = File(context.filesDir, "file_list.csv")
+    return if (file.exists()) file.readText() else Constants.CSV_CONTENT
 }
