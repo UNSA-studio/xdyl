@@ -29,6 +29,8 @@ import org.json.JSONObject
 import www.xdyl.hygge.com.databinding.ActivityMainBinding
 import java.io.File
 import java.io.FileOutputStream
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.net.URLEncoder
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
@@ -80,6 +82,16 @@ class MainActivity : AppCompatActivity() {
         binding.tvTitleLine2.text = "星云更新器-Android端"
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         binding.tvLog.movementMethod = ScrollingMovementMethod()
+
+        // 全局异常捕获，将崩溃写入日志
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
+            val sw = StringWriter()
+            ex.printStackTrace(PrintWriter(sw))
+            LogManager.log("崩溃: ${sw.toString()}")
+            defaultHandler?.uncaughtException(thread, ex)
+        }
+
         requestStoragePermissions()
         loadDailyQuote()
 
@@ -145,8 +157,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun restoreLastDirectory() {
         val lastPath = prefs.getString("launcher_root", null)
+        LogManager.log("restoreLastDirectory: lastPath=$lastPath")
         if (lastPath != null) {
-            LogManager.log("尝试恢复上次选择的目录: $lastPath")
             val dir = File(lastPath)
             if (dir.exists() && dir.isDirectory) {
                 val found = findMinecraftModsDir(dir)
@@ -158,7 +170,7 @@ class MainActivity : AppCompatActivity() {
                 } else { LogManager.log("未能在 $lastPath 下找到 mods 目录") }
             } else { LogManager.log("上次保存的路径无效: $lastPath") }
         }
-        LogManager.log("没有可恢复的目录，请手动选择")
+        LogManager.log("没有可恢复的目录，targetModsDir 保持为 ${targetModsDir?.absolutePath ?: "null"}")
     }
 
     // ========== 每日名言 ==========
@@ -360,15 +372,37 @@ class MainActivity : AppCompatActivity() {
 
     private fun startUpdateProcess() {
         if (isProcessing) return
-        // 如果 targetModsDir 为空，尝试恢复
+        // 增强恢复：如果 targetModsDir 为空，再次从 SharedPreferences 读取并尝试恢复
         if (targetModsDir == null) {
-            LogManager.log("targetModsDir 为 null，尝试自动恢复...")
-            restoreLastDirectory()
+            LogManager.log("startUpdateProcess: targetModsDir 为 null，尝试使用保存的启动器路径恢复...")
+            val lastPath = prefs.getString("launcher_root", null)
+            LogManager.log("保存的启动器路径: $lastPath")
+            if (lastPath != null) {
+                val dir = File(lastPath)
+                if (dir.exists() && dir.isDirectory) {
+                    targetModsDir = findMinecraftModsDir(dir)
+                    if (targetModsDir != null) {
+                        LogManager.log("恢复成功: ${targetModsDir!!.absolutePath}")
+                        binding.btnStartDownload.isEnabled = true
+                    } else {
+                        LogManager.log("恢复失败: 在 $lastPath 下未找到 mods 目录")
+                    }
+                } else {
+                    LogManager.log("恢复失败: 路径无效 $lastPath")
+                }
+            }
+            // 如果仍然为空，报错
+            if (targetModsDir == null) {
+                LogManager.log("无法恢复目标目录，报 ERROR01")
+                showError(Constants.ERROR01)
+                return
+            }
         }
-        val modsDir = targetModsDir ?: run { showError(Constants.ERROR01); return }
+
+        val modsDir = targetModsDir!!
         isProcessing = true; binding.btnStartDownload.isEnabled = false
         binding.progressBar.visibility = View.VISIBLE; binding.progressBar.progress = 0
-        binding.tvLog.text = "Checking mods..."; LogManager.log("开始更新")
+        binding.tvLog.text = "Checking mods..."; LogManager.log("开始更新，目标目录: ${modsDir.absolutePath}")
 
         val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
         LogManager.log("实际并发下载数: $threadCount")
@@ -421,7 +455,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
-            } catch (e: Exception) { showError(Constants.ERROR03) }
+            } catch (e: Exception) { LogManager.log("更新异常: ${e.message}"); showError(Constants.ERROR03) }
             finally { isProcessing = false; binding.btnStartDownload.isEnabled = true }
         }
     }
