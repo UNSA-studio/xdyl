@@ -26,20 +26,11 @@ class EasterEggActivity : AppCompatActivity() {
         setContentView(R.layout.activity_easter_egg)
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
 
-        // 解锁线程上限
         val swUnlock = findViewById<SwitchMaterial>(R.id.swUnlockThread)
         swUnlock.isChecked = prefs.getBoolean("unlock_thread_limit", false)
         swUnlock.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("unlock_thread_limit", isChecked).apply()
-            if (isChecked) {
-                Toast.makeText(this, "线程上限已解锁，设置中可调整至 1024", Toast.LENGTH_SHORT).show()
-            } else {
-                val current = prefs.getInt("thread_limit", 256)
-                if (current > 128) {
-                    prefs.edit().putInt("thread_limit", 128).apply()
-                }
-                Toast.makeText(this, "线程上限已锁定为 128", Toast.LENGTH_SHORT).show()
-            }
+            Toast.makeText(this, if (isChecked) "线程上限已解锁至 1024" else "线程上限已锁定为 128", Toast.LENGTH_SHORT).show()
         }
 
         val switchNeoforge = findViewById<SwitchMaterial>(R.id.swNeoforgeCheck)
@@ -68,20 +59,6 @@ class EasterEggActivity : AppCompatActivity() {
 
         val btnWhitelist = findViewById<MaterialButton>(R.id.btnWhitelist)
         btnWhitelist.setOnClickListener { showWhitelistDialog() }
-
-        // 重置按钮
-            MaterialAlertDialogBuilder(this)
-                .setTitle("重置确认")
-                .setMessage("将清除所有设置、路径记忆、白名单、标记状态等，恢复到初始状态。此操作不可撤销！")
-                .setPositiveButton("重置") { _, _ ->
-                    prefs.edit().clear().apply()
-                    Toast.makeText(this, "已重置，请重启应用", Toast.LENGTH_LONG).show()
-                    finishAffinity()
-                    System.exit(0)
-                }
-                .setNegativeButton("取消", null)
-                .show()
-        }
     }
 
     private fun showWhitelistDialog() {
@@ -91,7 +68,9 @@ class EasterEggActivity : AppCompatActivity() {
 
         MaterialAlertDialogBuilder(this)
             .setTitle("模组白名单")
-            .setMultiChoiceItems(items, checked) { _, _, _ -> }
+            .setMultiChoiceItems(items, checked) { _, which, isChecked ->
+                checked[which] = isChecked
+            }
             .setPositiveButton("添加") { _, _ ->
                 val input = EditText(this)
                 input.hint = "输入模组文件名"
@@ -110,7 +89,10 @@ class EasterEggActivity : AppCompatActivity() {
                     .show()
             }
             .setNegativeButton("删除选中") { _, _ ->
-                val toRemove = whitelist.filterIndexed { index, _ -> checked[index] }
+                val toRemove = mutableListOf<String>()
+                for (i in items.indices) {
+                    if (checked[i]) toRemove.add(items[i])
+                }
                 if (toRemove.isNotEmpty()) {
                     whitelist.removeAll(toRemove)
                     saveWhitelist(whitelist)
@@ -127,7 +109,6 @@ class EasterEggActivity : AppCompatActivity() {
         prefs.edit().putStringSet("mod_whitelist", list.toSet()).apply()
     }
 
-    // CSV 选择器（略，与之前相同，不再重复，但确保有正确功能）
     private fun showCsvFilePicker() {
         val lastPath = prefs.getString("csv_browser_last_path", Environment.getExternalStorageDirectory().absolutePath)
         currentDir = File(lastPath)
@@ -166,7 +147,7 @@ class EasterEggActivity : AppCompatActivity() {
                 override fun getItemCount(): Int = files.size
             }
             recycler.adapter = adapter
-            updateBackButtonState(dir)
+            updateUpButton(dir)
         }
         loadDir(currentDir!!)
 
@@ -185,10 +166,9 @@ class EasterEggActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun updateBackButtonState(dir: File) {
+    private fun updateUpButton(dir: File) {
         val btn = csvBrowseDialog?.getButton(AlertDialog.BUTTON_NEGATIVE) ?: return
-        val root = Environment.getExternalStorageDirectory()
-        val isRoot = try { dir.canonicalPath == root.canonicalPath } catch (e: Exception) { dir.absolutePath == root.absolutePath }
+        val isRoot = dir.absolutePath == Environment.getExternalStorageDirectory().absolutePath
         btn.isEnabled = !isRoot
         btn.alpha = if (isRoot) 0.5f else 1.0f
     }

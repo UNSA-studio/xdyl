@@ -35,7 +35,6 @@ import java.security.MessageDigest
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
 
-// 自定义字体
 val silverFontFamily = FontFamily(Font(resource = "font/silver.ttf"))
 
 val client = OkHttpClient.Builder()
@@ -126,9 +125,13 @@ fun main() = application {
                                         if (failed.get() > 0) logBuilder.appendLine("Error: ERROR05")
                                         else {
                                             logBuilder.appendLine("Update completed!")
-                                            if (!prefs.getBoolean("has_completed_first_update", false)) {
-                                                prefs.putBoolean("has_completed_first_update", true)
-                                                installResourcePack(prefs)
+                                            // 检查材质包是否存在
+                                            val targetVersion = prefs.getString("version_folder", "1.21.1-NeoForge") ?: "1.21.1-NeoForge"
+                                            val resourcePackFile = File(targetModsDir!!.parentFile, "$targetVersion/resourcepacks/generated.zip")
+                                            if (!resourcePackFile.exists()) {
+                                                withContext(Dispatchers.Main) {
+                                                    // 询问安装
+                                                }
                                             }
                                         }
                                         logText = logBuilder.toString()
@@ -197,16 +200,7 @@ fun main() = application {
 
 // ---------- 主界面 ----------
 @Composable
-fun MainScreen(
-    targetModsDir: File?,
-    onSelectDir: () -> Unit,
-    onStartDownload: () -> Unit,
-    downloading: Boolean,
-    logText: String,
-    progress: Float,
-    statusText: String,
-    onSettings: () -> Unit
-) {
+fun MainScreen(targetModsDir: File?, onSelectDir: () -> Unit, onStartDownload: () -> Unit, downloading: Boolean, logText: String, progress: Float, statusText: String, onSettings: () -> Unit) {
     Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column {
@@ -219,275 +213,96 @@ fun MainScreen(
             }
         }
         Spacer(Modifier.height(32.dp))
-        Button(
-            onClick = onSelectDir,
-            modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("选择游戏目录", fontSize = 28.sp) }
+        Button(onClick = onSelectDir, modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 16.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) { Text("选择游戏目录", fontSize = 28.sp) }
         Spacer(Modifier.height(20.dp))
-        Button(
-            onClick = onStartDownload,
-            enabled = targetModsDir != null && !downloading,
-            modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("开始下载", fontSize = 28.sp) }
+        Button(onClick = onStartDownload, enabled = targetModsDir != null && !downloading, modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 16.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) { Text("开始下载", fontSize = 28.sp) }
         Spacer(Modifier.height(24.dp))
-        LinearProgressIndicator(
-            progress = { (progress / 100f).coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(6.dp)),
-            color = Color(0xFFA0C4FF),
-            trackColor = Color(0xFFA0C4FF).copy(alpha = 0.2f)
-        )
+        LinearProgressIndicator(progress = { (progress / 100f).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(6.dp)), color = Color(0xFFA0C4FF), trackColor = Color(0xFFA0C4FF).copy(alpha = 0.2f))
         Text(statusText, color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 22.sp)
         Spacer(Modifier.height(12.dp))
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            val scrollState = rememberScrollState()
-            Text(logText, modifier = Modifier.verticalScroll(scrollState).padding(8.dp).fillMaxWidth(), fontSize = 18.sp, color = Color.LightGray, maxLines = Int.MAX_VALUE, overflow = TextOverflow.Clip)
-        }
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) { val scrollState = rememberScrollState(); Text(logText, modifier = Modifier.verticalScroll(scrollState).padding(8.dp).fillMaxWidth(), fontSize = 18.sp, color = Color.LightGray, maxLines = Int.MAX_VALUE, overflow = TextOverflow.Clip) }
     }
 }
 
 // ---------- 设置界面 ----------
 @Composable
-fun SettingsScreen(
-    versionName: String,
-    onVersionChange: (String) -> Unit,
-    threadCount: Int,
-    onThreadChange: (Int) -> Unit,
-    maxThreads: Int,
-    neoforgeCheckEnabled: Boolean,
-    onNeoforgeChange: (Boolean) -> Unit,
-    cleanOrphanFiles: Boolean,
-    onCleanOrphanChange: (Boolean) -> Unit,
-    extensionMode: Boolean,
-    onExtensionChange: (Boolean) -> Unit,
-    onSelectDir: () -> Unit,
-    onBack: () -> Unit,
-    onExtensionPage: () -> Unit
-) {
+fun SettingsScreen(versionName: String, onVersionChange: (String) -> Unit, threadCount: Int, onThreadChange: (Int) -> Unit, maxThreads: Int, neoforgeCheckEnabled: Boolean, onNeoforgeChange: (Boolean) -> Unit, cleanOrphanFiles: Boolean, onCleanOrphanChange: (Boolean) -> Unit, extensionMode: Boolean, onExtensionChange: (Boolean) -> Unit, onSelectDir: () -> Unit, onBack: () -> Unit, onExtensionPage: () -> Unit) {
     Column(modifier = Modifier.padding(24.dp).fillMaxSize().verticalScroll(rememberScrollState())) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("← 返回", color = Color(0xFFA0C4FF), fontSize = 24.sp) }
-            Spacer(Modifier.width(8.dp))
-            Text("设置", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
-        }
+        Row(verticalAlignment = Alignment.CenterVertically) { TextButton(onClick = onBack) { Text("← 返回", color = Color(0xFFA0C4FF), fontSize = 24.sp) }; Spacer(Modifier.width(8.dp)); Text("设置", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily) }
         Spacer(Modifier.height(24.dp))
-        OutlinedTextField(
-            value = versionName,
-            onValueChange = onVersionChange,
-            label = { Text("Minecraft 版本文件夹名", fontSize = 20.sp, color = Color.Gray) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = LocalTextStyle.current.copy(fontSize = 22.sp, color = Color.White),
-            colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, cursorColor = Color(0xFFA0C4FF))
-        )
+        OutlinedTextField(value = versionName, onValueChange = onVersionChange, label = { Text("Minecraft 版本文件夹名", fontSize = 20.sp, color = Color.Gray) }, singleLine = true, modifier = Modifier.fillMaxWidth(), textStyle = LocalTextStyle.current.copy(fontSize = 22.sp, color = Color.White), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, cursorColor = Color(0xFFA0C4FF)))
         Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = threadCount.toString(),
-            onValueChange = { v -> v.toIntOrNull()?.let { onThreadChange(it.coerceIn(20, maxThreads)) } },
-            label = { Text("下载线程数 (20-$maxThreads)", fontSize = 20.sp, color = Color.Gray) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = LocalTextStyle.current.copy(fontSize = 22.sp, color = Color.White),
-            colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, cursorColor = Color(0xFFA0C4FF))
-        )
+        OutlinedTextField(value = threadCount.toString(), onValueChange = { v -> v.toIntOrNull()?.let { onThreadChange(it.coerceIn(20, maxThreads)) } }, label = { Text("下载线程数 (20-$maxThreads)", fontSize = 20.sp, color = Color.Gray) }, singleLine = true, modifier = Modifier.fillMaxWidth(), textStyle = LocalTextStyle.current.copy(fontSize = 22.sp, color = Color.White), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, cursorColor = Color(0xFFA0C4FF)))
         Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(16.dp))
-        OutlinedButton(
-            onClick = onSelectDir,
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("选择游戏目录", fontSize = 24.sp) }
+        OutlinedButton(onClick = onSelectDir, modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), border = BorderStroke(1.dp, Color(0xFFA0C4FF)), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))) { Text("选择游戏目录", fontSize = 24.sp) }
         Spacer(Modifier.height(16.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = neoforgeCheckEnabled, onCheckedChange = onNeoforgeChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
-            Spacer(Modifier.width(8.dp))
-            Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp)
-        }
+        Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = neoforgeCheckEnabled, onCheckedChange = onNeoforgeChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f))); Spacer(Modifier.width(8.dp)); Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp) }
         Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
-            Spacer(Modifier.width(8.dp))
-            Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp)
-        }
+        Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f))); Spacer(Modifier.width(8.dp)); Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp) }
         Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(16.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = extensionMode, onCheckedChange = onExtensionChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
-            Spacer(Modifier.width(8.dp))
-            Text("扩展模式", color = Color.White, fontSize = 22.sp)
-        }
-        if (extensionMode) {
-            Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = onExtensionPage,
-                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-            ) { Text("进入扩展页面", fontSize = 24.sp) }
-        }
+        Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = extensionMode, onCheckedChange = onExtensionChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f))); Spacer(Modifier.width(8.dp)); Text("扩展模式", color = Color.White, fontSize = 22.sp) }
+        if (extensionMode) { Spacer(Modifier.height(16.dp)); Button(onClick = onExtensionPage, modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) { Text("进入扩展页面", fontSize = 24.sp) } }
         Spacer(Modifier.height(24.dp))
-        OutlinedButton(
-            onClick = { /* 导出日志 */ },
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("导出日志", fontSize = 24.sp) }
+        OutlinedButton(onClick = { /* 导出日志 */ }, modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), border = BorderStroke(1.dp, Color(0xFFA0C4FF)), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))) { Text("导出日志", fontSize = 24.sp) }
         Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = { /* 错误代码 */ },
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("ERROR 错误代码", fontSize = 24.sp) }
+        OutlinedButton(onClick = { /* 错误代码 */ }, modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), border = BorderStroke(1.dp, Color(0xFFA0C4FF)), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))) { Text("ERROR 错误代码", fontSize = 24.sp) }
         Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = { /* 关于 */ },
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("关于软件", fontSize = 24.sp) }
+        OutlinedButton(onClick = { /* 关于 */ }, modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), border = BorderStroke(1.dp, Color(0xFFA0C4FF)), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))) { Text("关于软件", fontSize = 24.sp) }
     }
 }
 
 // ---------- 扩展界面 ----------
 @Composable
-fun ExtensionScreen(
-    unlockThread: Boolean,
-    onUnlockChange: (Boolean) -> Unit,
-    neoforgeCheckEnabled: Boolean,
-    onNeoforgeChange: (Boolean) -> Unit,
-    cleanOrphanFiles: Boolean,
-    onCleanOrphanChange: (Boolean) -> Unit,
-    useLocalCsv: Boolean,
-    onLocalCsvChange: (Boolean) -> Unit,
-    localCsvPath: String,
-    onPickCsv: () -> Unit,
-    onBack: () -> Unit
-) {
+fun ExtensionScreen(unlockThread: Boolean, onUnlockChange: (Boolean) -> Unit, neoforgeCheckEnabled: Boolean, onNeoforgeChange: (Boolean) -> Unit, cleanOrphanFiles: Boolean, onCleanOrphanChange: (Boolean) -> Unit, useLocalCsv: Boolean, onLocalCsvChange: (Boolean) -> Unit, localCsvPath: String, onPickCsv: () -> Unit, onBack: () -> Unit) {
     Column(modifier = Modifier.padding(24.dp).fillMaxSize().verticalScroll(rememberScrollState())) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("← 返回", color = Color(0xFFA0C4FF), fontSize = 24.sp) }
-            Spacer(Modifier.width(8.dp))
-            Text("扩展页面", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
-        }
+        Row(verticalAlignment = Alignment.CenterVertically) { TextButton(onClick = onBack) { Text("← 返回", color = Color(0xFFA0C4FF), fontSize = 24.sp) }; Spacer(Modifier.width(8.dp)); Text("扩展页面", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily) }
         Spacer(Modifier.height(24.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = unlockThread, onCheckedChange = onUnlockChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
-            Spacer(Modifier.width(8.dp))
-            Text("解锁线程数上限至 1024", color = Color.White, fontSize = 22.sp)
-        }
+        Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = unlockThread, onCheckedChange = onUnlockChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f))); Spacer(Modifier.width(8.dp)); Text("解锁线程数上限至 1024", color = Color.White, fontSize = 22.sp) }
         Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = neoforgeCheckEnabled, onCheckedChange = onNeoforgeChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
-            Spacer(Modifier.width(8.dp))
-            Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp)
-        }
+        Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = neoforgeCheckEnabled, onCheckedChange = onNeoforgeChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f))); Spacer(Modifier.width(8.dp)); Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp) }
         Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
-            Spacer(Modifier.width(8.dp))
-            Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp)
-        }
+        Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f))); Spacer(Modifier.width(8.dp)); Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp) }
         Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = useLocalCsv, onCheckedChange = onLocalCsvChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)))
-            Spacer(Modifier.width(8.dp))
-            Text("使用本地 CSV", color = Color.White, fontSize = 22.sp)
-        }
-        if (useLocalCsv) {
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = onPickCsv,
-                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-            ) { Text("浏览...", fontSize = 24.sp) }
-            if (localCsvPath.isNotEmpty()) {
-                Spacer(Modifier.height(4.dp))
-                Text("已选择: $localCsvPath", color = Color.White, fontSize = 20.sp)
-            }
-        }
+        Row(verticalAlignment = Alignment.CenterVertically) { Switch(checked = useLocalCsv, onCheckedChange = onLocalCsvChange, colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFFA0C4FF), checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f))); Spacer(Modifier.width(8.dp)); Text("使用本地 CSV", color = Color.White, fontSize = 22.sp) }
+        if (useLocalCsv) { Spacer(Modifier.height(8.dp)); Button(onClick = onPickCsv, modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) { Text("浏览...", fontSize = 24.sp) }; if (localCsvPath.isNotEmpty()) { Spacer(Modifier.height(4.dp)); Text("已选择: $localCsvPath", color = Color.White, fontSize = 20.sp) } }
         Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(24.dp))
-        OutlinedButton(
-            onClick = { /* 白名单 */ },
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("模组白名单", fontSize = 24.sp) }
+        OutlinedButton(onClick = { /* 白名单 */ }, modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), border = BorderStroke(1.dp, Color(0xFFA0C4FF)), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))) { Text("模组白名单", fontSize = 24.sp) }
+        // 不再有重置按钮
     }
 }
 
 // ---------- 文件浏览器界面 ----------
 @Composable
-fun FileBrowserScreen(
-    onSelect: (File) -> Unit,
-    onBack: () -> Unit
-) {
+fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
     var currentDir by remember { mutableStateOf(File.listRoots().firstOrNull() ?: File("C:\\")) }
     var files by remember { mutableStateOf(currentDir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()) }
-
     val hiddenFiles = files.filter { !it.name.startsWith(".") && !listOf("tmp","temp","log","bak","old").any { ext -> it.extension.equals(ext, true) } }
 
     Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("← 返回", color = Color(0xFFA0C4FF), fontSize = 24.sp) }
-            Spacer(Modifier.width(8.dp))
-            Text("选择启动器根目录", color = Color(0xFFA0C4FF), fontSize = 28.sp, fontFamily = silverFontFamily)
-        }
+        Row(verticalAlignment = Alignment.CenterVertically) { TextButton(onClick = onBack) { Text("← 返回", color = Color(0xFFA0C4FF), fontSize = 24.sp) }; Spacer(Modifier.width(8.dp)); Text("选择启动器根目录", color = Color(0xFFA0C4FF), fontSize = 28.sp, fontFamily = silverFontFamily) }
         Spacer(Modifier.height(12.dp))
         Text("当前目录: ${currentDir.absolutePath}", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         Spacer(Modifier.height(8.dp))
         val isRoot = currentDir.parentFile == null
-        Button(
-            onClick = {
-                val parent = currentDir.parentFile
-                if (parent != null) {
-                    currentDir = parent
-                    files = currentDir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
-                }
-            },
-            enabled = !isRoot,
-            modifier = Modifier.height(48.dp).padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("返回上级", fontSize = 20.sp) }
+        Button(onClick = { val parent = currentDir.parentFile; if (parent != null) { currentDir = parent; files = currentDir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList() } }, enabled = !isRoot, modifier = Modifier.height(48.dp).padding(horizontal = 16.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) { Text("返回上级", fontSize = 20.sp) }
         Spacer(Modifier.height(8.dp))
         LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
             items(hiddenFiles) { file ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().clickable {
-                        if (file.isDirectory) {
-                            currentDir = file
-                            files = currentDir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
-                        }
-                    }.padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = file.name,
-                        color = if (file.isDirectory) Color(0xFFA0C4FF) else Color.White,
-                        fontSize = 22.sp
-                    )
+                Row(modifier = Modifier.fillMaxWidth().clickable { if (file.isDirectory) { currentDir = file; files = currentDir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList() } }.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = file.name, color = if (file.isDirectory) Color(0xFFA0C4FF) else Color.White, fontSize = 22.sp)
                 }
             }
         }
         Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = { onSelect(currentDir) },
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("选择此文件夹", fontSize = 24.sp) }
+        Button(onClick = { onSelect(currentDir) }, modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) { Text("选择此文件夹", fontSize = 24.sp) }
     }
 }
 
@@ -502,57 +317,28 @@ suspend fun installResourcePack(prefs: Preferences) {
         if (!packsDir.exists()) packsDir.mkdirs()
         val destFile = File(packsDir, "generated.zip")
         if (!destFile.exists()) {
-            Thread.currentThread().contextClassLoader.getResourceAsStream("generated.zip").use { input ->
-                FileOutputStream(destFile).use { output -> input.copyTo(output) }
-            }
+            Thread.currentThread().contextClassLoader.getResourceAsStream("generated.zip").use { input -> FileOutputStream(destFile).use { output -> input.copyTo(output) } }
         }
     } catch (e: Exception) { /* ignore */ }
 }
 
 fun findMinecraftModsDir(root: File, prefs: Preferences): File? {
-    val mc = File(root, ".minecraft")
-    val mcAlt = File(root, "minecraft")
-    val m = if (mc.exists()) mc else if (mcAlt.exists()) mcAlt else return null
-    val versions = File(m, "versions")
-    if (!versions.exists()) return null
-    val target = prefs.getString("version_folder", "1.21.1-NeoForge") ?: "1.21.1-NeoForge"
-    val targetDir = File(versions, target)
-    if (!targetDir.exists()) return null
-    val mods = File(targetDir, "mods")
-    if (!mods.exists()) mods.mkdirs()
-    return mods
+    val mc = File(root, ".minecraft"); val mcAlt = File(root, "minecraft"); val m = if (mc.exists()) mc else if (mcAlt.exists()) mcAlt else return null
+    val versions = File(m, "versions"); if (!versions.exists()) return null
+    val target = prefs.getString("version_folder", "1.21.1-NeoForge") ?: "1.21.1-NeoForge"; val targetDir = File(versions, target); if (!targetDir.exists()) return null
+    val mods = File(targetDir, "mods"); if (!mods.exists()) mods.mkdirs(); return mods
 }
 
 suspend fun fetchDesktopServerFileList(): List<String> = withContext(Dispatchers.IO) {
     try {
-        val request = Request.Builder().url(Constants.BASE_URL).build()
-        val response = client.newCall(request).execute()
-        val body = response.body?.string() ?: return@withContext emptyList()
+        val request = Request.Builder().url(Constants.BASE_URL).build(); val response = client.newCall(request).execute(); val body = response.body?.string() ?: return@withContext emptyList()
         if (response.code != 200) return@withContext emptyList()
-        val pattern = Regex("<a href=\"([^\"]+)\">")
-        pattern.findAll(body).map { it.groupValues[1] }.filter { it.endsWith(".jar") }.map { java.net.URLDecoder.decode(it, "UTF-8") }.toList()
+        val pattern = Regex("<a href=\"([^\"]+)\">"); pattern.findAll(body).map { it.groupValues[1] }.filter { it.endsWith(".jar") }.map { java.net.URLDecoder.decode(it, "UTF-8") }.toList()
     } catch (e: Exception) { emptyList() }
 }
 
-fun parseDesktopCsvMods(): List<ModInfo> = Constants.CSV_CONTENT.lines().drop(1).filter { it.isNotBlank() }.map { line ->
-    val parts = line.split(",")
-    ModInfo(parts[0].trim('"').removePrefix("./"), parts[2].toLong(), parts[3].trim('"'), parts[4].trim('"'))
-}
-
-fun parseCsvFromFile(file: File): List<ModInfo> = file.readText().lines().drop(1).filter { it.isNotBlank() }.map { line ->
-    val parts = line.split(",")
-    ModInfo(parts[0].trim('"').removePrefix("./"), parts[2].toLong(), parts[3].trim('"'), parts[4].trim('"'))
-}
-
-fun filterOutUnchangedModsDesktop(modsDir: File, csvMods: List<ModInfo>): List<ModInfo> = csvMods.filterNot { mod ->
-    val local = File(modsDir, mod.fileName)
-    local.exists() && local.length() == mod.size && calculateMD5Desktop(local) == mod.md5
-}
-
-fun calculateMD5Desktop(file: File): String? = try {
-    val digest = MessageDigest.getInstance("MD5")
-    file.inputStream().use { fis -> val buffer = ByteArray(8192); var len: Int; while (fis.read(buffer).also { len = it } != -1) digest.update(buffer, 0, len) }
-    digest.digest().joinToString("") { "%02x".format(it) }
-} catch (e: Exception) { null }
-
+fun parseDesktopCsvMods(): List<ModInfo> = Constants.CSV_CONTENT.lines().drop(1).filter { it.isNotBlank() }.map { line -> val parts = line.split(","); ModInfo(parts[0].trim('"').removePrefix("./"), parts[2].toLong(), parts[3].trim('"'), parts[4].trim('"')) }
+fun parseCsvFromFile(file: File): List<ModInfo> = file.readText().lines().drop(1).filter { it.isNotBlank() }.map { line -> val parts = line.split(","); ModInfo(parts[0].trim('"').removePrefix("./"), parts[2].toLong(), parts[3].trim('"'), parts[4].trim('"')) }
+fun filterOutUnchangedModsDesktop(modsDir: File, csvMods: List<ModInfo>): List<ModInfo> = csvMods.filterNot { mod -> val local = File(modsDir, mod.fileName); local.exists() && local.length() == mod.size && calculateMD5Desktop(local) == mod.md5 }
+fun calculateMD5Desktop(file: File): String? = try { val digest = MessageDigest.getInstance("MD5"); file.inputStream().use { fis -> val buffer = ByteArray(8192); var len: Int; while (fis.read(buffer).also { len = it } != -1) digest.update(buffer, 0, len) }; digest.digest().joinToString("") { "%02x".format(it) } } catch (e: Exception) { null }
 data class ModInfo(val fileName: String, val size: Long, val md5: String, val sha256: String)
