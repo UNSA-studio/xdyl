@@ -1,6 +1,6 @@
-import org.json.JSONObject
 package www.xdyl.hygge.com
 
+import org.json.JSONObject
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.content.Intent
