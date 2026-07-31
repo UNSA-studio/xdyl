@@ -254,7 +254,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun displayQuote(category: String, quote: Quote) {
-        binding.tvQuoteTitle.text = "今日名言 - ${categoryNames[category] ?: category}"
+        binding.tvQuoteTitle.text = "随机名言 - ${categoryNames[category] ?: category}"
         binding.tvQuoteChinese.text = quote.chinese
         binding.tvQuoteEnglish.text = quote.english
         binding.tvQuoteAuthor.text = "- ${quote.author} / ${quote.source}"
