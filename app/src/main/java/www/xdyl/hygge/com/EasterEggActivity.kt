@@ -59,6 +59,63 @@ class EasterEggActivity : AppCompatActivity() {
 
         val btnWhitelist = findViewById<MaterialButton>(R.id.btnWhitelist)
         btnWhitelist.setOnClickListener { showWhitelistDialog() }
+
+        // WiFi ADB 远程日志
+        val swWifiAdb = findViewById<SwitchMaterial>(R.id.swWifiAdb)
+        val layoutWifiConfig = findViewById<LinearLayout>(R.id.layoutWifiConfig)
+        val etWifiIp = findViewById<TextInputEditText>(R.id.etWifiIp)
+        val etWifiPort = findViewById<TextInputEditText>(R.id.etWifiPort)
+        val btnWifiConnect = findViewById<MaterialButton>(R.id.btnWifiConnect)
+
+        swWifiAdb.isChecked = prefs.getBoolean("wifi_adb_enabled", false)
+        layoutWifiConfig.visibility = if (swWifiAdb.isChecked) View.VISIBLE else View.GONE
+
+        // 回显保存的 IP 和端口
+        etWifiIp.setText(prefs.getString("wifi_adb_ip", ""))
+        val savedPort = prefs.getInt("wifi_adb_port", 5555)
+        etWifiPort.setText(if (savedPort != 5555) savedPort.toString() else "5555")
+
+        swWifiAdb.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("wifi_adb_enabled", isChecked).apply()
+            layoutWifiConfig.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        btnWifiConnect.setOnClickListener {
+            val ip = etWifiIp.text.toString().trim()
+            val port = etWifiPort.text.toString().trim().toIntOrNull() ?: 5555
+
+            if (ip.isBlank()) {
+                Toast.makeText(this, "请输入 IP 地址", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            prefs.edit()
+                .putString("wifi_adb_ip", ip)
+                .putInt("wifi_adb_port", port)
+                .apply()
+
+            // 启动 WiFi ADB 日志流：开线程持续读取 logcat 并保存在内存中
+            Thread {
+                try {
+                    val process = Runtime.getRuntime().exec(arrayOf("logcat", "-s", "NebulaUpdater"))
+                    val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
+                    var line: String?
+                    val sb = StringBuilder()
+                    while (reader.readLine().also { line = it } != null) {
+                        sb.appendLine(line)
+                        // 每收到 50 行就保存到文件
+                        if (sb.lines().count() >= 50) {
+                            LogManager.log("[WIFI_ADB] Saved ${sb.lines().count()} lines")
+                            sb.clear()
+                        }
+                    }
+                } catch (e: Exception) {
+                    LogManager.log("[WIFI_ADB] Error: ${e.message}")
+                }
+            }.start()
+
+            Toast.makeText(this, "已开始监听 $ip:$port 的日志", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun showWhitelistDialog() {
