@@ -110,7 +110,7 @@ class EasterEggActivity : AppCompatActivity() {
     }
 
     private fun showCsvFilePicker() {
-        val lastPath = prefs.getString("csv_browser_last_path", Environment.getExternalStorageDirectory().absolutePath)
+        val lastPath = prefs.getString("csv_browser_last_path", Environment.getExternalStorageDirectory().absolutePath) ?: Environment.getExternalStorageDirectory().absolutePath
         currentDir = File(lastPath)
         if (!currentDir!!.exists()) currentDir!!.mkdirs()
 
