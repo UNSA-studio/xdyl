@@ -147,23 +147,17 @@
     </ScrollView>
 
     <!-- 每日名言面板 -->
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:id="@+id/cardQuote"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:orientation="vertical"
         android:background="@drawable/quote_card_bg"
-        android:padding="1dp"
+        android:padding="12dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         android:layout_marginTop="8dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="@drawable/quote_card_bg"
-            android:padding="12dp">
 
             <TextView
                 android:id="@+id/tvQuoteTitle"
@@ -184,6 +178,9 @@
                 android:singleLine="false"
                 android:ellipsize="none"
                 android:maxLines="10"
+                android:fontFamily="sans-serif"
+                android:breakStrategy="simple"
+                android:hyphenationFrequency="none"
                 android:layout_marginTop="4dp" />
 
             <TextView
@@ -196,6 +193,9 @@
                 android:singleLine="false"
                 android:ellipsize="none"
                 android:maxLines="10"
+                android:fontFamily="sans-serif"
+                android:breakStrategy="simple"
+                android:hyphenationFrequency="none"
                 android:layout_marginLeft="16dp"
                 android:layout_marginTop="4dp" />
 
@@ -215,6 +215,9 @@
                     android:singleLine="false"
                     android:ellipsize="none"
                     android:maxLines="10"
+                    android:fontFamily="sans-serif"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
                     android:layout_marginLeft="8dp" />
 
                 <TextView
@@ -227,11 +230,14 @@
                     android:singleLine="false"
                     android:ellipsize="none"
                     android:maxLines="10"
+                    android:fontFamily="sans-serif"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
                     android:layout_marginLeft="8dp"
                     android:layout_marginTop="2dp" />
             </LinearLayout>
         </LinearLayout>
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
 
     <!-- 绿色覆盖层 -->
     <View
