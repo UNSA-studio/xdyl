@@ -83,6 +83,7 @@ class MainActivity : AppCompatActivity() {
         binding.tvTitleLine2.text = "星云更新器-Android端"
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         binding.tvLog.movementMethod = ScrollingMovementMethod()
+        binding.cardQuote.clipToOutline = false  // prevent CardView rounded corners from clipping wrapped text
 
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
