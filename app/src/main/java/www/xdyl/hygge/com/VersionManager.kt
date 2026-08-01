@@ -90,13 +90,28 @@ class VersionManager(private val context: Context) {
                     .build()
                 val response = client.newCall(request).execute()
                 if (response.isSuccessful) {
-                    val csv = response.body?.string() ?: return@withContext
+                    val body = response.body ?: run {
+                        LogManager.log("[CSV] Download failed: empty body")
+                        return@withContext
+                    }
+                    val csv = body.string()
+                    LogManager.log("[CSV] Downloaded file_list.csv, size=${csv.length} chars, lines=${csv.lines().size}")
+                    // 完整性检查：CSV 至少要有 80 行（表头 + 至少 80 个模组）
+                    val lineCount = csv.lines().size
+                    if (lineCount < 80) {
+                        LogManager.log("[CSV] WARNING: downloaded CSV has only $lineCount lines, might be truncated!")
+                        // 不保存不完整的文件
+                        return@withContext
+                    }
                     val file = File(context.filesDir, "file_list.csv")
                     file.writeText(csv)
                     saveLocalVersion(version)
+                    LogManager.log("[CSV] Saved to ${file.absolutePath}")
+                } else {
+                    LogManager.log("[CSV] Download failed: HTTP ${response.code}")
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                LogManager.log("[CSV] Download exception: ${e.javaClass.simpleName} - ${e.message}")
             }
         }
     }
