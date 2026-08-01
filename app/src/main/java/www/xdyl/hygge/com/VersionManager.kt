@@ -40,28 +40,35 @@ class VersionManager(private val context: Context) {
     ) {
         withContext(Dispatchers.IO) {
             try {
+                LogManager.log("[CSV] Fetching ${BASE_URL}Version_difference.json")
                 val request = Request.Builder()
                     .url("${BASE_URL}Version_difference.json")
                     .header("X-API-Key", API_KEY)
                     .build()
                 val response = client.newCall(request).execute()
+                LogManager.log("[CSV] Response code: ${response.code}")
                 if (!response.isSuccessful) {
+                    LogManager.log("[CSV] API returned error: ${response.code} ${response.message}")
                     withContext(Dispatchers.Main) { onComplete() }
                     return@withContext
                 }
-                val json = response.body?.string() ?: run {
+                val json = response.body?.string()
+                if (json == null) {
+                    LogManager.log("[CSV] Response body is null")
                     withContext(Dispatchers.Main) { onComplete() }
                     return@withContext
                 }
+                LogManager.log("[CSV] Received JSON: ${json.take(200)}...")
                 val remote = gson.fromJson(json, VersionDiff::class.java)
                 val localVer = getLocalVersion()
+                LogManager.log("[CSV] Remote version: ${remote.version}, local: $localVer")
                 if (remote.version > localVer) {
                     withContext(Dispatchers.Main) { onUpdateAvailable(remote) }
                 } else {
                     withContext(Dispatchers.Main) { onComplete() }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                LogManager.log("[CSV] Exception: ${e.javaClass.simpleName} - ${e.message}")
                 withContext(Dispatchers.Main) { onComplete() }
             }
         }
