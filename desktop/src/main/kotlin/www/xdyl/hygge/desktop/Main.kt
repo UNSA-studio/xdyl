@@ -160,7 +160,7 @@ fun main() = application {
             Window(
                 onCloseRequest = ::exitApplication,
                 title = "星云更新器",
-                state = rememberWindowState(width = 1100.dp, height = 900.dp)
+                state = rememberWindowState(width = 800.dp, height = 600.dp)
             ) {
                 Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
                     AnimatedContent(
@@ -401,73 +401,85 @@ fun MainScreen(
     onSettings: () -> Unit,
     dailyQuote: Quote?
 ) {
-    Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                Text("星云更新器", color = Color(0xFFA0C4FF), fontSize = 40.sp, fontFamily = silverFontFamily)
-                Text("星云更新器-Windows端", color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 28.sp, fontFamily = silverFontFamily)
-            }
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = onSettings) {
-                Icon(Icons.Default.Settings, contentDescription = "设置", tint = Color(0xFFA0C4FF), modifier = Modifier.size(36.dp))
-            }
-        }
+    val snackbarHostState = remember { SnackbarHostState() }
 
-        dailyQuote?.let { quote ->
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
-                    Text(quote.chinese, color = Color(0xFFA0C4FF), fontSize = 14.sp, fontFamily = silverFontFamily)
-                    Text("— ${quote.author} / ${quote.source}", color = Color.Gray, fontSize = 11.sp, fontFamily = silverFontFamily)
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(it, containerColor = Color(0xFF2A2A2A), contentColor = Color.White) } },
+        containerColor = Color(0xFF1E1E1E)
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding).padding(horizontal = 20.dp, vertical = 12.dp).fillMaxSize()) {
+            // 标题
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text("星云更新器", color = Color(0xFFA0C4FF), fontSize = 28.sp, fontFamily = silverFontFamily)
+                    Text("星云更新器-Windows端", color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 18.sp, fontFamily = silverFontFamily)
+                }
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onSettings) {
+                    Icon(Icons.Default.Settings, contentDescription = "设置", tint = Color(0xFFA0C4FF), modifier = Modifier.size(28.dp))
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
-        Button(
-            onClick = onSelectDir,
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("选择游戏目录", fontSize = 24.sp, fontFamily = silverFontFamily) }
+            // 按钮组
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = onSelectDir,
+                    modifier = Modifier.weight(1f).height(42.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+                ) { Text("选择目录", fontSize = 15.sp, fontFamily = silverFontFamily) }
+                Button(
+                    onClick = onStartDownload,
+                    enabled = targetModsDir != null && !downloading,
+                    modifier = Modifier.weight(1f).height(42.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+                ) { Text("开始下载", fontSize = 15.sp, fontFamily = silverFontFamily) }
+            }
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
-        Button(
-            onClick = onStartDownload,
-            enabled = targetModsDir != null && !downloading,
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("开始下载", fontSize = 24.sp, fontFamily = silverFontFamily) }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        LinearProgressIndicator(
-            progress = { (progress / 100f).coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-            color = Color(0xFFA0C4FF),
-            trackColor = Color(0xFFA0C4FF).copy(alpha = 0.2f)
-        )
-
-        Text(statusText, color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 18.sp, fontFamily = silverFontFamily)
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            Text(
-                text = logText,
-                modifier = Modifier.verticalScroll(rememberScrollState()).padding(8.dp).fillMaxWidth(),
-                fontSize = 16.sp,
-                color = Color.LightGray,
-                maxLines = Int.MAX_VALUE,
-                overflow = TextOverflow.Clip,
-                fontFamily = silverFontFamily
+            // 进度条
+            LinearProgressIndicator(
+                progress = { (progress / 100f).coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                color = Color(0xFFA0C4FF),
+                trackColor = Color(0xFFA0C4FF).copy(alpha = 0.2f)
             )
+            Text(statusText, color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 13.sp, fontFamily = silverFontFamily)
+
+            Spacer(Modifier.height(4.dp))
+
+            // 日志区（占满剩余空间）
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                Text(
+                    text = logText,
+                    modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxSize(),
+                    fontSize = 13.sp,
+                    color = Color.LightGray,
+                    maxLines = Int.MAX_VALUE,
+                    overflow = TextOverflow.Clip,
+                    fontFamily = silverFontFamily
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            // 名言面板（底部固定）
+            dailyQuote?.let { quote ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text(quote.chinese, color = Color(0xFFA0C4FF), fontSize = 14.sp, fontFamily = silverFontFamily)
+                        Text("— ${quote.author} / ${quote.source}", color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
+                    }
+                }
+            }
         }
     }
 }
