@@ -9,7 +9,8 @@
         <item name="android:colorBackground">@color/background_dark</item>
         <item name="android:statusBarColor">@color/background_dark</item>
         <item name="android:navigationBarColor">@color/background_dark</item>
-        <item name="android:fontFamily">@font/silver</item>
+        <!-- silver font only applied to title TextViews manually; global CJK-safe default -->
+        <item name="android:fontFamily">sans-serif</item>
         <item name="android:windowActivityTransitions">false</item>
         <item name="android:textSize">18sp</item>
     </style>
