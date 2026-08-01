@@ -319,15 +319,11 @@ fun MainScreen(
                         text = quote.chinese,
                         color = Color(0xFFA0C4FF),
                         fontSize = 14.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "— ${quote.author} / ${quote.source}",
                         color = Color.Gray,
                         fontSize = 11.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

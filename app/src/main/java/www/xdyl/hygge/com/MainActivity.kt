@@ -9,7 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.text.method.ScrollingMovementMethod
-import android.text.TextUtils
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -246,6 +246,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ===== 修复：固定字体大小（dp），允许换行 =====
     private fun displayQuote(category: String, quote: Quote) {
         binding.tvQuoteTitle.text = "今日名言 - ${categoryNames[category] ?: category}"
         binding.tvQuoteChinese.text = quote.chinese
@@ -253,26 +254,24 @@ class MainActivity : AppCompatActivity() {
         binding.tvQuoteAuthor.text = "- ${quote.author} / ${quote.source}"
         binding.tvQuoteAuthorEn.text = "- ${quote.authorEn} / ${quote.sourceEn}"
 
-        // ***** 缩小名言区域 *****
-        val smallTextSize = 14f
-        val tinyTextSize = 12f
-        binding.tvQuoteTitle.textSize = 16f
-        binding.tvQuoteChinese.textSize = smallTextSize
-        binding.tvQuoteEnglish.textSize = tinyTextSize
-        binding.tvQuoteAuthor.textSize = tinyTextSize
-        binding.tvQuoteAuthorEn.textSize = 10f
+        // 固定大小单位为 dp，不受系统字体缩放影响
+        binding.tvQuoteTitle.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16f)
+        binding.tvQuoteChinese.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
+        binding.tvQuoteEnglish.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
+        binding.tvQuoteAuthor.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
+        binding.tvQuoteAuthorEn.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 10f)
 
-        // 限制为单行，防止撑大布局
-        binding.tvQuoteChinese.maxLines = 1
-        binding.tvQuoteChinese.ellipsize = TextUtils.TruncateAt.END
-        binding.tvQuoteEnglish.maxLines = 1
-        binding.tvQuoteEnglish.ellipsize = TextUtils.TruncateAt.END
-        binding.tvQuoteAuthor.maxLines = 1
-        binding.tvQuoteAuthor.ellipsize = TextUtils.TruncateAt.END
-        binding.tvQuoteAuthorEn.maxLines = 1
-        binding.tvQuoteAuthorEn.ellipsize = TextUtils.TruncateAt.END
+        // 取消行数限制，允许自动换行
+        binding.tvQuoteChinese.maxLines = Integer.MAX_VALUE
+        binding.tvQuoteChinese.ellipsize = null
+        binding.tvQuoteEnglish.maxLines = Integer.MAX_VALUE
+        binding.tvQuoteEnglish.ellipsize = null
+        binding.tvQuoteAuthor.maxLines = Integer.MAX_VALUE
+        binding.tvQuoteAuthor.ellipsize = null
+        binding.tvQuoteAuthorEn.maxLines = Integer.MAX_VALUE
+        binding.tvQuoteAuthorEn.ellipsize = null
 
-        // 减少上下内边距（如果父布局允许，这里对TextView本身设置padding）
+        // 取消额外内边距
         binding.tvQuoteChinese.setPadding(0, 0, 0, 0)
         binding.tvQuoteEnglish.setPadding(0, 0, 0, 0)
         binding.tvQuoteAuthor.setPadding(0, 0, 0, 0)
