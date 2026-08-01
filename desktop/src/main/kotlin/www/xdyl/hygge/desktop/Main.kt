@@ -696,7 +696,7 @@ fun ExtensionScreen(
             ) { Text("浏览...", fontSize = 24.sp, fontFamily = silverFontFamily) }
             if (localCsvPath.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(已选择: $localCsvPath", color = Color.White, fontSize = 20.sp, fontFamily = silverFontFamily)
+                Text("已选择: $localCsvPath", color = Color.White, fontSize = 20.sp, fontFamily = silverFontFamily)
             }
         }
 
@@ -769,7 +769,7 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
         }
 
         Text(
-            当前目录: ${currentDir.absolutePath}",
+            "当前目录: ${currentDir.absolutePath}",
             color = Color.White,
             fontSize = 22.sp,
             fontFamily = silverFontFamily
