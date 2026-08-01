@@ -159,7 +159,7 @@ fun main() = application {
         CompositionLocalProvider(LocalTextStyle provides defaultTextStyle) {
             Window(
                 onCloseRequest = ::exitApplication,
-                title = "Nebula updater-NU",
+                title = "星云更新器",
                 state = rememberWindowState(width = 1100.dp, height = 900.dp)
             ) {
                 Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
@@ -307,20 +307,20 @@ fun main() = application {
                     if (showErrorCodesDialog) {
                         AlertDialog(
                             onDismissRequest = { showErrorCodesDialog = false },
-                            title = { Text("Error Codes", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
+                            title = { Text("ERROR 错误代码", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
                             text = { Text(getErrorCodesText(), fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp) },
                             confirmButton = {
-                                TextButton(onClick = { showErrorCodesDialog = false }) { Text("Close", fontFamily = silverFontFamily) }
+                                TextButton(onClick = { showErrorCodesDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
                             }
                         )
                     }
                     if (showAboutDialog) {
                         AlertDialog(
                             onDismissRequest = { showAboutDialog = false },
-                            title = { Text("About", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
+                            title = { Text("关于软件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
                             text = {
                                 Column {
-                                    Text("Nebula updater-NU", fontFamily = silverFontFamily, color = Color.White, fontSize = 16.sp)
+                                    Text("星云更新器", fontFamily = silverFontFamily, color = Color.White, fontSize = 16.sp)
                                     Text("Windows Desktop v1.0.0", fontFamily = silverFontFamily, color = Color.Gray, fontSize = 14.sp)
                                     Spacer(Modifier.height(8.dp))
                                     Text("Author: UNSA-studio", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
@@ -331,17 +331,17 @@ fun main() = application {
                                 TextButton(onClick = {
                                     try { Desktop.getDesktop().browse(URI("https://github.com/UNSA-studio/xdyl")) } catch (_: Exception) {}
                                     showAboutDialog = false
-                                }) { Text("Visit Repository", fontFamily = silverFontFamily) }
+                                }) { Text("访问仓库", fontFamily = silverFontFamily) }
                             },
                             dismissButton = {
-                                TextButton(onClick = { showAboutDialog = false }) { Text("Close", fontFamily = silverFontFamily) }
+                                TextButton(onClick = { showAboutDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
                             }
                         )
                     }
                     if (showWhitelistDialog) {
                         AlertDialog(
                             onDismissRequest = { showWhitelistDialog = false },
-                            title = { Text("Mod Whitelist", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
+                            title = { Text("模组白名单", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
                             text = {
                                 Text(
                                     "Whitelisted mods will not be removed by the orphan file cleaner.\n\nDesktop edition currently supports config-file editing only:\n~/.xdyl_config.properties\nadd: mod_whitelist=<file1>,<file2>",
@@ -351,7 +351,7 @@ fun main() = application {
                                 )
                             },
                             confirmButton = {
-                                TextButton(onClick = { showWhitelistDialog = false }) { Text("Close", fontFamily = silverFontFamily) }
+                                TextButton(onClick = { showWhitelistDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
                             }
                         )
                     }
@@ -362,21 +362,21 @@ fun main() = application {
                                 extensionMode = false
                                 prefs.putBoolean("extension_mode", false)
                             },
-                            title = { Text("Warning!", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
-                            text = { Text("Extension mode will be enabled after restart.", fontFamily = silverFontFamily, color = Color.White) },
+                            title = { Text("警告!", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
+                            text = { Text("开启扩展模式，重启后生效。", fontFamily = silverFontFamily, color = Color.White) },
                             confirmButton = {
                                 TextButton(onClick = {
                                     showExtensionModeConfirm = false
                                     prefs.putBoolean("extension_mode", true)
                                     exitApplication()
-                                }) { Text("Enable & Restart", fontFamily = silverFontFamily) }
+                                }) { Text("开启并重启", fontFamily = silverFontFamily) }
                             },
                             dismissButton = {
                                 TextButton(onClick = {
                                     showExtensionModeConfirm = false
                                     extensionMode = false
                                     prefs.putBoolean("extension_mode", false)
-                                }) { Text("Cancel", fontFamily = silverFontFamily) }
+                                }) { Text("取消", fontFamily = silverFontFamily) }
                             }
                         )
                     }
@@ -402,12 +402,12 @@ fun MainScreen(
     Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text("Nebula updater-NU", color = Color(0xFFA0C4FF), fontSize = 40.sp, fontFamily = silverFontFamily)
-                Text("Windows Edition", color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 28.sp, fontFamily = silverFontFamily)
+                Text("星云更新器", color = Color(0xFFA0C4FF), fontSize = 40.sp, fontFamily = silverFontFamily)
+                Text("星云更新器-Windows端", color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 28.sp, fontFamily = silverFontFamily)
             }
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onSettings) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color(0xFFA0C4FF), modifier = Modifier.size(36.dp))
+                Icon(Icons.Default.Settings, contentDescription = "设置", tint = Color(0xFFA0C4FF), modifier = Modifier.size(36.dp))
             }
         }
 
@@ -431,7 +431,7 @@ fun MainScreen(
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("Select Game Directory", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        ) { Text("选择游戏目录", fontSize = 24.sp, fontFamily = silverFontFamily) }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -441,7 +441,7 @@ fun MainScreen(
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("Start Download", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        ) { Text("开始下载", fontSize = 24.sp, fontFamily = silverFontFamily) }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -510,10 +510,10 @@ fun SettingsScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) {
-                Text("Back", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
+                Text("返回", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Settings", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
+            Text("设置", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -521,7 +521,7 @@ fun SettingsScreen(
         OutlinedTextField(
             value = versionName,
             onValueChange = onVersionChange,
-            label = { Text("Minecraft Version Folder", fontSize = 20.sp, color = Color.Gray, fontFamily = silverFontFamily) },
+            label = { Text("Minecraft 版本文件夹名", fontSize = 20.sp, color = Color.Gray, fontFamily = silverFontFamily) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             textStyle = tfTextStyle,
@@ -534,7 +534,7 @@ fun SettingsScreen(
         OutlinedTextField(
             value = threadCount.toString(),
             onValueChange = { v -> v.toIntOrNull()?.let { onThreadChange(it.coerceIn(20, maxThreads)) } },
-            label = { Text("Thread Count (20-$maxThreads)", fontSize = 20.sp, color = Color.Gray, fontFamily = silverFontFamily) },
+            label = { Text("下载线程数 (20-$maxThreads)", fontSize = 20.sp, color = Color.Gray, fontFamily = silverFontFamily) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             textStyle = tfTextStyle,
@@ -549,14 +549,14 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
             border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("Select Game Directory", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        ) { Text("选择游戏目录", fontSize = 24.sp, fontFamily = silverFontFamily) }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = neoforgeCheckEnabled, onCheckedChange = onNeoforgeChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Enable NeoForge Version Check", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
+            Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         }
 
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
@@ -565,7 +565,7 @@ fun SettingsScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Auto-clean Orphan Files After Update", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
+            Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         }
 
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
@@ -574,7 +574,7 @@ fun SettingsScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = extensionMode, onCheckedChange = onExtensionChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Extension Mode", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
+            Text("扩展模式", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         }
 
         if (extensionMode) {
@@ -584,7 +584,7 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-            ) { Text("Enter Extension Page", fontSize = 24.sp, fontFamily = silverFontFamily) }
+            ) { Text("进入扩展页面", fontSize = 24.sp, fontFamily = silverFontFamily) }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -594,7 +594,7 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
             border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("Export Log", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        ) { Text("导出日志", fontSize = 24.sp, fontFamily = silverFontFamily) }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -603,7 +603,7 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
             border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("Error Codes", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        ) { Text("ERROR 错误代码", fontSize = 24.sp, fontFamily = silverFontFamily) }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -612,7 +612,7 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
             border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("About", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        ) { Text("关于软件", fontSize = 24.sp, fontFamily = silverFontFamily) }
     }
 }
 
@@ -645,10 +645,10 @@ fun ExtensionScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) {
-                Text("Back", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
+                Text("返回", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Extension Page", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
+            Text("扩展页面", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -656,7 +656,7 @@ fun ExtensionScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = unlockThread, onCheckedChange = onUnlockChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Unlock Thread Limit to 1024", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
+            Text("解锁线程数上限至 1024", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         }
 
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
@@ -665,7 +665,7 @@ fun ExtensionScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = neoforgeCheckEnabled, onCheckedChange = onNeoforgeChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Enable NeoForge Version Check", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
+            Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         }
 
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
@@ -674,7 +674,7 @@ fun ExtensionScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Auto-clean Orphan Files After Update", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
+            Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         }
 
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
@@ -683,7 +683,7 @@ fun ExtensionScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = useLocalCsv, onCheckedChange = onLocalCsvChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Use Local CSV", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
+            Text("使用本地 CSV", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         }
 
         if (useLocalCsv) {
@@ -693,10 +693,10 @@ fun ExtensionScreen(
                 modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-            ) { Text("Browse...", fontSize = 24.sp, fontFamily = silverFontFamily) }
+            ) { Text("浏览...", fontSize = 24.sp, fontFamily = silverFontFamily) }
             if (localCsvPath.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Selected: $localCsvPath", color = Color.White, fontSize = 20.sp, fontFamily = silverFontFamily)
+                Text(已选择: $localCsvPath", color = Color.White, fontSize = 20.sp, fontFamily = silverFontFamily)
             }
         }
 
@@ -708,7 +708,7 @@ fun ExtensionScreen(
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
             border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("Mod Whitelist", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        ) { Text("模组白名单", fontSize = 24.sp, fontFamily = silverFontFamily) }
     }
 }
 
@@ -736,10 +736,10 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
     Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) {
-                Text("Back", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
+                Text("返回", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Select Launcher Root", color = Color(0xFFA0C4FF), fontSize = 28.sp, fontFamily = silverFontFamily)
+            Text("选择启动器根目录", color = Color(0xFFA0C4FF), fontSize = 28.sp, fontFamily = silverFontFamily)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -769,7 +769,7 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
         }
 
         Text(
-            "Current: ${currentDir.absolutePath}",
+            当前目录: ${currentDir.absolutePath}",
             color = Color.White,
             fontSize = 22.sp,
             fontFamily = silverFontFamily
@@ -784,7 +784,7 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
             modifier = Modifier.height(48.dp).padding(horizontal = 16.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("Go Up", fontSize = 20.sp, fontFamily = silverFontFamily) }
+        ) { Text("返回上级", fontSize = 20.sp, fontFamily = silverFontFamily) }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -814,7 +814,7 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("Select This Folder", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        ) { Text("选择此文件夹", fontSize = 24.sp, fontFamily = silverFontFamily) }
     }
 }
 
