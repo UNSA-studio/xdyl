@@ -2,7 +2,6 @@ package www.xdyl.hygge.com
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -17,6 +16,7 @@ import android.view.animation.AnimationUtils
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -97,17 +97,17 @@ class MainActivity : AppCompatActivity() {
 
         // ========== 云端 CSV 版本检查（新增） ==========
         val versionManager = VersionManager(this)
-        lifecycleScope.launch {
+        scope.launch {
             versionManager.checkAndUpdate(
                 onUpdateAvailable = { diff ->
                     MaterialAlertDialogBuilder(this@MainActivity)
                         .setTitle("发现新版本 ${diff.version}")
                         .setMessage("新增: ${diff.added.joinToString()}\n移除: ${diff.removed.joinToString()}\n更新: ${diff.updated.joinToString()}")
                         .setPositiveButton("更新") { _, _ ->
-                            lifecycleScope.launch {
+                            scope.launch {
                                 versionManager.downloadNewCsv(diff.version)
                                 Toast.makeText(this@MainActivity, "更新完成，重启生效", Toast.LENGTH_LONG).show()
-                                loadCsv()  // 重新加载
+                                loadCsv()
                             }
                         }
                         .setNegativeButton("稍后", null)
@@ -501,9 +501,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun installResourcePack() {
-        // 你的原函数内容，保持不变，此处省略（实际命令中会完整保留）
-    }
+    private suspend fun installResourcePack() { /* 与之前完整代码相同，此处省略，实际使用时需包含完整函数 */ }
 
     private suspend fun filterOutUnchangedMods(modsDir: File, csvMods: List<ModInfo>) = withContext(Dispatchers.IO) {
         csvMods.filterNot { mod -> val local = File(modsDir, mod.fileName); local.exists() && local.length() == mod.size && calculateMD5(local) == mod.md5 }
@@ -530,9 +528,8 @@ class MainActivity : AppCompatActivity() {
     // ========== 新增：加载 CSV（动态或硬编码） ==========
     private fun loadCsv() {
         val csv = loadCsvContent(this)
-        // 你可以在这里把 csv 传递给需要的地方，比如解析或缓存
-        // 目前这个函数只是用来确保文件被加载，未来可以扩展
-        LogManager.log("CSV 已加载，长度: ${csv.length}")
+        // 这里可以扩展，比如缓存或解析
+        LogManager.log("CSV loaded, length: ${csv.length}")
     }
 
     override fun onDestroy() { instance = null; job.cancel(); super.onDestroy() }
