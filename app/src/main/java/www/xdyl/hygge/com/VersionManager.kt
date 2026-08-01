@@ -11,11 +11,18 @@ import okhttp3.Request
 import java.io.File
 import java.util.concurrent.TimeUnit
 
+data class ModEntry(
+    @SerializedName("name") val name: String,
+    @SerializedName("version") val version: String? = null,
+    @SerializedName("old_version") val oldVersion: String? = null,
+    @SerializedName("new_version") val newVersion: String? = null
+)
+
 data class VersionDiff(
     @SerializedName("version") val version: String,
-    @SerializedName("added") val added: List<String>,
-    @SerializedName("removed") val removed: List<String>,
-    @SerializedName("updated") val updated: List<String>
+    @SerializedName("added") val added: List<ModEntry>,
+    @SerializedName("removed") val removed: List<ModEntry>,
+    @SerializedName("updated") val updated: List<ModEntry>
 )
 
 class VersionManager(private val context: Context) {
