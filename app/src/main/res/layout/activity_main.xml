@@ -181,9 +181,11 @@
                 android:textColor="@android:color/white"
                 android:textSize="16sp"
                 android:lineSpacingExtra="2dp"
-                android:maxLines="100"
+                android:singleLine="false"
                 android:ellipsize="none"
+                android:maxLines="100"
                 android:scrollHorizontally="false"
+                android:inputType="textMultiLine"
                 android:layout_marginTop="4dp" />
 
             <TextView
@@ -193,9 +195,11 @@
                 android:textColor="#CCFFFFFF"
                 android:textSize="14sp"
                 android:lineSpacingExtra="2dp"
-                android:maxLines="100"
+                android:singleLine="false"
                 android:ellipsize="none"
+                android:maxLines="100"
                 android:scrollHorizontally="false"
+                android:inputType="textMultiLine"
                 android:layout_marginLeft="16dp"
                 android:layout_marginTop="4dp" />
 
@@ -212,8 +216,10 @@
                     android:text="-作者 / 出处"
                     android:textColor="#B0FFFFFF"
                     android:textSize="13sp"
-                    android:maxLines="10"
+                    android:singleLine="false"
                     android:ellipsize="none"
+                    android:maxLines="10"
+                    android:inputType="textMultiLine"
                     android:layout_marginLeft="8dp" />
 
                 <TextView
@@ -223,8 +229,10 @@
                     android:text="-Author / Source"
                     android:textColor="#B0FFFFFF"
                     android:textSize="13sp"
-                    android:maxLines="10"
+                    android:singleLine="false"
                     android:ellipsize="none"
+                    android:maxLines="10"
+                    android:inputType="textMultiLine"
                     android:layout_marginLeft="8dp"
                     android:layout_marginTop="2dp" />
             </LinearLayout>
