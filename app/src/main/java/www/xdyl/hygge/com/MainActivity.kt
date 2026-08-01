@@ -141,7 +141,10 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnSettings.setOnClickListener {
             it.animate().rotationBy(180f).setDuration(300).start()
-            startActivity(Intent(this, SettingsActivity::class.java))
+            val intent = Intent(this, SettingsActivity::class.java)
+            @Suppress("DEPRECATION")
+            startActivity(intent)
+            @Suppress("DEPRECATION")
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
     }
@@ -291,7 +294,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showFileBrowser() {
-        currentBrowseDir = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath))
+        currentBrowseDir = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath) ?: Environment.getExternalStorageDirectory().absolutePath)
         val view = layoutInflater.inflate(R.layout.dialog_file_browser, null)
         tvPath = view.findViewById(R.id.tvPath); recyclerView = view.findViewById(R.id.recyclerView)
         recyclerView!!.layoutManager = LinearLayoutManager(this); recyclerView!!.itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator()
@@ -365,7 +368,7 @@ class MainActivity : AppCompatActivity() {
             val result = withContext(Dispatchers.IO) {
                 try {
                     val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
-                    val launcherRoot = prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath)
+                    val launcherRoot = prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath) ?: Environment.getExternalStorageDirectory().absolutePath
                     val mc = findMinecraftDir(File(launcherRoot)) ?: return@withContext false
                     val versionDir = File(File(mc, "versions"), targetVersion)
                     if (!versionDir.exists()) return@withContext false

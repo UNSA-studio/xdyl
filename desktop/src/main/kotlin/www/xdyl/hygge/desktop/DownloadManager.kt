@@ -43,7 +43,8 @@ class DownloadManager(
         } else {
             // 多线程 Range 下载
             val chunkSize = totalSize / threadCount
-            val rem = totalSize % threadCount
+            @Suppress("UNUSED_VARIABLE")
+            val rem = totalSize % threadCount // kept for potential future chunk alignment
             val randomAccessFile = RandomAccessFile(destFile, "rw")
             randomAccessFile.setLength(totalSize)
             val progress = AtomicInteger(0)

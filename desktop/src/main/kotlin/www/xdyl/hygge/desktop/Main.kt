@@ -91,7 +91,8 @@ fun main() = application {
                         val jsonStr = Thread.currentThread().contextClassLoader
                             .getResourceAsStream("$cat.json")?.bufferedReader()?.readText() ?: continue
                         val jsonObject = Gson().fromJson(jsonStr, Map::class.java)
-                        val quotes = jsonObject["quotes"] as List<Map<String, String>>
+                        @Suppress("UNCHECKED_CAST")
+                        val quotes = jsonObject["quotes"] as? List<Map<String, String>> ?: continue
                         allQuotes.addAll(quotes.map {
                             Quote(it["chinese"]!!, it["english"]!!, it["author"]!!, it["author_en"]!!, it["source"]!!, it["source_en"]!!)
                         })
@@ -177,7 +178,7 @@ fun main() = application {
                                         downloading = true
                                         scope.launch {
                                             try {
-                                                val serverFiles = fetchDesktopServerFileList()
+                                                fetchDesktopServerFileList() // validate server reachable
                                                 val csvMods = if (useLocalCsv && localCsvPath.isNotEmpty())
                                                     parseCsvFromFile(File(localCsvPath))
                                                 else
@@ -527,7 +528,7 @@ fun SettingsScreen(
             colors = tfColors
         )
 
-        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
+        HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(12.dp))
 
         OutlinedTextField(
@@ -540,7 +541,7 @@ fun SettingsScreen(
             colors = tfColors
         )
 
-        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
+        HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedButton(
@@ -558,7 +559,7 @@ fun SettingsScreen(
             Text("Enable NeoForge Version Check", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         }
 
-        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
+        HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -567,7 +568,7 @@ fun SettingsScreen(
             Text("Auto-clean Orphan Files After Update", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         }
 
-        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
+        HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -658,7 +659,7 @@ fun ExtensionScreen(
             Text("Unlock Thread Limit to 1024", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         }
 
-        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
+        HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -667,7 +668,7 @@ fun ExtensionScreen(
             Text("Enable NeoForge Version Check", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         }
 
-        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
+        HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -676,7 +677,7 @@ fun ExtensionScreen(
             Text("Auto-clean Orphan Files After Update", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         }
 
-        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
+        HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -699,7 +700,7 @@ fun ExtensionScreen(
             }
         }
 
-        Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
+        HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedButton(
