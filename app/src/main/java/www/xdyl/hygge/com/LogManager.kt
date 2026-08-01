@@ -12,7 +12,7 @@ object LogManager {
     @Volatile var wifiAdbEnabled: Boolean = false
 
     fun log(msg: String) {
-        Log.d(TAG, msg)
+        Log.i(TAG, msg)
         logBuilder.appendLine("[${System.currentTimeMillis()}] $msg")
         if (wifiAdbEnabled) sendToRemote(msg)
     }

@@ -343,7 +343,7 @@
                             android:id="@+id/btnWifiConnect"
                             android:layout_width="match_parent"
                             android:layout_height="48dp"
-                            android:text="连接"
+                            android:text="配置"
                             android:textColor="@android:color/black"
                             app:backgroundTint="@color/primary_light_blue"
                             android:layout_marginTop="8dp"/>
