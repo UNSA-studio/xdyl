@@ -54,7 +54,7 @@ data class Quote(val chinese: String, val english: String, val author: String, v
 data class ModInfo(val fileName: String, val size: Long, val md5: String, val sha256: String)
 
 fun main() = application {
-    var targetModsDir by remember { mutableStateOf<File?>() }
+    var targetModsDir by remember { mutableStateOf(null as File?) }
     val scope = rememberCoroutineScope()
     val prefs = remember { Preferences() }
     val logBuilder = remember { StringBuilder() }
@@ -77,7 +77,7 @@ fun main() = application {
     var showWhitelistDialog by remember { mutableStateOf(false) }
     var showExtensionModeConfirm by remember { mutableStateOf(false) }
 
-    var dailyQuote by remember { mutableStateOf<Quote?>() }
+    var dailyQuote by remember { mutableStateOf(null as Quote?) }
     val quoteCategories = listOf("WH", "RW", "HC", "ED", "CE", "AC")
 
     fun loadDailyQuote() {
