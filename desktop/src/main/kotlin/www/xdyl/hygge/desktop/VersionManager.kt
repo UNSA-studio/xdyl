@@ -42,20 +42,23 @@ class VersionManager(private val prefs: Preferences) {
                     .build()
                 val response = client.newCall(request).execute()
                 if (!response.isSuccessful) {
-                    onComplete()
+                    withContext(Dispatchers.Main) { onComplete() }
                     return@withContext
                 }
-                val json = response.body?.string() ?: return@withContext
+                val json = response.body?.string() ?: run {
+                    withContext(Dispatchers.Main) { onComplete() }
+                    return@withContext
+                }
                 val remote = gson.fromJson(json, VersionDiff::class.java)
                 val localVer = getLocalVersion()
                 if (remote.version > localVer) {
-                    onUpdateAvailable(remote)
+                    withContext(Dispatchers.Main) { onUpdateAvailable(remote) }
                 } else {
-                    onComplete()
+                    withContext(Dispatchers.Main) { onComplete() }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                onComplete()
+                withContext(Dispatchers.Main) { onComplete() }
             }
         }
     }
