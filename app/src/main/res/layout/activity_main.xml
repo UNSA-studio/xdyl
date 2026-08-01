@@ -181,6 +181,9 @@
                 android:textColor="@android:color/white"
                 android:textSize="16sp"
                 android:lineSpacingExtra="2dp"
+                android:maxLines="100"
+                android:ellipsize="none"
+                android:scrollHorizontally="false"
                 android:layout_marginTop="4dp" />
 
             <TextView
@@ -190,6 +193,9 @@
                 android:textColor="#CCFFFFFF"
                 android:textSize="14sp"
                 android:lineSpacingExtra="2dp"
+                android:maxLines="100"
+                android:ellipsize="none"
+                android:scrollHorizontally="false"
                 android:layout_marginLeft="16dp"
                 android:layout_marginTop="4dp" />
 
@@ -201,20 +207,24 @@
 
                 <TextView
                     android:id="@+id/tvQuoteAuthor"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="-作者 / 出处"
                     android:textColor="#B0FFFFFF"
                     android:textSize="13sp"
+                    android:maxLines="10"
+                    android:ellipsize="none"
                     android:layout_marginLeft="8dp" />
 
                 <TextView
                     android:id="@+id/tvQuoteAuthorEn"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="-Author / Source"
                     android:textColor="#B0FFFFFF"
                     android:textSize="13sp"
+                    android:maxLines="10"
+                    android:ellipsize="none"
                     android:layout_marginLeft="8dp"
                     android:layout_marginTop="2dp" />
             </LinearLayout>
