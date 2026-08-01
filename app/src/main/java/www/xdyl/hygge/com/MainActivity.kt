@@ -101,16 +101,16 @@ class MainActivity : AppCompatActivity() {
             versionManager.checkAndUpdate(
                 onUpdateAvailable = { diff ->
                     MaterialAlertDialogBuilder(this@MainActivity)
-                        .setTitle("发现新版本 ${diff.version}")
+                        .setTitle("CSV 需要更新 (${diff.version})")
                         .setMessage("新增: ${diff.added.joinToString()}\n移除: ${diff.removed.joinToString()}\n更新: ${diff.updated.joinToString()}")
                         .setPositiveButton("更新") { _, _ ->
                             scope.launch {
                                 versionManager.downloadNewCsv(diff.version)
-                                Toast.makeText(this@MainActivity, "更新完成，重启生效", Toast.LENGTH_LONG).show()
+                                Toast.makeText(this@MainActivity, "CSV 更新完成，重启生效", Toast.LENGTH_LONG).show()
                                 loadCsv()
                             }
                         }
-                        .setNegativeButton("稍后", null)
+                        .setCancelable(false)
                         .show()
                 },
                 onComplete = {
