@@ -154,6 +154,9 @@
         app:cardCornerRadius="12dp"
         app:cardElevation="4dp"
         app:cardBackgroundColor="#2A2A2A"
+        app:cardPreventCornerOverlap="false"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -183,9 +186,7 @@
                 android:lineSpacingExtra="2dp"
                 android:singleLine="false"
                 android:ellipsize="none"
-                android:maxLines="100"
-                android:scrollHorizontally="false"
-                android:inputType="textMultiLine"
+                android:maxLines="10"
                 android:layout_marginTop="4dp" />
 
             <TextView
@@ -197,9 +198,7 @@
                 android:lineSpacingExtra="2dp"
                 android:singleLine="false"
                 android:ellipsize="none"
-                android:maxLines="100"
-                android:scrollHorizontally="false"
-                android:inputType="textMultiLine"
+                android:maxLines="10"
                 android:layout_marginLeft="16dp"
                 android:layout_marginTop="4dp" />
 

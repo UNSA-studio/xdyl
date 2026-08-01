@@ -251,34 +251,20 @@ class MainActivity : AppCompatActivity() {
 
     // ===== 修复：固定字体大小（dp），允许换行 =====
     private fun displayQuote(category: String, quote: Quote) {
-        binding.tvQuoteTitle.text = "今日名言 - ${categoryNames[category] ?: category}"
-        binding.tvQuoteChinese.text = quote.chinese
-        binding.tvQuoteEnglish.text = quote.english
-        binding.tvQuoteAuthor.text = "- ${quote.author} / ${quote.source}"
-        binding.tvQuoteAuthorEn.text = "- ${quote.authorEn} / ${quote.sourceEn}"
+        val title = "今日名言 - ${categoryNames[category] ?: category}"
 
-        // 固定大小单位为 dp，不受系统字体缩放影响
+        // Set layout properties first, then text last (single layout pass)
         binding.tvQuoteTitle.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16f)
         binding.tvQuoteChinese.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
         binding.tvQuoteEnglish.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
         binding.tvQuoteAuthor.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
         binding.tvQuoteAuthorEn.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 10f)
 
-        // 取消行数限制，允许自动换行
-        binding.tvQuoteChinese.maxLines = Integer.MAX_VALUE
-        binding.tvQuoteChinese.ellipsize = null
-        binding.tvQuoteEnglish.maxLines = Integer.MAX_VALUE
-        binding.tvQuoteEnglish.ellipsize = null
-        binding.tvQuoteAuthor.maxLines = Integer.MAX_VALUE
-        binding.tvQuoteAuthor.ellipsize = null
-        binding.tvQuoteAuthorEn.maxLines = Integer.MAX_VALUE
-        binding.tvQuoteAuthorEn.ellipsize = null
-
-        // 取消额外内边距
-        binding.tvQuoteChinese.setPadding(0, 0, 0, 0)
-        binding.tvQuoteEnglish.setPadding(0, 0, 0, 0)
-        binding.tvQuoteAuthor.setPadding(0, 0, 0, 0)
-        binding.tvQuoteAuthorEn.setPadding(0, 0, 0, 0)
+        binding.tvQuoteTitle.text = title
+        binding.tvQuoteChinese.text = quote.chinese
+        binding.tvQuoteEnglish.text = quote.english
+        binding.tvQuoteAuthor.text = "- ${quote.author} / ${quote.source}"
+        binding.tvQuoteAuthorEn.text = "- ${quote.authorEn} / ${quote.sourceEn}"
     }
 
     // ========== 文件浏览器 ==========
