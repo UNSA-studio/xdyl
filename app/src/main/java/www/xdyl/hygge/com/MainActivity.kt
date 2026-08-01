@@ -98,14 +98,18 @@ class MainActivity : AppCompatActivity() {
         // 云端 CSV 版本检查
         val versionManager = VersionManager(this)
         scope.launch {
+            LogManager.log("[CSV] Checking cloud version...")
             versionManager.checkAndUpdate(
                 onUpdateAvailable = { diff ->
+                    LogManager.log("[CSV] New version detected: ${diff.version}, added=${diff.added.size}, removed=${diff.removed.size}, updated=${diff.updated.size}")
                     MaterialAlertDialogBuilder(this@MainActivity)
                         .setTitle("CSV 需要更新 (${diff.version})")
                         .setMessage("新增: ${diff.added.joinToString()}\n移除: ${diff.removed.joinToString()}\n更新: ${diff.updated.joinToString()}")
                         .setPositiveButton("更新") { _, _ ->
                             scope.launch {
+                                LogManager.log("[CSV] User accepted, downloading...")
                                 versionManager.downloadNewCsv(diff.version)
+                                LogManager.log("[CSV] Download complete")
                                 Toast.makeText(this@MainActivity, "CSV 更新完成，重启生效", Toast.LENGTH_LONG).show()
                                 loadCsv()
                             }
@@ -114,6 +118,7 @@ class MainActivity : AppCompatActivity() {
                         .show()
                 },
                 onComplete = {
+                    LogManager.log("[CSV] No update needed (local=${versionManager.getLocalVersion()})")
                     loadCsv()
                 }
             )
@@ -253,8 +258,12 @@ class MainActivity : AppCompatActivity() {
     private fun displayQuote(category: String, quote: Quote) {
         val title = "今日名言 - ${categoryNames[category] ?: category}"
 
-        // Set layout properties first, then text last (single layout pass)
-        binding.tvQuoteTitle.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16f)
+        // Force system default sans-serif font for correct CJK text metrics
+        binding.tvQuoteChinese.typeface = android.graphics.Typeface.DEFAULT
+        binding.tvQuoteEnglish.typeface = android.graphics.Typeface.DEFAULT
+        binding.tvQuoteAuthor.typeface = android.graphics.Typeface.DEFAULT
+        binding.tvQuoteAuthorEn.typeface = android.graphics.Typeface.DEFAULT
+
         binding.tvQuoteChinese.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
         binding.tvQuoteEnglish.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
         binding.tvQuoteAuthor.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
@@ -265,6 +274,9 @@ class MainActivity : AppCompatActivity() {
         binding.tvQuoteEnglish.text = quote.english
         binding.tvQuoteAuthor.text = "- ${quote.author} / ${quote.source}"
         binding.tvQuoteAuthorEn.text = "- ${quote.authorEn} / ${quote.sourceEn}"
+
+        binding.tvQuoteChinese.requestLayout()
+        binding.tvQuoteEnglish.requestLayout()
     }
 
     // ========== 文件浏览器 ==========
