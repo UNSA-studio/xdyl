@@ -76,9 +76,30 @@ class EasterEggActivity : AppCompatActivity() {
         val savedPort = prefs.getInt("wifi_adb_port", 5555)
         etWifiPort.setText(if (savedPort != 5555) savedPort.toString() else "5555")
 
+        // 如果已启用 WiFi ADB 且 IP 已配置，自动启动监听
+        if (swWifiAdb.isChecked) {
+            val savedIp = prefs.getString("wifi_adb_ip", "")
+            if (!savedIp.isNullOrBlank()) {
+                LogManager.remoteIp = savedIp
+                LogManager.remotePort = savedPort
+                LogManager.wifiAdbEnabled = true
+            }
+        }
+
         swWifiAdb.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("wifi_adb_enabled", isChecked).apply()
             layoutWifiConfig.visibility = if (isChecked) View.VISIBLE else View.GONE
+            if (isChecked) {
+                val savedIp = prefs.getString("wifi_adb_ip", "")
+                val savedPort = prefs.getInt("wifi_adb_port", 5555)
+                if (!savedIp.isNullOrBlank()) {
+                    LogManager.remoteIp = savedIp
+                    LogManager.remotePort = savedPort
+                    LogManager.wifiAdbEnabled = true
+                }
+            } else {
+                LogManager.wifiAdbEnabled = false
+            }
         }
 
         btnWifiConnect.setOnClickListener {
@@ -95,27 +116,15 @@ class EasterEggActivity : AppCompatActivity() {
                 .putInt("wifi_adb_port", port)
                 .apply()
 
-            // 启动 WiFi ADB 日志流：开线程持续读取 logcat 并保存在内存中
-            Thread {
-                try {
-                    val process = Runtime.getRuntime().exec(arrayOf("logcat", "-s", "NebulaUpdater"))
-                    val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
-                    var line: String?
-                    val sb = StringBuilder()
-                    while (reader.readLine().also { line = it } != null) {
-                        sb.appendLine(line)
-                        // 每收到 50 行就保存到文件
-                        if (sb.lines().count() >= 50) {
-                            LogManager.log("[WIFI_ADB] Saved ${sb.lines().count()} lines")
-                            sb.clear()
-                        }
-                    }
-                } catch (e: Exception) {
-                    LogManager.log("[WIFI_ADB] Error: ${e.message}")
-                }
-            }.start()
+            LogManager.remoteIp = ip
+            LogManager.remotePort = port
 
-            Toast.makeText(this, "已开始监听 $ip:$port 的日志", Toast.LENGTH_LONG).show()
+            if (swWifiAdb.isChecked) {
+                LogManager.wifiAdbEnabled = true
+                Toast.makeText(this, "远程日志已就绪：$ip:$port", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "IP/端口已保存，请先开启 WIFI ADB 开关", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
