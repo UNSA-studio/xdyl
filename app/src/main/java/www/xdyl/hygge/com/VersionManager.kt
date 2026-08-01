@@ -3,6 +3,7 @@ package www.xdyl.hygge.com
 import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -11,10 +12,10 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 data class VersionDiff(
-    val version: String,
-    val added: List<String>,
-    val removed: List<String>,
-    val updated: List<String>
+    @SerializedName("version") val version: String,
+    @SerializedName("added") val added: List<String>,
+    @SerializedName("removed") val removed: List<String>,
+    @SerializedName("updated") val updated: List<String>
 )
 
 class VersionManager(private val context: Context) {
@@ -48,7 +49,10 @@ class VersionManager(private val context: Context) {
                     withContext(Dispatchers.Main) { onComplete() }
                     return@withContext
                 }
-                val json = response.body?.string() ?: return@withContext
+                val json = response.body?.string() ?: run {
+                    withContext(Dispatchers.Main) { onComplete() }
+                    return@withContext
+                }
                 val remote = gson.fromJson(json, VersionDiff::class.java)
                 val localVer = getLocalVersion()
                 if (remote.version > localVer) {
