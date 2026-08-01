@@ -1,5 +1,4 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.gradle.api.tasks.JavaExec
 
 plugins {
     kotlin("jvm")
@@ -9,10 +8,11 @@ plugins {
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
-    implementation(compose.materialIconsExtended)  // 用于设置图标
+    implementation(compose.materialIconsExtended)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.7.3")
+    implementation("com.google.code.gson:gson:2.10.1")
 }
 
 compose.desktop {
@@ -29,11 +29,5 @@ compose.desktop {
                 menu = true
             }
         }
-    }
-}
-
-tasks.matching { it.name.startsWith("package") }.configureEach {
-    if (this is JavaExec) {
-        args("--install-dir", "NebulaUpdater")
     }
 }

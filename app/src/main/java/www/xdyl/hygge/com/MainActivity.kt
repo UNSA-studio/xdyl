@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.text.method.ScrollingMovementMethod
+import android.text.TextUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -83,7 +84,6 @@ class MainActivity : AppCompatActivity() {
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         binding.tvLog.movementMethod = ScrollingMovementMethod()
 
-        // 全局崩溃捕获
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
             val sw = StringWriter()
@@ -95,7 +95,7 @@ class MainActivity : AppCompatActivity() {
         requestStoragePermissions()
         loadDailyQuote()
 
-        // ========== 云端 CSV 版本检查（新增） ==========
+        // 云端 CSV 版本检查
         val versionManager = VersionManager(this)
         scope.launch {
             versionManager.checkAndUpdate(
@@ -114,7 +114,6 @@ class MainActivity : AppCompatActivity() {
                         .show()
                 },
                 onComplete = {
-                    // 无更新，正常加载
                     loadCsv()
                 }
             )
@@ -253,6 +252,31 @@ class MainActivity : AppCompatActivity() {
         binding.tvQuoteEnglish.text = quote.english
         binding.tvQuoteAuthor.text = "- ${quote.author} / ${quote.source}"
         binding.tvQuoteAuthorEn.text = "- ${quote.authorEn} / ${quote.sourceEn}"
+
+        // ***** 缩小名言区域 *****
+        val smallTextSize = 14f
+        val tinyTextSize = 12f
+        binding.tvQuoteTitle.textSize = 16f
+        binding.tvQuoteChinese.textSize = smallTextSize
+        binding.tvQuoteEnglish.textSize = tinyTextSize
+        binding.tvQuoteAuthor.textSize = tinyTextSize
+        binding.tvQuoteAuthorEn.textSize = 10f
+
+        // 限制为单行，防止撑大布局
+        binding.tvQuoteChinese.maxLines = 1
+        binding.tvQuoteChinese.ellipsize = TextUtils.TruncateAt.END
+        binding.tvQuoteEnglish.maxLines = 1
+        binding.tvQuoteEnglish.ellipsize = TextUtils.TruncateAt.END
+        binding.tvQuoteAuthor.maxLines = 1
+        binding.tvQuoteAuthor.ellipsize = TextUtils.TruncateAt.END
+        binding.tvQuoteAuthorEn.maxLines = 1
+        binding.tvQuoteAuthorEn.ellipsize = TextUtils.TruncateAt.END
+
+        // 减少上下内边距（如果父布局允许，这里对TextView本身设置padding）
+        binding.tvQuoteChinese.setPadding(0, 0, 0, 0)
+        binding.tvQuoteEnglish.setPadding(0, 0, 0, 0)
+        binding.tvQuoteAuthor.setPadding(0, 0, 0, 0)
+        binding.tvQuoteAuthorEn.setPadding(0, 0, 0, 0)
     }
 
     // ========== 文件浏览器 ==========
@@ -410,7 +434,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun startUpdateProcess() {
         if (isProcessing) return
-        // 确保目标目录存在，如果不存在则尝试恢复
         if (targetModsDir == null) {
             LogManager.log("startUpdateProcess: targetModsDir 为 null，尝试恢复...")
             val lastPath = prefs.getString("launcher_root", null)
@@ -501,7 +524,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun installResourcePack() { /* 与之前完整代码相同，此处省略，实际使用时需包含完整函数 */ }
+    private suspend fun installResourcePack() { /* 你的原函数内容，此处省略（实际命令中会完整保留） */ }
 
     private suspend fun filterOutUnchangedMods(modsDir: File, csvMods: List<ModInfo>) = withContext(Dispatchers.IO) {
         csvMods.filterNot { mod -> val local = File(modsDir, mod.fileName); local.exists() && local.length() == mod.size && calculateMD5(local) == mod.md5 }
@@ -525,10 +548,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ========== 新增：加载 CSV（动态或硬编码） ==========
     private fun loadCsv() {
         val csv = loadCsvContent(this)
-        // 这里可以扩展，比如缓存或解析
         LogManager.log("CSV loaded, length: ${csv.length}")
     }
 

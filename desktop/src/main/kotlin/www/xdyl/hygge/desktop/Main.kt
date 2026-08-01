@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
+import com.google.gson.Gson
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -32,6 +33,8 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.URLEncoder
 import java.security.MessageDigest
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -41,6 +44,8 @@ val client = OkHttpClient.Builder()
     .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
     .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
     .build()
+
+data class Quote(val chinese: String, val english: String, val author: String, val authorEn: String, val source: String, val sourceEn: String)
 
 fun main() = application {
     var targetModsDir by remember { mutableStateOf<File?>(null) }
@@ -61,7 +66,66 @@ fun main() = application {
     var localCsvPath by remember { mutableStateOf("") }
     var extensionMode by remember { mutableStateOf(false) }
 
+    // ---------- 每日名言 ----------
+    var dailyQuote by remember { mutableStateOf<Quote?>(null) }
+    val quoteCategories = listOf("WH", "RW", "HC", "ED", "CE", "AC")
+    val categoryNames = mapOf(
+        "WH" to "警世箴言",
+        "RW" to "理性思辨",
+        "HC" to "心灵疗愈",
+        "ED" to "存在哲思",
+        "CE" to "人际纽带",
+        "AC" to "行动召唤"
+    )
+
+    fun loadDailyQuote() {
+        val today = SimpleDateFormat("yyyyMMdd").format(Date())
+        val lastDate = prefs.getString("quote_date", "")
+        if (lastDate != today) {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val allQuotes = mutableListOf<Quote>()
+                    for (cat in quoteCategories) {
+                        val jsonStr = Thread.currentThread().contextClassLoader.getResourceAsStream("assets/$cat.json")?.bufferedReader()?.readText() ?: continue
+                        val jsonObject = Gson().fromJson(jsonStr, Map::class.java)
+                        val quotes = jsonObject["quotes"] as List<Map<String, String>>
+                        allQuotes.addAll(quotes.map {
+                            Quote(
+                                it["chinese"]!!,
+                                it["english"]!!,
+                                it["author"]!!,
+                                it["author_en"]!!,
+                                it["source"]!!,
+                                it["source_en"]!!
+                            )
+                        })
+                    }
+                    if (allQuotes.isNotEmpty()) {
+                        val quote = allQuotes[Random().nextInt(allQuotes.size)]
+                        withContext(Dispatchers.Main) {
+                            dailyQuote = quote
+                            prefs.putString("quote_date", today)
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        } else {
+            // 从偏好恢复（简化：不恢复具体内容，仅显示默认）
+            dailyQuote = Quote(
+                "生活不是等待风暴过去，而是学会在雨中跳舞。",
+                "Life isn't about waiting for the storm to pass, it's about learning to dance in the rain.",
+                "薇薇安·格林",
+                "Vivian Greene",
+                "未知",
+                "Unknown"
+            )
+        }
+    }
+
     LaunchedEffect(Unit) {
+        // 加载配置
         val lastPath = prefs.getString("launcher_root", null)
         if (lastPath != null) {
             val dir = File(lastPath)
@@ -75,6 +139,26 @@ fun main() = application {
         useLocalCsv = prefs.getBoolean("use_local_csv", false)
         localCsvPath = prefs.getString("local_csv_path", "") ?: ""
         extensionMode = prefs.getBoolean("extension_mode", false)
+
+        // 每日名言
+        loadDailyQuote()
+
+        // 云端 CSV 版本检查
+        val versionManager = VersionManager(prefs)
+        versionManager.checkAndUpdate(
+            onUpdateAvailable = { diff ->
+                // 显示更新提示（桌面可用 AlertDialog，但为了简化，使用 println 示意，实际可在 UI 中显示）
+                println("发现新版本 ${diff.version}")
+                scope.launch {
+                    versionManager.downloadNewCsv(diff.version)
+                    println("CSV已更新，重启生效")
+                    // 可在此弹窗提示用户重启
+                }
+            },
+            onComplete = {
+                // 无更新
+            }
+        )
     }
 
     Window(
@@ -125,13 +209,10 @@ fun main() = application {
                                         if (failed.get() > 0) logBuilder.appendLine("Error: ERROR05")
                                         else {
                                             logBuilder.appendLine("Update completed!")
-                                            // 检查材质包是否存在
                                             val targetVersion = prefs.getString("version_folder", "1.21.1-NeoForge") ?: "1.21.1-NeoForge"
                                             val resourcePackFile = File(targetModsDir!!.parentFile, "$targetVersion/resourcepacks/generated.zip")
                                             if (!resourcePackFile.exists()) {
-                                                withContext(Dispatchers.Main) {
-                                                    // 询问安装
-                                                }
+                                                scope.launch { installResourcePack(prefs) }
                                             }
                                         }
                                         logText = logBuilder.toString()
@@ -143,7 +224,9 @@ fun main() = application {
                         logText = logText,
                         progress = progress,
                         statusText = statusText,
-                        onSettings = { currentScreen = "settings" }
+                        onSettings = { currentScreen = "settings" },
+                        dailyQuote = dailyQuote,
+                        categoryNames = categoryNames
                     )
                     "settings" -> SettingsScreen(
                         versionName = versionName,
@@ -200,7 +283,18 @@ fun main() = application {
 
 // ---------- 主界面 ----------
 @Composable
-fun MainScreen(targetModsDir: File?, onSelectDir: () -> Unit, onStartDownload: () -> Unit, downloading: Boolean, logText: String, progress: Float, statusText: String, onSettings: () -> Unit) {
+fun MainScreen(
+    targetModsDir: File?,
+    onSelectDir: () -> Unit,
+    onStartDownload: () -> Unit,
+    downloading: Boolean,
+    logText: String,
+    progress: Float,
+    statusText: String,
+    onSettings: () -> Unit,
+    dailyQuote: Quote?,
+    categoryNames: Map<String, String>
+) {
     Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column {
@@ -212,21 +306,67 @@ fun MainScreen(targetModsDir: File?, onSelectDir: () -> Unit, onStartDownload: (
                 Icon(Icons.Default.Settings, contentDescription = "设置", tint = Color(0xFFA0C4FF), modifier = Modifier.size(36.dp))
             }
         }
-        Spacer(Modifier.height(32.dp))
-        Button(onClick = onSelectDir, modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 16.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) { Text("选择游戏目录", fontSize = 28.sp) }
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = onStartDownload, enabled = targetModsDir != null && !downloading, modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 16.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) { Text("开始下载", fontSize = 28.sp) }
-        Spacer(Modifier.height(24.dp))
-        LinearProgressIndicator(progress = { (progress / 100f).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(6.dp)), color = Color(0xFFA0C4FF), trackColor = Color(0xFFA0C4FF).copy(alpha = 0.2f))
-        Text(statusText, color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 22.sp)
+
+        // ---- 每日名言（缩小版） ----
+        dailyQuote?.let { quote ->
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                    Text(
+                        text = quote.chinese,
+                        color = Color(0xFFA0C4FF),
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "— ${quote.author} / ${quote.source}",
+                        color = Color.Gray,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
         Spacer(Modifier.height(12.dp))
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) { val scrollState = rememberScrollState(); Text(logText, modifier = Modifier.verticalScroll(scrollState).padding(8.dp).fillMaxWidth(), fontSize = 18.sp, color = Color.LightGray, maxLines = Int.MAX_VALUE, overflow = TextOverflow.Clip) }
+
+        Button(onClick = onSelectDir, modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) { Text("选择游戏目录", fontSize = 24.sp) }
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onStartDownload, enabled = targetModsDir != null && !downloading, modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) { Text("开始下载", fontSize = 24.sp) }
+        Spacer(Modifier.height(16.dp))
+        LinearProgressIndicator(progress = { (progress / 100f).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)), color = Color(0xFFA0C4FF), trackColor = Color(0xFFA0C4FF).copy(alpha = 0.2f))
+        Text(statusText, color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 18.sp)
+        Spacer(Modifier.height(8.dp))
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            val scrollState = rememberScrollState()
+            Text(logText, modifier = Modifier.verticalScroll(scrollState).padding(8.dp).fillMaxWidth(), fontSize = 16.sp, color = Color.LightGray, maxLines = Int.MAX_VALUE, overflow = TextOverflow.Clip)
+        }
     }
 }
 
 // ---------- 设置界面 ----------
 @Composable
-fun SettingsScreen(versionName: String, onVersionChange: (String) -> Unit, threadCount: Int, onThreadChange: (Int) -> Unit, maxThreads: Int, neoforgeCheckEnabled: Boolean, onNeoforgeChange: (Boolean) -> Unit, cleanOrphanFiles: Boolean, onCleanOrphanChange: (Boolean) -> Unit, extensionMode: Boolean, onExtensionChange: (Boolean) -> Unit, onSelectDir: () -> Unit, onBack: () -> Unit, onExtensionPage: () -> Unit) {
+fun SettingsScreen(
+    versionName: String,
+    onVersionChange: (String) -> Unit,
+    threadCount: Int,
+    onThreadChange: (Int) -> Unit,
+    maxThreads: Int,
+    neoforgeCheckEnabled: Boolean,
+    onNeoforgeChange: (Boolean) -> Unit,
+    cleanOrphanFiles: Boolean,
+    onCleanOrphanChange: (Boolean) -> Unit,
+    extensionMode: Boolean,
+    onExtensionChange: (Boolean) -> Unit,
+    onSelectDir: () -> Unit,
+    onBack: () -> Unit,
+    onExtensionPage: () -> Unit
+) {
     Column(modifier = Modifier.padding(24.dp).fillMaxSize().verticalScroll(rememberScrollState())) {
         Row(verticalAlignment = Alignment.CenterVertically) { TextButton(onClick = onBack) { Text("← 返回", color = Color(0xFFA0C4FF), fontSize = 24.sp) }; Spacer(Modifier.width(8.dp)); Text("设置", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily) }
         Spacer(Modifier.height(24.dp))
@@ -257,7 +397,19 @@ fun SettingsScreen(versionName: String, onVersionChange: (String) -> Unit, threa
 
 // ---------- 扩展界面 ----------
 @Composable
-fun ExtensionScreen(unlockThread: Boolean, onUnlockChange: (Boolean) -> Unit, neoforgeCheckEnabled: Boolean, onNeoforgeChange: (Boolean) -> Unit, cleanOrphanFiles: Boolean, onCleanOrphanChange: (Boolean) -> Unit, useLocalCsv: Boolean, onLocalCsvChange: (Boolean) -> Unit, localCsvPath: String, onPickCsv: () -> Unit, onBack: () -> Unit) {
+fun ExtensionScreen(
+    unlockThread: Boolean,
+    onUnlockChange: (Boolean) -> Unit,
+    neoforgeCheckEnabled: Boolean,
+    onNeoforgeChange: (Boolean) -> Unit,
+    cleanOrphanFiles: Boolean,
+    onCleanOrphanChange: (Boolean) -> Unit,
+    useLocalCsv: Boolean,
+    onLocalCsvChange: (Boolean) -> Unit,
+    localCsvPath: String,
+    onPickCsv: () -> Unit,
+    onBack: () -> Unit
+) {
     Column(modifier = Modifier.padding(24.dp).fillMaxSize().verticalScroll(rememberScrollState())) {
         Row(verticalAlignment = Alignment.CenterVertically) { TextButton(onClick = onBack) { Text("← 返回", color = Color(0xFFA0C4FF), fontSize = 24.sp) }; Spacer(Modifier.width(8.dp)); Text("扩展页面", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily) }
         Spacer(Modifier.height(24.dp))
@@ -275,7 +427,6 @@ fun ExtensionScreen(unlockThread: Boolean, onUnlockChange: (Boolean) -> Unit, ne
         Divider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(Modifier.height(24.dp))
         OutlinedButton(onClick = { /* 白名单 */ }, modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp), border = BorderStroke(1.dp, Color(0xFFA0C4FF)), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))) { Text("模组白名单", fontSize = 24.sp) }
-        // 不再有重置按钮
     }
 }
 
