@@ -427,11 +427,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getCsvContent(): String {
+        // 优先使用用户指定的本地 CSV
         if (prefs.getBoolean("use_local_csv", false)) {
             val path = prefs.getString("local_csv_path", null)
-            if (path != null) { val file = File(path); if (file.exists()) return file.readText() }
+            if (path != null) {
+                val file = File(path)
+                if (file.exists()) return file.readText()
+            }
         }
-        return Constants.CSV_CONTENT
+        // 随后检查云端下载的 CSV，如果有且完整性 OK 就继续使用
+        return loadCsvContent(this)
     }
 
     private suspend fun downloadWithRetry(url: String, size: Long, destFile: File, maxRetries: Int = 5) {
