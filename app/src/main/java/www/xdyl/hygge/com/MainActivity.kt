@@ -104,7 +104,7 @@ class MainActivity : AppCompatActivity() {
                     LogManager.log("[CSV] New version detected: ${diff.version}, added=${diff.added.size}, removed=${diff.removed.size}, updated=${diff.updated.size}")
                     MaterialAlertDialogBuilder(this@MainActivity)
                         .setTitle("CSV 需要更新 (${diff.version})")
-                        .setMessage("新增: ${diff.added.joinToString()}\n移除: ${diff.removed.joinToString()}\n更新: ${diff.updated.joinToString()}")
+                        .setMessage("新增: ${diff.added.joinToString { it.name }}\n移除: ${diff.removed.joinToString { it.name }}\n更新: ${diff.updated.joinToString { "${it.name} (${it.oldVersion}→${it.newVersion})" }}")
                         .setPositiveButton("更新") { _, _ ->
                             scope.launch {
                                 LogManager.log("[CSV] User accepted, downloading...")
