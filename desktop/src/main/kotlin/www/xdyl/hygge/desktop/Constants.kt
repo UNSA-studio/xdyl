@@ -158,3 +158,8 @@ object Constants {
         ERROR10 to "发生未知错误。请导出日志并联系开发者，日志路径位于应用内部存储的 Download 文件夹。"
     )
 }
+
+fun loadCsvContent(): String {
+    val file = File(System.getProperty("user.home"), ".xdyl/file_list.csv")
+    return if (file.exists()) file.readText() else Constants.CSV_CONTENT
+}
