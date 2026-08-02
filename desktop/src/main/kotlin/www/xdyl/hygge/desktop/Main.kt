@@ -178,7 +178,10 @@ fun main() = application {
     MaterialTheme(colorScheme = darkColorScheme) {
         CompositionLocalProvider(LocalTextStyle provides defaultTextStyle) {
             Window(
-                onCloseRequest = ::exitApplication,
+                onCloseRequest = {
+                    scope.cancel()
+                    exitApplication()
+                },
                 title = "星云更新器",
                 state = rememberWindowState(width = 800.dp, height = 600.dp),
                 resizable = false
@@ -524,7 +527,7 @@ fun MainScreen(
 
             // 进度条
             LinearProgressIndicator(
-                progress = { (progress / 100f).coerceIn(0f, 1f) },
+                progress = { animateFloatAsState((progress / 100f).coerceIn(0f, 1f), animationSpec = tween(200)).value },
                 modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
                 color = Color(0xFFA0C4FF),
                 trackColor = Color(0xFFA0C4FF).copy(alpha = 0.2f)
@@ -557,7 +560,7 @@ fun MainScreen(
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
                         Text(quote.chinese, color = Color(0xFFA0C4FF), fontSize = 14.sp, fontFamily = silverFontFamily)
-                        Text("— ${quote.author} / ${quote.source}", color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
+                        Text(quote.english, color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
                     }
                 }
             }
