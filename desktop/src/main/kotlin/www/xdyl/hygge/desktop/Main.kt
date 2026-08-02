@@ -210,8 +210,8 @@ fun main() = application {
                                                 else
                                                     parseDesktopCsvMods()
                                                 // 只下载服务器上实际存在的模组（和安卓逻辑一致）
-                                                val serverFilesSet = serverFiles.toSet()
-                                                val serverMods = csvMods.filter { it.fileName in serverFilesSet }
+                                                val csvSet = csvMods.map { it.fileName }.toSet()
+                                                val serverMods = csvMods.filter { it.fileName in serverFiles.toSet() }
                                                 val toDownload = filterOutUnchangedModsDesktop(targetModsDir!!, serverMods)
                                                 if (toDownload.isEmpty()) {
                                                     logBuilder.appendLine("All mods are up-to-date!")
@@ -249,11 +249,11 @@ fun main() = application {
                                                     }.joinAll()
                                                 }
                                                 if (cleanOrphanFiles) {
-                                                    val cleanCsvSet = csvMods.map { it.fileName }.toSet()
+                                                    val csvSet = csvMods.map { it.fileName }.toSet()
                                                     val modFiles = targetModsDir!!.listFiles()?.filter { it.extension == "jar" } ?: emptyList()
                                                     var deleted = 0
                                                     for (f in modFiles) {
-                                                        if (f.name !in cleanCsvSet && f.delete()) {
+                                                        if (f.name !in csvSet && f.delete()) {
                                                             deleted++
                                                             LogManager.log("Deleted orphan: ${f.name}")
                                                         }
