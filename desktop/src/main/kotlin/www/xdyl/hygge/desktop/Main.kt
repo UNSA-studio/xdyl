@@ -308,7 +308,7 @@ fun main() = application {
                                         targetModsDir = found
                                         currentScreen = "main"
                                     } else {
-                                        folderErrorMsg = "找不到游戏目录。\n请确保选择的文件夹包含 .minecraft 或 minecraft 文件夹。\n\n错误码: ERROR01"
+                                        folderErrorMsg = "错误码: ERROR01\n${Constants.errorDescriptions[Constants.ERROR01]}\n\n请查看是否是您的问题,如不是,请联系开发者"
                                         showFolderErrorDialog = true
                                     }
                                 },
@@ -420,7 +420,7 @@ fun main() = application {
                     if (showFolderErrorDialog) {
                         AlertDialog(
                             onDismissRequest = { showFolderErrorDialog = false },
-                            title = { Text("错误", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
+                            title = { Text("意外错误!", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
                             text = { Text(folderErrorMsg, fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp) },
                             confirmButton = {
                                 TextButton(onClick = { showFolderErrorDialog = false }) { Text("确定", fontFamily = silverFontFamily) }
