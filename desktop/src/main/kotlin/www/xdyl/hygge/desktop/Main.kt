@@ -528,8 +528,9 @@ fun MainScreen(
             Spacer(Modifier.height(8.dp))
 
             // 进度条
+            val smoothProgress by animateFloatAsState((progress / 100f).coerceIn(0f, 1f), animationSpec = tween(200))
             LinearProgressIndicator(
-                progress = { animateFloatAsState((progress / 100f).coerceIn(0f, 1f), animationSpec = tween(200)).value },
+                progress = { smoothProgress },
                 modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
                 color = Color(0xFFA0C4FF),
                 trackColor = Color(0xFFA0C4FF).copy(alpha = 0.2f)
