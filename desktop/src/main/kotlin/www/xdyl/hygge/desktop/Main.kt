@@ -137,6 +137,11 @@ fun main() = application {
         )
     }
 
+    fun showError(code: String) {
+        folderErrorMsg = "错误码: $code\n${Constants.errorDescriptions[code] ?: "未知错误"}\n\n请查看是否是您的问题,如不是,请联系开发者"
+        showFolderErrorDialog = true
+    }
+
     fun exportLog() {
         try {
             val dir = File(System.getProperty("user.home"), "Documents")
@@ -247,7 +252,10 @@ fun main() = application {
                                                     }
                                                     if (deleted > 0) logBuilder.appendLine("Cleaned $deleted orphan files")
                                                 }
-                                                if (failed.get() > 0) logBuilder.appendLine("Error: ERROR05 — some files failed checksum")
+                                                if (failed.get() > 0) {
+                                                    logBuilder.appendLine("Error: ERROR05 — some files failed checksum")
+                                                    showError(Constants.ERROR05)
+                                                }
                                                 else logBuilder.appendLine("Update completed!")
                                                 logText = logBuilder.toString()
                                             } catch (e: Exception) {
@@ -308,9 +316,7 @@ fun main() = application {
                                         targetModsDir = found
                                         currentScreen = "main"
                                     } else {
-                                        folderErrorMsg = "错误码: ERROR01\n找不到游戏目录。请确保已选择正确的启动器根目录（应包含 .minecraft 文件夹）。\n如果版本文件夹名称有误，请在设置中修改。\n\n请查看是否是您的问题,如不是,请联系开发者"
-                                        LogManager.log("ERROR: folder selection failed for ${dir.absolutePath}")
-                                        showFolderErrorDialog = true
+                                        showError(Constants.ERROR01)
                                     }
                                 },
                                 onBack = { currentScreen = "main" }
