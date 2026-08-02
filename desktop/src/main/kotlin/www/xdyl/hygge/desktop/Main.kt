@@ -203,9 +203,9 @@ fun main() = application {
                                                             try {
                                                                 val file = File(targetModsDir!!, mod.fileName)
                                                                 val encodedName = URLEncoder.encode(mod.fileName, "UTF-8").replace("+", "%20")
-                                                                val useChunked = mod.size > 65536 && mod.size > 0
-                                                                        val perFileThreads = if (useChunked) 4.coerceAtMost((mod.size / 65536).toInt().coerceAtLeast(2)) else 1
-                                                                        DownloadManager(Constants.BASE_URL + encodedName, mod.size, perFileThreads, useChunked)
+                                                                val chunks = if (mod.size > 0) maxOf(2, (mod.size / 524288).toInt()) else 2
+                                                                        val useChunked = chunks > 1
+                                                                        DownloadManager(Constants.BASE_URL + encodedName, mod.size, chunks, useChunked)
                                                                     .download(file) { pct -> progress = pct.toFloat() }
                                                                 if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256))
                                                                     throw RuntimeException("Checksum mismatch")
