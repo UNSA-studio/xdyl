@@ -78,6 +78,8 @@ fun main() = application {
     var showExtensionModeConfirm by remember { mutableStateOf(false) }
     var showThreadInfoDialog by remember { mutableStateOf(false) }
     var showCsvPickerDialog by remember { mutableStateOf(false) }
+    var showFolderErrorDialog by remember { mutableStateOf(false) }
+    var folderErrorMsg by remember { mutableStateOf("") }
 
     var dailyQuote by remember { mutableStateOf(null as Quote?) }
     val quoteCategories = listOf("WH", "RW", "HC", "ED", "CE", "AC")
@@ -173,8 +175,8 @@ fun main() = application {
             Window(
                 onCloseRequest = ::exitApplication,
                 title = "星云更新器",
-                resizable = false,
-                state = rememberWindowState(width = 800.dp, height = 600.dp)
+                state = rememberWindowState(width = 800.dp, height = 600.dp),
+                resizable = false
             ) {
                 Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
                     AnimatedContent(
@@ -298,21 +300,17 @@ fun main() = application {
                             "fileBrowser" -> FileBrowserScreen(
                                 onSelect = { dir ->
                                     val workDir = if (dir.name.equals("NebulaUpdater", true)) dir else File(dir, "NebulaUpdater")
-                                    if (!workDir.exists()) {
-                                        if (!workDir.mkdirs()) {
-                                            LogManager.log("[FILE] Failed to create: ${workDir.absolutePath}")
-                                        }
-                                    }
+                                    if (!workDir.exists()) workDir.mkdirs()
                                     prefs.putString("launcher_root", dir.absolutePath)
                                     prefs.putString("work_dir", workDir.absolutePath)
-                                    val modsDir = findMinecraftModsDir(dir, prefs)
-                                    if (modsDir == null) {
-                                        LogManager.log("[FILE] Invalid directory selected: ${dir.absolutePath}")
-                                        logBuilder.appendLine("错误：所选目录无效，未找到 .minecraft 文件夹")
-                                        logText = logBuilder.toString()
+                                    val found = findMinecraftModsDir(dir, prefs)
+                                    if (found != null) {
+                                        targetModsDir = found
+                                        currentScreen = "main"
+                                    } else {
+                                        folderErrorMsg = "找不到游戏目录。\n请确保选择的文件夹包含 .minecraft 或 minecraft 文件夹。\n\n错误码: ERROR01"
+                                        showFolderErrorDialog = true
                                     }
-                                    targetModsDir = modsDir
-                                    currentScreen = "main"
                                 },
                                 onBack = { currentScreen = "main" }
                             )
@@ -419,6 +417,17 @@ fun main() = application {
                             }
                         )
                     }
+                    if (showFolderErrorDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showFolderErrorDialog = false },
+                            title = { Text("错误", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
+                            text = { Text(folderErrorMsg, fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp) },
+                            confirmButton = {
+                                TextButton(onClick = { showFolderErrorDialog = false }) { Text("确定", fontFamily = silverFontFamily) }
+                            }
+                        )
+                    }
+
                     if (showExtensionModeConfirm) {
                         AlertDialog(
                             onDismissRequest = {
