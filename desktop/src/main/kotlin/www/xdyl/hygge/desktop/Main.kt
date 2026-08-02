@@ -156,7 +156,18 @@ fun main() = application {
         }
     }
 
-    MaterialTheme {
+    val darkColorScheme = darkColorScheme(
+        primary = Color(0xFFA0C4FF),
+        onPrimary = Color.Black,
+        surface = Color(0xFF2A2A2A),
+        onSurface = Color.White,
+        background = Color(0xFF1E1E1E),
+        onBackground = Color.White,
+        surfaceVariant = Color(0xFF2A2A2A),
+        onSurfaceVariant = Color(0xFFA0C4FF)
+    )
+
+    MaterialTheme(colorScheme = darkColorScheme) {
         CompositionLocalProvider(LocalTextStyle provides defaultTextStyle) {
             Window(
                 onCloseRequest = ::exitApplication,
