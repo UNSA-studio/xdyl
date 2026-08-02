@@ -199,12 +199,15 @@ fun main() = application {
                                         downloading = true
                                         scope.launch {
                                             try {
-                                                fetchDesktopServerFileList() // validate server reachable
+                                                val serverFiles = fetchDesktopServerFileList()
                                                 val csvMods = if (useLocalCsv && localCsvPath.isNotEmpty())
                                                     parseCsvFromFile(File(localCsvPath))
                                                 else
                                                     parseDesktopCsvMods()
-                                                val toDownload = filterOutUnchangedModsDesktop(targetModsDir!!, csvMods)
+                                                // 只下载服务器上实际存在的模组（和安卓逻辑一致）
+                                                val csvSet = csvMods.map { it.fileName }.toSet()
+                                                val serverMods = csvMods.filter { it.fileName in serverFiles.toSet() }
+                                                val toDownload = filterOutUnchangedModsDesktop(targetModsDir!!, serverMods)
                                                 if (toDownload.isEmpty()) {
                                                     logBuilder.appendLine("All mods are up-to-date!")
                                                     logText = logBuilder.toString()
@@ -514,7 +517,7 @@ fun MainScreen(
                     modifier = Modifier.weight(1f).height(42.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-                ) { Text("开始下载", fontSize = 15.sp, fontFamily = silverFontFamily) }
+                ) { Text(if (targetModsDir == null) "请先选择目录" else "开始下载", fontSize = 15.sp, fontFamily = silverFontFamily) }
             }
 
             Spacer(Modifier.height(8.dp))
