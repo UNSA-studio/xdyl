@@ -76,6 +76,7 @@ fun main() = application {
     var showAboutDialog by remember { mutableStateOf(false) }
     var showWhitelistDialog by remember { mutableStateOf(false) }
     var showExtensionModeConfirm by remember { mutableStateOf(false) }
+    var showThreadInfoDialog by remember { mutableStateOf(false) }
 
     var dailyQuote by remember { mutableStateOf(null as Quote?) }
     val quoteCategories = listOf("WH", "RW", "HC", "ED", "CE", "AC")
@@ -254,10 +255,6 @@ fun main() = application {
                                 threadCount = threadCount,
                                 onThreadChange = { threadCount = it; prefs.putInt("thread_limit", it) },
                                 maxThreads = if (unlockThread) 1024 else 128,
-                                neoforgeCheckEnabled = neoforgeCheckEnabled,
-                                onNeoforgeChange = { neoforgeCheckEnabled = it; prefs.putBoolean("neoforge_check_enabled", it) },
-                                cleanOrphanFiles = cleanOrphanFiles,
-                                onCleanOrphanChange = { cleanOrphanFiles = it; prefs.putBoolean("clean_orphan_files", it) },
                                 extensionMode = extensionMode,
                                 onExtensionChange = { enabled ->
                                     if (enabled) showExtensionModeConfirm = true
@@ -268,7 +265,8 @@ fun main() = application {
                                 onExtensionPage = { currentScreen = "extension" },
                                 onExportLog = { exportLog() },
                                 onErrorCodes = { showErrorCodesDialog = true },
-                                onAbout = { showAboutDialog = true }
+                                onAbout = { showAboutDialog = true },
+                                onThreadInfo = { showThreadInfoDialog = true }
                             )
                             "extension" -> ExtensionScreen(
                                 unlockThread = unlockThread,
@@ -354,6 +352,18 @@ fun main() = application {
                             },
                             confirmButton = {
                                 TextButton(onClick = { showWhitelistDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
+                            }
+                        )
+                    }
+                    if (showThreadInfoDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showThreadInfoDialog = false },
+                            title = { Text("线程与分块说明", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
+                            text = {
+                                Text("「下载线程数」指的是同时下载的文件数量，越大的值会让更多文件并行下载。\n\n「分块规则」是适应性的：≤1MB 的文件默认用 2 个 HTTP 下载块，大于 1MB 的每多 0.5MB 就多分配 1 个下载块。例如 3MB 的文件会被拆成 6 块同时下载。\n\n下载线程数不是越大越好，请根据网络带宽和设备性能合理设置。", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showThreadInfoDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
                             }
                         )
                     }
@@ -492,10 +502,6 @@ fun SettingsScreen(
     threadCount: Int,
     onThreadChange: (Int) -> Unit,
     maxThreads: Int,
-    neoforgeCheckEnabled: Boolean,
-    onNeoforgeChange: (Boolean) -> Unit,
-    cleanOrphanFiles: Boolean,
-    onCleanOrphanChange: (Boolean) -> Unit,
     extensionMode: Boolean,
     onExtensionChange: (Boolean) -> Unit,
     onSelectDir: () -> Unit,
@@ -503,7 +509,8 @@ fun SettingsScreen(
     onExtensionPage: () -> Unit,
     onExportLog: () -> Unit,
     onErrorCodes: () -> Unit,
-    onAbout: () -> Unit
+    onAbout: () -> Unit,
+    onThreadInfo: () -> Unit = {}
 ) {
     val tfColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = Color.White,
@@ -545,15 +552,20 @@ fun SettingsScreen(
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(12.dp))
 
-        OutlinedTextField(
-            value = threadCount.toString(),
-            onValueChange = { v -> v.toIntOrNull()?.let { onThreadChange(it.coerceIn(20, maxThreads)) } },
-            label = { Text("下载线程数 (20-$maxThreads)", fontSize = 20.sp, color = Color.Gray, fontFamily = silverFontFamily) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = tfTextStyle,
-            colors = tfColors
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = threadCount.toString(),
+                onValueChange = { v -> v.toIntOrNull()?.let { onThreadChange(it.coerceIn(20, maxThreads)) } },
+                label = { Text("下载线程数 (20-$maxThreads)", fontSize = 14.sp, color = Color.Gray, fontFamily = silverFontFamily) },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                textStyle = tfTextStyle,
+                colors = tfColors
+            )
+            IconButton(onClick = onThreadInfo, modifier = Modifier.size(24.dp)) {
+                Text("ℹ", color = Color(0xFFA0C4FF).copy(alpha = 0.7f), fontSize = 16.sp)
+            }
+        }
 
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(16.dp))
@@ -565,24 +577,6 @@ fun SettingsScreen(
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
         ) { Text("选择游戏目录", fontSize = 24.sp, fontFamily = silverFontFamily) }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = neoforgeCheckEnabled, onCheckedChange = onNeoforgeChange, colors = swColors)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
-        }
-
-        HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange, colors = swColors)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
-        }
-
-        HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
