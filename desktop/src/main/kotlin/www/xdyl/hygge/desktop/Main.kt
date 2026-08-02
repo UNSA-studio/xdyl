@@ -173,6 +173,7 @@ fun main() = application {
             Window(
                 onCloseRequest = ::exitApplication,
                 title = "星云更新器",
+                resizable = false,
                 state = rememberWindowState(width = 800.dp, height = 600.dp)
             ) {
                 Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
@@ -296,12 +297,21 @@ fun main() = application {
                             )
                             "fileBrowser" -> FileBrowserScreen(
                                 onSelect = { dir ->
-                                    // Create NebulaUpdater subdirectory for MSI uninstall isolation
                                     val workDir = if (dir.name.equals("NebulaUpdater", true)) dir else File(dir, "NebulaUpdater")
-                                    if (!workDir.exists()) workDir.mkdirs()
+                                    if (!workDir.exists()) {
+                                        if (!workDir.mkdirs()) {
+                                            LogManager.log("[FILE] Failed to create: ${workDir.absolutePath}")
+                                        }
+                                    }
                                     prefs.putString("launcher_root", dir.absolutePath)
                                     prefs.putString("work_dir", workDir.absolutePath)
-                                    targetModsDir = findMinecraftModsDir(dir, prefs)
+                                    val modsDir = findMinecraftModsDir(dir, prefs)
+                                    if (modsDir == null) {
+                                        LogManager.log("[FILE] Invalid directory selected: ${dir.absolutePath}")
+                                        logBuilder.appendLine("错误：所选目录无效，未找到 .minecraft 文件夹")
+                                        logText = logBuilder.toString()
+                                    }
+                                    targetModsDir = modsDir
                                     currentScreen = "main"
                                 },
                                 onBack = { currentScreen = "main" }
