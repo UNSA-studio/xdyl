@@ -441,12 +441,12 @@ class MainActivity : AppCompatActivity() {
 
     private suspend fun downloadWithRetry(url: String, size: Long, destFile: File, maxRetries: Int = 5) {
         var lastEx: Exception? = null
-        // 文件小于 64KB 不值得分块；大文件用多线程 Range 请求加速
-        val useChunked = size > 65536 && size > 0
-        val perFileThreads = if (useChunked) 4.coerceAtMost((size / 65536).toInt().coerceAtLeast(2)) else 1
+        // 分块规则：≤1MB 固定 2 块，>1MB 每多 0.5MB 加 1 块（最少 2 块）
+        val chunks = if (size > 0) maxOf(2, (size / 524288).toInt()) else 2
+        val useChunked = chunks > 1
         for (attempt in 1..maxRetries) {
             try {
-                DownloadManager(url, size, perFileThreads, useChunked).download(destFile) { }
+                DownloadManager(url, size, chunks, useChunked).download(destFile) { }
                 appendLog("[OK] ${destFile.name}"); return
             } catch (e: Exception) { lastEx = e; appendLog("[RETRY $attempt] ${destFile.name}"); delay((1000L * attempt).coerceAtMost(5000)) }
         }
