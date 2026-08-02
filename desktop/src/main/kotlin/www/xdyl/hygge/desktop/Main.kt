@@ -308,7 +308,8 @@ fun main() = application {
                                         targetModsDir = found
                                         currentScreen = "main"
                                     } else {
-                                        folderErrorMsg = "错误码: ERROR01\n${Constants.errorDescriptions[Constants.ERROR01]}\n\n请查看是否是您的问题,如不是,请联系开发者"
+                                        folderErrorMsg = "错误码: ERROR01\n找不到游戏目录。请确保已选择正确的启动器根目录（应包含 .minecraft 文件夹）。\n如果版本文件夹名称有误，请在设置中修改。\n\n请查看是否是您的问题,如不是,请联系开发者"
+                                        LogManager.log("ERROR: folder selection failed for ${dir.absolutePath}")
                                         showFolderErrorDialog = true
                                     }
                                 },
