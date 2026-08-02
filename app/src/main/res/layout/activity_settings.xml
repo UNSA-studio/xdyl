@@ -136,6 +136,17 @@
                         android:inputType="number"
                         android:singleLine="true"/>
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <ImageView
+                    android:id="@+id/ivThreadInfo"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_check"
+                    android:tint="@color/primary_light_blue"
+                    android:alpha="0.7"
+                    android:contentDescription="线程说明"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:layout_marginStart="8dp"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
