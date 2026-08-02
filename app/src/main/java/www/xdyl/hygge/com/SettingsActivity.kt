@@ -85,6 +85,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.etVersionName.setText(prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR)
         val currentThreads = prefs.getInt("thread_limit", 256)
         binding.etThreadCount.setText(currentThreads.toString())
+        binding.ivThreadInfo.setOnClickListener { showThreadInfo() }
         val extensionEnabled = prefs.getBoolean("extension_mode", false)
         // 注意：设置开关状态时不会触发监听器，因为监听器尚未绑定
         binding.swExtensionMode.isChecked = extensionEnabled
@@ -151,6 +152,14 @@ class SettingsActivity : AppCompatActivity() {
         MaterialAlertDialogBuilder(this)
             .setTitle("ERROR 错误代码")
             .setMessage(sb.toString().trim())
+            .setPositiveButton("关闭", null)
+            .show()
+    }
+
+    private fun showThreadInfo() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("线程与分块说明")
+            .setMessage("「下载线程数」指的是同时下载的文件数量，越大的值会让更多文件并行下载。\n\n「分块规则」是适应性的：≤1MB 的文件默认用 2 个 HTTP 下载块，大于 1MB 的每多 0.5MB 就多分配 1 个下载块。例如 3MB 的文件会被拆成 6 块同时下载。\n\n下载线程数不是越大越好，请根据网络带宽和设备性能合理设置。")
             .setPositiveButton("关闭", null)
             .show()
     }
