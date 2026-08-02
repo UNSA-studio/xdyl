@@ -91,13 +91,12 @@ class EasterEggActivity : AppCompatActivity() {
             layoutWifiConfig.visibility = if (isChecked) View.VISIBLE else View.GONE
             if (isChecked) {
                 val savedIp = prefs.getString("wifi_adb_ip", "")
-                val port = prefs.getInt("wifi_adb_port", 5555)
+                val savedPort = prefs.getInt("wifi_adb_port", 5555)
                 if (!savedIp.isNullOrBlank()) {
                     LogManager.remoteIp = savedIp
-                    LogManager.remotePort = port
+                    LogManager.remotePort = savedPort
                     LogManager.wifiAdbEnabled = true
                 }
-            }
             } else {
                 LogManager.wifiAdbEnabled = false
             }
