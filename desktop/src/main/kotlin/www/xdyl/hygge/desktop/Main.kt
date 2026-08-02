@@ -79,6 +79,7 @@ fun main() = application {
     var showThreadInfoDialog by remember { mutableStateOf(false) }
     var showCsvPickerDialog by remember { mutableStateOf(false) }
     var showFolderErrorDialog by remember { mutableStateOf(false) }
+    var showFileBrowserDialog by remember { mutableStateOf(false) }
     var folderErrorMsg by remember { mutableStateOf("") }
 
     var dailyQuote by remember { mutableStateOf(null as Quote?) }
@@ -289,7 +290,7 @@ fun main() = application {
                                     if (enabled) showExtensionModeConfirm = true
                                     else { extensionMode = false; prefs.putBoolean("extension_mode", false) }
                                 },
-                                onSelectDir = { currentScreen = "fileBrowser" },
+                                onSelectDir = { showFileBrowserDialog = true },
                                 onBack = { currentScreen = "main" },
                                 onExtensionPage = { currentScreen = "extension" },
                                 onExportLog = { exportLog() },
