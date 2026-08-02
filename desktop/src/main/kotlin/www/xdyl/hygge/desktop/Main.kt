@@ -77,6 +77,7 @@ fun main() = application {
     var showWhitelistDialog by remember { mutableStateOf(false) }
     var showExtensionModeConfirm by remember { mutableStateOf(false) }
     var showThreadInfoDialog by remember { mutableStateOf(false) }
+    var showCsvPickerDialog by remember { mutableStateOf(false) }
 
     var dailyQuote by remember { mutableStateOf(null as Quote?) }
     val quoteCategories = listOf("WH", "RW", "HC", "ED", "CE", "AC")
@@ -289,14 +290,7 @@ fun main() = application {
                                 useLocalCsv = useLocalCsv,
                                 onLocalCsvChange = { useLocalCsv = it; prefs.putBoolean("use_local_csv", it) },
                                 localCsvPath = localCsvPath,
-                                onPickCsv = {
-                                    val dialog = java.awt.FileDialog(java.awt.Frame(), "Select CSV", java.awt.FileDialog.LOAD)
-                                    dialog.file = "*.csv"; dialog.isVisible = true
-                                    dialog.file?.let { f ->
-                                        val sf = File(dialog.directory, f)
-                                        if (sf.exists()) { localCsvPath = sf.absolutePath; prefs.putString("local_csv_path", localCsvPath) }
-                                    }
-                                },
+                                onPickCsv = { showCsvPickerDialog = true },
                                 onBack = { currentScreen = "settings" },
                                 onWhitelist = { showWhitelistDialog = true }
                             )
@@ -349,6 +343,43 @@ fun main() = application {
                             }
                         )
                     }
+                    if (showCsvPickerDialog) {
+                        var csvDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }
+                        var csvFiles by remember { mutableStateOf(csvDir.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()) }
+                        AlertDialog(
+                            onDismissRequest = { showCsvPickerDialog = false },
+                            title = { Text("选择 CSV 文件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
+                            text = {
+                                Column {
+                                    Text(csvDir.absolutePath, color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
+                                    Spacer(Modifier.height(8.dp))
+                                    LazyColumn(modifier = Modifier.height(300.dp)) {
+                                        items(csvFiles) { f ->
+                                            TextButton(onClick = {
+                                                if (f.isDirectory) {
+                                                    csvDir = f
+                                                    csvFiles = f.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()
+                                                } else {
+                                                    localCsvPath = f.absolutePath
+                                                    prefs.putString("local_csv_path", localCsvPath)
+                                                    showCsvPickerDialog = false
+                                                }
+                                            }, modifier = Modifier.fillMaxWidth()) {
+                                                Text(if (f.isDirectory) "📁 ${f.name}" else "📄 ${f.name}", color = if (f.isDirectory) Color(0xFFA0C4FF) else Color.White, fontSize = 14.sp, fontFamily = silverFontFamily)
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { csvDir.parentFile?.let { csvDir = it; csvFiles = it.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList() } }) { Text("返回上级", fontFamily = silverFontFamily) }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showCsvPickerDialog = false }) { Text("取消", fontFamily = silverFontFamily) }
+                            }
+                        )
+                    }
+
                     if (showWhitelistDialog) {
                         AlertDialog(
                             onDismissRequest = { showWhitelistDialog = false },
