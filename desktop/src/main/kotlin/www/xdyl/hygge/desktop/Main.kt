@@ -528,7 +528,7 @@ fun MainScreen(
 
             // 进度条
             LinearProgressIndicator(
-                progress = { animateFloatAsState((progress / 100f).coerceIn(0f, 1f), animationSpec = tween(200)).value },
+                progress = (progress / 100f).coerceIn(0f, 1f),
                 modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
                 color = Color(0xFFA0C4FF),
                 trackColor = Color(0xFFA0C4FF).copy(alpha = 0.2f)
