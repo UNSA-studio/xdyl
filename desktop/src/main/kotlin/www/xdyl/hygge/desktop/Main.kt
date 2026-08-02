@@ -2,6 +2,7 @@ package www.xdyl.hygge.desktop
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -290,7 +291,7 @@ fun main() = application {
                                     if (enabled) showExtensionModeConfirm = true
                                     else { extensionMode = false; prefs.putBoolean("extension_mode", false) }
                                 },
-                                onSelectDir = { showFileBrowserDialog = true },
+                                onSelectDir = { currentScreen = "fileBrowser" },
                                 onBack = { currentScreen = "main" },
                                 onExtensionPage = { currentScreen = "extension" },
                                 onExportLog = { exportLog() },
@@ -528,7 +529,7 @@ fun MainScreen(
 
             // 进度条
             LinearProgressIndicator(
-                progress = (progress / 100f).coerceIn(0f, 1f),
+                progress = { animateFloatAsState((progress / 100f).coerceIn(0f, 1f), animationSpec = tween(200)).value },
                 modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
                 color = Color(0xFFA0C4FF),
                 trackColor = Color(0xFFA0C4FF).copy(alpha = 0.2f)
