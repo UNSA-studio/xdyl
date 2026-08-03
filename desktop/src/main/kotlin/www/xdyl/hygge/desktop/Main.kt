@@ -433,7 +433,11 @@ fun main() = application {
                         )
                     }
                     if (showFileBrowserDialog) {
-                        Dialog(onDismissRequest = { showFileBrowserDialog = false }) {
+                        AnimatedVisibility(
+                            visible = showFileBrowserDialog,
+                            enter = fadeIn(tween(200)),
+                            exit = fadeOut(tween(200))
+                        ) {
                             Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
                                 FileBrowserScreen(
                                     onSelect = { dir ->
@@ -585,8 +589,10 @@ fun MainScreen(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
-                        Text(quote.chinese, color = Color(0xFFA0C4FF), fontSize = 14.sp, fontFamily = silverFontFamily)
-                        Text(quote.english, color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
+                        Text(quote.chinese, color = Color(0xFFA0C4FF), fontSize = 14.sp, fontFamily = silverFontFamily, maxLines = Int.MAX_VALUE)
+                        Text(quote.english, color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 12.sp, fontFamily = silverFontFamily, maxLines = Int.MAX_VALUE)
+                        Text("— ${quote.author}", color = Color.Gray, fontSize = 11.sp, fontFamily = silverFontFamily)
+                        Text("《${quote.source}》", color = Color.Gray.copy(alpha = 0.7f), fontSize = 10.sp, fontFamily = silverFontFamily)
                     }
                 }
             }
