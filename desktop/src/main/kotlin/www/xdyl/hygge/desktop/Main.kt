@@ -438,30 +438,44 @@ fun main() = application {
                         )
                     }
                     if (showFileBrowserDialog) {
-                        AnimatedVisibility(
-                            visible = showFileBrowserDialog,
-                            enter = fadeIn(tween(200)),
-                            exit = fadeOut(tween(200))
-                        ) {
-                            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
-                                FileBrowserScreen(
-                                    onSelect = { dir ->
-                                        val workDir = if (dir.name.equals("NebulaUpdater", true)) dir else File(dir, "NebulaUpdater")
-                                        if (!workDir.exists()) workDir.mkdirs()
-                                        prefs.putString("launcher_root", dir.absolutePath)
-                                        prefs.putString("work_dir", workDir.absolutePath)
-                                        val found = findMinecraftModsDir(dir, prefs)
-                                        if (found != null) {
-                                            targetModsDir = found
-                                            showFileBrowserDialog = false
-                                        } else {
-                                            showError(Constants.ERROR01)
+                        var fbDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }
+                        var fbFiles by remember { mutableStateOf(fbDir.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()) }
+                        AlertDialog(
+                            onDismissRequest = { showFileBrowserDialog = false },
+                            title = { Text("选择启动器根目录", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 16.sp) },
+                            text = {
+                                Column {
+                                    Text(fbDir.absolutePath, color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
+                                    Spacer(Modifier.height(8.dp))
+                                    LazyColumn(modifier = Modifier.height(260.dp)) {
+                                        items(fbFiles) { f ->
+                                            TextButton(onClick = {
+                                                fbDir = f
+                                                fbFiles = f.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()
+                                            }, modifier = Modifier.fillMaxWidth()) {
+                                                Text("📁 ${f.name}", color = Color(0xFFA0C4FF), fontSize = 14.sp, fontFamily = silverFontFamily)
+                                            }
                                         }
-                                    },
-                                    onBack = { showFileBrowserDialog = false }
-                                )
+                                    }
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { fbDir.parentFile?.let { fbDir = it; fbFiles = it.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList() } }) {
+                                    Text("返回上级", fontFamily = silverFontFamily)
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    val workDir = if (fbDir.name.equals("NebulaUpdater", true)) fbDir else File(fbDir, "NebulaUpdater")
+                                    if (!workDir.exists()) workDir.mkdirs()
+                                    prefs.putString("launcher_root", fbDir.absolutePath)
+                                    prefs.putString("work_dir", workDir.absolutePath)
+                                    val found = findMinecraftModsDir(fbDir, prefs)
+                                    if (found != null) { targetModsDir = found; showFileBrowserDialog = false }
+                                    else showError(Constants.ERROR01)
+                                }) { Text("选择此文件夹", fontFamily = silverFontFamily) }
                             }
-                        }
+                        )
                     }
 
                     if (showFolderErrorDialog) {
