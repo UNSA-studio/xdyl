@@ -235,7 +235,7 @@ fun main() = application {
                                                                 val chunks = if (mod.size > 0) maxOf(2, (mod.size / 524288).toInt()) else 2
                                                                         val useChunked = chunks > 1
                                                                         DownloadManager(Constants.BASE_URL + encodedName, mod.size, chunks, useChunked)
-                                                                    .download(file) { pct -> progress = pct.toFloat() }
+                                                                    .download(file) { /* 只用文件数进度，不用单文件内部进度 */ }
                                                                 if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256))
                                                                     throw RuntimeException("Checksum mismatch")
                                                                 completed++
