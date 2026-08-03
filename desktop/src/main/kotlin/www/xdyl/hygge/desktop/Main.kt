@@ -221,7 +221,7 @@ fun main() = application {
                                                 }
                                                 logBuilder.appendLine("Downloading ${toDownload.size} mods...")
                                                 logText = logBuilder.toString()
-                                                progress =0f
+                                                progress = 0f
                                                 statusText = "0/$total"
                                                 val sem = Semaphore(threadCount.coerceIn(1, 1024))
                                                 val failed = AtomicInteger(0)
@@ -237,14 +237,17 @@ fun main() = application {
                                                                 val chunks = if (mod.size > 0) maxOf(2, (mod.size / 524288).toInt()) else 2
                                                                         val useChunked = chunks > 1
                                                                         DownloadManager(Constants.BASE_URL + encodedName, mod.size, chunks, useChunked)
-                                                                    .download(file) { /* 只用文件数进度，不用单文件内部进度 */ }
+                                                                    .download(file) { /* 只用文件数进度 */ }
                                                                 if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256))
                                                                     throw RuntimeException("Checksum mismatch")
                                                                 completed++
+                                                                logBuilder.appendLine("[OK] ${mod.fileName}")
+                                                                logText = logBuilder.toString()
                                                                 progress = (completed * 100f) / total
                                                                 statusText = "$completed/$total"
                                                             } catch (e: Exception) {
-                                                                LogManager.log("Failed ${mod.fileName}: ${e.message}")
+                                                                logBuilder.appendLine("[FAILED] ${mod.fileName}")
+                                                                logText = logBuilder.toString()
                                                                 failed.incrementAndGet()
                                                             } finally { sem.release() }
                                                         }
