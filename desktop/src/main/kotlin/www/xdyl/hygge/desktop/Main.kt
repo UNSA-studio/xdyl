@@ -221,12 +221,12 @@ fun main() = application {
                                                 }
                                                 logBuilder.appendLine("Downloading ${toDownload.size} mods...")
                                                 logText = logBuilder.toString()
-                                                progress = 0f
-                                                statusText = "0/$total"
                                                 val sem = Semaphore(threadCount.coerceIn(1, 1024))
                                                 val failed = AtomicInteger(0)
                                                 var completed = 0
                                                 val total = toDownload.size
+                                                progress = 0f
+                                                statusText = "0/$total"
                                                 withContext(Dispatchers.IO) {
                                                     toDownload.map { mod ->
                                                         launch {
