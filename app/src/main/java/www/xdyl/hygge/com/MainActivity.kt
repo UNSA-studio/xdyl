@@ -219,10 +219,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ========== 每日名言 ==========
+    private var quoteLoading = false
+
     private fun loadDailyQuote() {
+        if (quoteLoading) return
         val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
         val lastDate = prefs.getString("quote_date", "")
         if (lastDate != today) {
+            quoteLoading = true
             scope.launch(Dispatchers.IO) {
                 try {
                     val allQuotes = mutableListOf<Pair<String, Quote>>()
@@ -243,9 +247,10 @@ class MainActivity : AppCompatActivity() {
                         val (cat, quote) = allQuotes[Random().nextInt(allQuotes.size)]
                         withContext(Dispatchers.Main) { displayQuote(cat, quote) }
                         prefs.edit().putString("quote_date", today).putString("quote_cat", cat)
-                            .putInt("quote_index", allQuotes.indexOfFirst { it.first == cat && it.second == quote }).apply()
+                            .putInt("quote_index", allQuotes.indexOfFirst { it.first == cat && it.second == quote }).commit()
                     }
                 } catch (e: Exception) { LogManager.log("加载名言失败: ${e.message}") }
+                finally { quoteLoading = false }
             }
         } else {
             val cat = prefs.getString("quote_cat", quoteCategories[0]) ?: quoteCategories[0]
