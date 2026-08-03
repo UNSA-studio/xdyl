@@ -185,7 +185,7 @@ fun main() = application {
                     exitApplication()
                 },
                 title = "星云更新器",
-                state = rememberWindowState(width = 800.dp, height = 600.dp),
+                state = rememberWindowState(width = 720.dp, height = 540.dp),
                 resizable = false
             ) {
                 Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
@@ -198,7 +198,7 @@ fun main() = application {
                         when (screen) {
                             "main" -> MainScreen(
                                 targetModsDir = targetModsDir,
-                                onSelectDir = { currentScreen = "fileBrowser" },
+                                onSelectDir = { showFileBrowserDialog = true },
                                 onStartDownload = {
                                     if (!downloading && targetModsDir != null) {
                                         downloading = true
@@ -291,7 +291,7 @@ fun main() = application {
                                     if (enabled) showExtensionModeConfirm = true
                                     else { extensionMode = false; prefs.putBoolean("extension_mode", false) }
                                 },
-                                onSelectDir = { currentScreen = "fileBrowser" },
+                                onSelectDir = { showFileBrowserDialog = true },
                                 onBack = { currentScreen = "main" },
                                 onExtensionPage = { currentScreen = "extension" },
                                 onExportLog = { exportLog() },
@@ -432,6 +432,29 @@ fun main() = application {
                             }
                         )
                     }
+                    if (showFileBrowserDialog) {
+                        Dialog(onDismissRequest = { showFileBrowserDialog = false }) {
+                            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
+                                FileBrowserScreen(
+                                    onSelect = { dir ->
+                                        val workDir = if (dir.name.equals("NebulaUpdater", true)) dir else File(dir, "NebulaUpdater")
+                                        if (!workDir.exists()) workDir.mkdirs()
+                                        prefs.putString("launcher_root", dir.absolutePath)
+                                        prefs.putString("work_dir", workDir.absolutePath)
+                                        val found = findMinecraftModsDir(dir, prefs)
+                                        if (found != null) {
+                                            targetModsDir = found
+                                            showFileBrowserDialog = false
+                                        } else {
+                                            showError(Constants.ERROR01)
+                                        }
+                                    },
+                                    onBack = { showFileBrowserDialog = false }
+                                )
+                            }
+                        }
+                    }
+
                     if (showFolderErrorDialog) {
                         AlertDialog(
                             onDismissRequest = { showFolderErrorDialog = false },
