@@ -440,14 +440,28 @@ fun main() = application {
                     if (showFileBrowserDialog) {
                         var fbDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }
                         var fbFiles by remember { mutableStateOf(fbDir.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()) }
+                        val roots = remember { File.listRoots().filter { it.exists() }.sortedBy { it.absolutePath } }
                         AlertDialog(
                             onDismissRequest = { showFileBrowserDialog = false },
                             title = { Text("选择启动器根目录", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 16.sp) },
                             text = {
                                 Column {
+                                    if (roots.size >1) {
+                                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            roots.forEach { root ->
+                                                FilterChip(
+                                                    selected = fbDir.absolutePath.startsWith(root.absolutePath),
+                                                    onClick = { fbDir = root; fbFiles = root.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList() },
+                                                    label = { Text(root.absolutePath.removeSuffix("\\"), fontSize = 12.sp, fontFamily = silverFontFamily) },
+                                                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFA0C4FF))
+                                                )
+                                            }
+                                        }
+                                        Spacer(Modifier.height(8.dp))
+                                    }
                                     Text(fbDir.absolutePath, color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
                                     Spacer(Modifier.height(8.dp))
-                                    LazyColumn(modifier = Modifier.height(260.dp)) {
+                                    LazyColumn(modifier = Modifier.height(220.dp)) {
                                         items(fbFiles) { f ->
                                             TextButton(onClick = {
                                                 fbDir = f
@@ -543,7 +557,7 @@ fun MainScreen(
             // 标题
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column {
-                    Text("星云更新器", color = Color(0xFFA0C4FF), fontSize = 28.sp, fontFamily = silverFontFamily)
+                    Text("Nebula updater-NU", color = Color(0xFFA0C4FF), fontSize = 28.sp, fontFamily = silverFontFamily)
                     Text("星云更新器-Windows端", color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 18.sp, fontFamily = silverFontFamily)
                 }
                 Spacer(Modifier.weight(1f))
@@ -610,8 +624,8 @@ fun MainScreen(
                     Column(modifier = Modifier.padding(10.dp)) {
                         Text(quote.chinese, color = Color(0xFFA0C4FF), fontSize = 14.sp, fontFamily = silverFontFamily, maxLines = Int.MAX_VALUE)
                         Text(quote.english, color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 12.sp, fontFamily = silverFontFamily, maxLines = Int.MAX_VALUE)
-                        Text("— ${quote.author}", color = Color.Gray, fontSize = 11.sp, fontFamily = silverFontFamily)
-                        Text("《${quote.source}》", color = Color.Gray.copy(alpha = 0.7f), fontSize = 10.sp, fontFamily = silverFontFamily)
+                        Text("— ${quote.author} / ${quote.authorEn}", color = Color.Gray, fontSize = 11.sp, fontFamily = silverFontFamily)
+                        Text("《${quote.source}》 / ${quote.sourceEn}", color = Color.Gray.copy(alpha = 0.7f), fontSize = 10.sp, fontFamily = silverFontFamily)
                     }
                 }
             }
