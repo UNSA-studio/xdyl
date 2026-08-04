@@ -363,49 +363,55 @@ fun main() = application {
                             )
                         }
                     // Dialogs
-                    if (showErrorCodesDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showErrorCodesDialog = false },
-                            title = { Text("ERROR 错误代码", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
-                            text = { Text(getErrorCodesText(), fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp) },
-                            confirmButton = {
-                                TextButton(onClick = { showErrorCodesDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
+                    AnimatedVisibility(visible=showErrorCodesDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showErrorCodesDialog = false }, contentAlignment = Alignment.Center) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
+                                Column(modifier = Modifier.padding(20.dp)) {
+                                    Text("ERROR 错误代码", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(getErrorCodesText(), fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
+                                    Spacer(Modifier.height(16.dp))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                        TextButton(onClick = { showErrorCodesDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
+                                    }
+                                }
                             }
-                        )
+                        }
                     }
-                    if (showAboutDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showAboutDialog = false },
-                            title = { Text("关于软件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
-                            text = {
-                                Column {
+                    AnimatedVisibility(visible=showAboutDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showAboutDialog = false }, contentAlignment = Alignment.Center) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
+                                Column(modifier = Modifier.padding(20.dp)) {
+                                    Text("关于软件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
+                                    Spacer(Modifier.height(12.dp))
                                     Text("星云更新器", fontFamily = silverFontFamily, color = Color.White, fontSize = 16.sp)
                                     Text("Windows Desktop v1.0.0", fontFamily = silverFontFamily, color = Color.Gray, fontSize = 14.sp)
                                     Spacer(Modifier.height(8.dp))
                                     Text("Author: UNSA-studio", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
                                     Text("GitHub: github.com/UNSA-studio/xdyl", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 12.sp)
+                                    Spacer(Modifier.height(16.dp))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        TextButton(onClick = {
+                                            try { Desktop.getDesktop().browse(URI("https://github.com/UNSA-studio/xdyl")) } catch (_: Exception) {}
+                                            showAboutDialog = false
+                                        }) { Text("访问仓库", fontFamily = silverFontFamily) }
+                                        TextButton(onClick = { showAboutDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
+                                    }
                                 }
-                            },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    try { Desktop.getDesktop().browse(URI("https://github.com/UNSA-studio/xdyl")) } catch (_: Exception) {}
-                                    showAboutDialog = false
-                                }) { Text("访问仓库", fontFamily = silverFontFamily) }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showAboutDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
                             }
-                        )
+                        }
                     }
-                    if (showCsvPickerDialog) { var csvDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }; var csvFiles by remember { mutableStateOf(csvDir.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()) }
-                        AlertDialog(
-                            onDismissRequest = { showCsvPickerDialog = false },
-                            title = { Text("选择 CSV 文件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
-                            text = {
-                                Column {
+                    AnimatedVisibility(visible=showCsvPickerDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                        var csvDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }
+                        var csvFiles by remember { mutableStateOf(csvDir.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()) }
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showCsvPickerDialog = false }, contentAlignment = Alignment.Center) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
+                                Column(modifier = Modifier.padding(20.dp)) {
+                                    Text("选择 CSV 文件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
+                                    Spacer(Modifier.height(8.dp))
                                     Text(csvDir.absolutePath, color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
                                     Spacer(Modifier.height(8.dp))
-                                    LazyColumn(modifier = Modifier.height(300.dp)) {
+                                    LazyColumn(modifier = Modifier.height(250.dp)) {
                                         items(csvFiles) { f ->
                                             TextButton(onClick = {
                                                 if (f.isDirectory) {
@@ -421,47 +427,55 @@ fun main() = application {
                                             }
                                         }
                                     }
+                                    Spacer(Modifier.height(8.dp))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        TextButton(onClick = { csvDir.parentFile?.let { csvDir = it; csvFiles = it.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList() } }) { Text("返回上级", fontFamily = silverFontFamily) }
+                                        TextButton(onClick = { showCsvPickerDialog = false }) { Text("取消", fontFamily = silverFontFamily) }
+                                    }
                                 }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { csvDir.parentFile?.let { csvDir = it; csvFiles = it.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList() } }) { Text("返回上级", fontFamily = silverFontFamily) }
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showCsvPickerDialog = false }) { Text("取消", fontFamily = silverFontFamily) }
                             }
-                        )
+                        }
                     }
-                    if (showWhitelistDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showWhitelistDialog = false },
-                            title = { Text("模组白名单", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
-                            text = {
-                                Text("Whitelisted mods will not be removed by the orphan file cleaner.\n\nDesktop edition currently supports config-file editing only:\n~/.xdyl_config.properties\nadd: mod_whitelist=<file1>,<file2>", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showWhitelistDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
+                    AnimatedVisibility(visible=showWhitelistDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showWhitelistDialog = false }, contentAlignment = Alignment.Center) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
+                                Column(modifier = Modifier.padding(20.dp)) {
+                                    Text("模组白名单", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
+                                    Spacer(Modifier.height(12.dp))
+                                    Text("Whitelisted mods will not be removed by the orphan file cleaner.\n\nDesktop edition currently supports config-file editing only:\n~/.xdyl_config.properties\nadd: mod_whitelist=<file1>,<file2>", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
+                                    Spacer(Modifier.height(16.dp))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                        TextButton(onClick = { showWhitelistDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
+                                    }
+                                }
                             }
-                        )
+                        }
                     }
-                    if (showThreadInfoDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showThreadInfoDialog = false },
-                            title = { Text("线程与分块说明", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
-                            text = {
-                                Text("「下载线程数」指的是同时下载的文件数量，越大的值会让更多文件并行下载。\n\n「分块规则」是适应性的：≤1MB 的文件默认用 2 个 HTTP 下载块，大于 1MB 的每多 0.5MB 就多分配 2 个下载块。例如 3MB 的文件会被拆成 6 块同时下载。\n\n下载线程数不是越大越好，请根据网络带宽和设备性能合理设置。", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showThreadInfoDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
+                    AnimatedVisibility(visible=showThreadInfoDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showThreadInfoDialog = false }, contentAlignment = Alignment.Center) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
+                                Column(modifier = Modifier.padding(20.dp)) {
+                                    Text("线程与分块说明", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
+                                    Spacer(Modifier.height(12.dp))
+                                    Text("「下载线程数」指的是同时下载的文件数量，越大的值会让更多文件并行下载。\n\n「分块规则」是适应性的：≤1MB 的文件默认用 2 个 HTTP 下载块，大于 1MB 的每多 0.5MB 就多分配 2 个下载块。例如 3MB 的文件会被拆成 6 块同时下载。\n\n下载线程数不是越大越好，请根据网络带宽和设备性能合理设置。", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
+                                    Spacer(Modifier.height(16.dp))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                        TextButton(onClick = { showThreadInfoDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
+                                    }
+                                }
                             }
-                        )
+                        }
                     }
-                    if (showFileBrowserDialog) { var fbDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }; var fbFiles by remember { mutableStateOf(fbDir.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()) }; val roots = remember { File.listRoots().filter { it.exists() }.sortedBy { it.absolutePath } }
-                        AlertDialog(
-                            onDismissRequest = { showFileBrowserDialog = false },
-                            title = { Text("选择启动器根目录", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 16.sp) },
-                            text = {
-                                Column {
-                                    if (roots.size >1) {
+                    AnimatedVisibility(visible=showFileBrowserDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                        var fbDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }
+                        var fbFiles by remember { mutableStateOf(fbDir.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()) }
+                        val roots = remember { File.listRoots().filter { it.exists() }.sortedBy { it.absolutePath } }
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showFileBrowserDialog = false }, contentAlignment = Alignment.Center) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 420.dp).padding(16.dp)) {
+                                Column(modifier = Modifier.padding(20.dp)) {
+                                    Text("选择启动器根目录", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
+                                    Spacer(Modifier.height(8.dp))
+                                    if (roots.size > 1) {
                                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                             roots.forEach { root ->
                                                 FilterChip(
@@ -476,7 +490,7 @@ fun main() = application {
                                     }
                                     Text(fbDir.absolutePath, color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
                                     Spacer(Modifier.height(8.dp))
-                                    LazyColumn(modifier = Modifier.height(220.dp)) {
+                                    LazyColumn(modifier = Modifier.height(180.dp)) {
                                         items(fbFiles) { f ->
                                             TextButton(onClick = {
                                                 fbDir = f
@@ -486,60 +500,67 @@ fun main() = application {
                                             }
                                         }
                                     }
+                                    Spacer(Modifier.height(8.dp))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        TextButton(onClick = { fbDir.parentFile?.let { fbDir = it; fbFiles = it.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList() } }) {
+                                            Text("返回上级", fontFamily = silverFontFamily)
+                                        }
+                                        TextButton(onClick = {
+                                            val workDir = if (fbDir.name.equals("NebulaUpdater", true)) fbDir else File(fbDir, "NebulaUpdater")
+                                            if (!workDir.exists()) workDir.mkdirs()
+                                            prefs.putString("launcher_root", fbDir.absolutePath)
+                                            prefs.putString("work_dir", workDir.absolutePath)
+                                            val found = findMinecraftModsDir(fbDir, prefs)
+                                            if (found != null) { targetModsDir = found; showFileBrowserDialog = false }
+                                            else showError(Constants.ERROR01)
+                                        }) { Text("选择此文件夹", fontFamily = silverFontFamily) }
+                                    }
                                 }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { fbDir.parentFile?.let { fbDir = it; fbFiles = it.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList() } }) {
-                                    Text("返回上级", fontFamily = silverFontFamily)
+                            }
+                        }
+                    }
+                    AnimatedVisibility(visible=showFolderErrorDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showFolderErrorDialog = false }, contentAlignment = Alignment.Center) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
+                                Column(modifier = Modifier.padding(20.dp)) {
+                                    Text("意外错误!", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(folderErrorMsg, fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
+                                    Spacer(Modifier.height(16.dp))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                        TextButton(onClick = { showFolderErrorDialog = false }) { Text("确定", fontFamily = silverFontFamily) }
+                                    }
                                 }
-                            },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    val workDir = if (fbDir.name.equals("NebulaUpdater", true)) fbDir else File(fbDir, "NebulaUpdater")
-                                    if (!workDir.exists()) workDir.mkdirs()
-                                    prefs.putString("launcher_root", fbDir.absolutePath)
-                                    prefs.putString("work_dir", workDir.absolutePath)
-                                    val found = findMinecraftModsDir(fbDir, prefs)
-                                    if (found != null) { targetModsDir = found; showFileBrowserDialog = false }
-                                    else showError(Constants.ERROR01)
-                                }) { Text("选择此文件夹", fontFamily = silverFontFamily) }
                             }
-                        )
+                        }
                     }
-                    if (showFolderErrorDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showFolderErrorDialog = false },
-                            title = { Text("意外错误!", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
-                            text = { Text(folderErrorMsg, fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp) },
-                            confirmButton = {
-                                TextButton(onClick = { showFolderErrorDialog = false }) { Text("确定", fontFamily = silverFontFamily) }
+                    AnimatedVisibility(visible=showExtensionModeConfirm, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable {
+                            showExtensionModeConfirm = false
+                            extensionMode = false
+                            prefs.putBoolean("extension_mode", false)
+                        }, contentAlignment = Alignment.Center) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
+                                Column(modifier = Modifier.padding(20.dp)) {
+                                    Text("警告!", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
+                                    Spacer(Modifier.height(12.dp))
+                                    Text("开启扩展模式，重启后生效。", fontFamily = silverFontFamily, color = Color.White)
+                                    Spacer(Modifier.height(16.dp))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        TextButton(onClick = {
+                                            showExtensionModeConfirm = false
+                                            extensionMode = false
+                                            prefs.putBoolean("extension_mode", false)
+                                        }) { Text("取消", fontFamily = silverFontFamily) }
+                                        TextButton(onClick = {
+                                            showExtensionModeConfirm = false
+                                            prefs.putBoolean("extension_mode", true)
+                                            exitApplication()
+                                        }) { Text("开启并重启", fontFamily = silverFontFamily) }
+                                    }
+                                }
                             }
-                        )
-                    }
-                    if (showExtensionModeConfirm) {
-                        AlertDialog(
-                            onDismissRequest = {
-                                showExtensionModeConfirm = false
-                                extensionMode = false
-                                prefs.putBoolean("extension_mode", false)
-                            },
-                            title = { Text("警告!", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
-                            text = { Text("开启扩展模式，重启后生效。", fontFamily = silverFontFamily, color = Color.White) },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    showExtensionModeConfirm = false
-                                    prefs.putBoolean("extension_mode", true)
-                                    exitApplication()
-                                }) { Text("开启并重启", fontFamily = silverFontFamily) }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = {
-                                    showExtensionModeConfirm = false
-                                    extensionMode = false
-                                    prefs.putBoolean("extension_mode", false)
-                                }) { Text("取消", fontFamily = silverFontFamily) }
-                            }
-                        )
+                        }
                     }
                     }
                 }
