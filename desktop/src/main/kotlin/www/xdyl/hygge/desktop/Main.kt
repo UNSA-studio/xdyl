@@ -92,25 +92,50 @@ fun main() = application {
         if (lastDate != today) {
             scope.launch(Dispatchers.IO) {
                 try {
-                    val allQuotes = mutableListOf<Quote>()
+                    val allQuotes = mutableListOf<Triple<String, Int, Quote>>()
                     for (cat in quoteCategories) {
                         val jsonStr = Thread.currentThread().contextClassLoader
                             .getResourceAsStream("$cat.json")?.bufferedReader()?.readText() ?: continue
                         val jsonObject = Gson().fromJson(jsonStr, Map::class.java)
                         @Suppress("UNCHECKED_CAST")
                         val quotes = jsonObject["quotes"] as? List<Map<String, String>> ?: continue
-                        allQuotes.addAll(quotes.map {
-                            Quote(it["chinese"]!!, it["english"]!!, it["author"]!!, it["author_en"]!!, it["source"]!!, it["source_en"]!!)
-                        })
+                        quotes.forEachIndexed { i, it ->
+                            allQuotes.add(Triple(cat, i, Quote(
+                                it["chinese"]!!, it["english"]!!, it["author"]!!, it["author_en"]!!, it["source"]!!, it["source_en"]!!
+                            )))
+                        }
                     }
                     if (allQuotes.isNotEmpty()) {
-                        dailyQuote = allQuotes[Random().nextInt(allQuotes.size)]
+                        val (cat, idx, quote) = allQuotes[Random().nextInt(allQuotes.size)]
+                        dailyQuote = quote
                         prefs.putString("quote_date", today)
+                        prefs.putString("quote_cat", cat)
+                        prefs.putInt("quote_index", idx)
                     }
                 } catch (e: Exception) { e.printStackTrace() }
             }
         } else {
-            dailyQuote = Quote("生活不是等待风暴过去，而是学会在雨中跳舞。", "Life isn't about waiting for the storm to pass...", "薇薇安·格林", "Vivian Greene", "未知", "Unknown")
+            val cat = prefs.getString("quote_cat", quoteCategories[0]) ?: quoteCategories[0]
+            val idx = prefs.getInt("quote_index", 0)
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val jsonStr = Thread.currentThread().contextClassLoader
+                        .getResourceAsStream("$cat.json")?.bufferedReader()?.readText() ?: return@launch
+                    val jsonObject = Gson().fromJson(jsonStr, Map::class.java)
+                    @Suppress("UNCHECKED_CAST")
+                    val quotes = jsonObject["quotes"] as? List<Map<String, String>> ?: return@launch
+                    if (idx in quotes.indices) {
+                        val it = quotes[idx]
+                        dailyQuote = Quote(it["chinese"]!!, it["english"]!!, it["author"]!!, it["author_en"]!!, it["source"]!!, it["source_en"]!!)
+                    } else {
+                        prefs.putString("quote_date", "")
+                        loadDailyQuote()
+                    }
+                } catch (e: Exception) {
+                    prefs.putString("quote_date", "")
+                    loadDailyQuote()
+                }
+            }
         }
     }
 
