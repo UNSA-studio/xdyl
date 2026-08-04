@@ -399,6 +399,7 @@ fun main() = application {
                         )
                     }
                     if (showCsvPickerDialog) { var csvDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }; var csvFiles by remember { mutableStateOf(csvDir.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()) }
+                        AlertDialog(
                             onDismissRequest = { showCsvPickerDialog = false },
                             title = { Text("选择 CSV 文件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
                             text = {
@@ -456,6 +457,7 @@ fun main() = application {
                         )
                     }
                     if (showFileBrowserDialog) { var fbDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }; var fbFiles by remember { mutableStateOf(fbDir.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()) }; val roots = remember { File.listRoots().filter { it.exists() }.sortedBy { it.absolutePath } }
+                        AlertDialog(
                             onDismissRequest = { showFileBrowserDialog = false },
                             title = { Text("选择启动器根目录", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 16.sp) },
                             text = {
