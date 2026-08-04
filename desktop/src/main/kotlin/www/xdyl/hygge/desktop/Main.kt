@@ -82,6 +82,7 @@ fun main() = application {
     var showFolderErrorDialog by remember { mutableStateOf(false) }
     var showFileBrowserDialog by remember { mutableStateOf(false) }
     var folderErrorMsg by remember { mutableStateOf("") }
+    var slideDirection by remember { mutableStateOf(1) }
 
     var dailyQuote by remember { mutableStateOf(null as Quote?) }
     val quoteCategories = listOf("WH", "RW", "HC", "ED", "CE", "AC")
@@ -217,8 +218,9 @@ fun main() = application {
                     AnimatedContent(
                         targetState = currentScreen,
                         transitionSpec = {
-                            (slideInHorizontally { it } + fadeIn(animationSpec = tween(300))) togetherWith
-                                    (slideOutHorizontally { -it } + fadeOut(animationSpec = tween(300)))
+                            val dir = slideDirection
+                            (slideInHorizontally { dir * it } + fadeIn(tween(300))) togetherWith
+                                    (slideOutHorizontally { -dir * it } + fadeOut(tween(300)))
                         }
                     ) { screen ->
                         when (screen) {
@@ -308,7 +310,7 @@ fun main() = application {
                                 logText = logText,
                                 progress = progress,
                                 statusText = statusText,
-                                onSettings = { currentScreen = "settings" },
+                                onSettings = { slideDirection = 1; currentScreen = "settings" },
                                 dailyQuote = dailyQuote
                             )
                             "settings" -> SettingsScreen(
@@ -323,8 +325,8 @@ fun main() = application {
                                     else { extensionMode = false; prefs.putBoolean("extension_mode", false) }
                                 },
                                 onSelectDir = { showFileBrowserDialog = true },
-                                onBack = { currentScreen = "main" },
-                                onExtensionPage = { currentScreen = "extension" },
+                                onBack = { slideDirection = -1; currentScreen = "main" },
+                                onExtensionPage = { slideDirection = 1; currentScreen = "extension" },
                                 onExportLog = { exportLog() },
                                 onErrorCodes = { showErrorCodesDialog = true },
                                 onAbout = { showAboutDialog = true },
@@ -341,7 +343,7 @@ fun main() = application {
                                 onLocalCsvChange = { useLocalCsv = it; prefs.putBoolean("use_local_csv", it) },
                                 localCsvPath = localCsvPath,
                                 onPickCsv = { showCsvPickerDialog = true },
-                                onBack = { currentScreen = "settings" },
+                                onBack = { slideDirection = -1; currentScreen = "settings" },
                                 onWhitelist = { showWhitelistDialog = true }
                             )
                             "fileBrowser" -> FileBrowserScreen(
@@ -358,11 +360,11 @@ fun main() = application {
                                         showError(Constants.ERROR01)
                                     }
                                 },
-                                onBack = { currentScreen = "main" }
+                                onBack = { slideDirection = -1; currentScreen = "main" }
                             )
                         }
                     // Dialogs
-                    AnimatedVisibility(visible=showErrorCodesDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                    if (showErrorCodesDialog) {
                         AlertDialog(
                             onDismissRequest = { showErrorCodesDialog = false },
                             title = { Text("ERROR 错误代码", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
@@ -372,7 +374,7 @@ fun main() = application {
                             }
                         )
                     }
-                    AnimatedVisibility(visible=showAboutDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                    if (showAboutDialog) {
                         AlertDialog(
                             onDismissRequest = { showAboutDialog = false },
                             title = { Text("关于软件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
@@ -397,8 +399,6 @@ fun main() = application {
                         )
                     }
                     if (showCsvPickerDialog) { var csvDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }; var csvFiles by remember { mutableStateOf(csvDir.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()) }
-                        AnimatedVisibility(visible=showCsvPickerDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
-                        AlertDialog(
                             onDismissRequest = { showCsvPickerDialog = false },
                             title = { Text("选择 CSV 文件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
                             text = {
@@ -430,9 +430,8 @@ fun main() = application {
                                 TextButton(onClick = { showCsvPickerDialog = false }) { Text("取消", fontFamily = silverFontFamily) }
                             }
                         )
-                        }
                     }
-                    AnimatedVisibility(visible=showWhitelistDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                    if (showWhitelistDialog) {
                         AlertDialog(
                             onDismissRequest = { showWhitelistDialog = false },
                             title = { Text("模组白名单", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
@@ -444,7 +443,7 @@ fun main() = application {
                             }
                         )
                     }
-                    AnimatedVisibility(visible=showThreadInfoDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                    if (showThreadInfoDialog) {
                         AlertDialog(
                             onDismissRequest = { showThreadInfoDialog = false },
                             title = { Text("线程与分块说明", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
@@ -457,8 +456,6 @@ fun main() = application {
                         )
                     }
                     if (showFileBrowserDialog) { var fbDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }; var fbFiles by remember { mutableStateOf(fbDir.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()) }; val roots = remember { File.listRoots().filter { it.exists() }.sortedBy { it.absolutePath } }
-                        AnimatedVisibility(visible=showFileBrowserDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
-                        AlertDialog(
                             onDismissRequest = { showFileBrowserDialog = false },
                             title = { Text("选择启动器根目录", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 16.sp) },
                             text = {
@@ -507,9 +504,8 @@ fun main() = application {
                                 }) { Text("选择此文件夹", fontFamily = silverFontFamily) }
                             }
                         )
-                        }
                     }
-                    AnimatedVisibility(visible=showFolderErrorDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                    if (showFolderErrorDialog) {
                         AlertDialog(
                             onDismissRequest = { showFolderErrorDialog = false },
                             title = { Text("意外错误!", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
@@ -519,7 +515,7 @@ fun main() = application {
                             }
                         )
                     }
-                    AnimatedVisibility(visible=showExtensionModeConfirm,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
+                    if (showExtensionModeConfirm) {
                         AlertDialog(
                             onDismissRequest = {
                                 showExtensionModeConfirm = false
