@@ -324,7 +324,6 @@ fun main() = application {
                                     if (enabled) showExtensionModeConfirm = true
                                     else { extensionMode = false; prefs.putBoolean("extension_mode", false) }
                                 },
-                                onSelectDir = { showFileBrowserDialog = true },
                                 onBack = { slideDirection = -1; currentScreen = "main" },
                                 onExtensionPage = { slideDirection = 1; currentScreen = "extension" },
                                 onExportLog = { exportLog() },
@@ -658,7 +657,6 @@ fun SettingsScreen(
     maxThreads: Int,
     extensionMode: Boolean,
     onExtensionChange: (Boolean) -> Unit,
-    onSelectDir: () -> Unit,
     onBack: () -> Unit,
     onExtensionPage: () -> Unit,
     onExportLog: () -> Unit,
@@ -676,7 +674,6 @@ fun SettingsScreen(
         checkedThumbColor = Color(0xFFA0C4FF),
         checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)
     )
-
     Column(
         modifier = Modifier
             .padding(24.dp)
@@ -690,23 +687,27 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.width(8.dp))
             Text("设置", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
         }
-
         Spacer(modifier = Modifier.height(24.dp))
-
-        OutlinedTextField(
-            value = versionName,
-            onValueChange = onVersionChange,
-            label = { Text("Minecraft 版本文件夹名", fontSize = 20.sp, color = Color.Gray, fontFamily = silverFontFamily) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = tfTextStyle,
-            colors = tfColors
-        )
-
+        // 版本文件夹
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("📁", fontSize = 28.sp)
+            Spacer(modifier = Modifier.width(12.dp))
+            OutlinedTextField(
+                value = versionName,
+                onValueChange = onVersionChange,
+                label = { Text("Minecraft 版本文件夹名", fontSize = 20.sp, color = Color.Gray, fontFamily = silverFontFamily) },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                textStyle = tfTextStyle,
+                colors = tfColors
+            )
+        }
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(12.dp))
-
+        // 下载线程数
         Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("⚡", fontSize = 28.sp)
+            Spacer(modifier = Modifier.width(12.dp))
             OutlinedTextField(
                 value = threadCount.toString(),
                 onValueChange = { v -> v.toIntOrNull()?.let { onThreadChange(it.coerceIn(20, maxThreads)) } },
@@ -720,25 +721,17 @@ fun SettingsScreen(
                 Text("ℹ", color = Color(0xFFA0C4FF).copy(alpha = 0.7f), fontSize = 16.sp)
             }
         }
-
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedButton(
-            onClick = onSelectDir,
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("选择游戏目录", fontSize = 24.sp, fontFamily = silverFontFamily) }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
+        // 扩展模式
         Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("🔧", fontSize = 28.sp)
+            Spacer(modifier = Modifier.width(12.dp))
             Switch(checked = extensionMode, onCheckedChange = onExtensionChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
             Text("扩展模式", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
         }
-
         if (extensionMode) {
             Spacer(modifier = Modifier.height(16.dp))
             Button(
@@ -748,27 +741,26 @@ fun SettingsScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
             ) { Text("进入扩展页面", fontSize = 24.sp, fontFamily = silverFontFamily) }
         }
-
         Spacer(modifier = Modifier.height(24.dp))
-
-        OutlinedButton(
-            onClick = onExportLog,
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("导出日志", fontSize = 24.sp, fontFamily = silverFontFamily) }
-
+        // 导出日志
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("📤", fontSize = 28.sp)
+            Spacer(modifier = Modifier.width(12.dp))
+            OutlinedButton(
+                onClick = onExportLog,
+                modifier = Modifier.weight(1f).height(56.dp),
+                border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
+            ) { Text("导出日志", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        }
         Spacer(modifier = Modifier.height(8.dp))
-
         OutlinedButton(
             onClick = onErrorCodes,
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
             border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
         ) { Text("ERROR 错误代码", fontSize = 24.sp, fontFamily = silverFontFamily) }
-
         Spacer(modifier = Modifier.height(8.dp))
-
         OutlinedButton(
             onClick = onAbout,
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
