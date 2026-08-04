@@ -229,14 +229,14 @@ class MainActivity : AppCompatActivity() {
             quoteLoading = true
             scope.launch(Dispatchers.IO) {
                 try {
-                    val allQuotes = mutableListOf<Pair<String, Quote>>()
+                    val allQuotes = mutableListOf<Triple<String, Int, Quote>>()
                     for (cat in quoteCategories) {
                         val jsonStr = assets.open("$cat.json").bufferedReader().readText()
                         val jsonObject = JSONObject(jsonStr)
                         val quotesArray = jsonObject.getJSONArray("quotes")
                         for (i in 0 until quotesArray.length()) {
                             val obj = quotesArray.getJSONObject(i)
-                            allQuotes.add(Pair(cat, Quote(
+                            allQuotes.add(Triple(cat, i, Quote(
                                 obj.getString("chinese"), obj.getString("english"),
                                 obj.getString("author"), obj.getString("author_en"),
                                 obj.getString("source"), obj.getString("source_en")
@@ -244,10 +244,10 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     if (allQuotes.isNotEmpty()) {
-                        val (cat, quote) = allQuotes[Random().nextInt(allQuotes.size)]
+                        val (cat, idx, quote) = allQuotes[Random().nextInt(allQuotes.size)]
                         withContext(Dispatchers.Main) { displayQuote(cat, quote) }
                         prefs.edit().putString("quote_date", today).putString("quote_cat", cat)
-                            .putInt("quote_index", allQuotes.indexOfFirst { it.first == cat && it.second == quote }).commit()
+                            .putInt("quote_index", idx).commit()
                     }
                 } catch (e: Exception) { LogManager.log("加载名言失败: ${e.message}") }
                 finally { quoteLoading = false }
