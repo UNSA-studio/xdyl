@@ -192,7 +192,8 @@ fun main() = application {
                     AnimatedContent(
                         targetState = currentScreen,
                         transitionSpec = {
-                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                            (slideInHorizontally { it } + fadeIn(animationSpec = tween(300))) togetherWith
+                                    (slideOutHorizontally { -it } + fadeOut(animationSpec = tween(300)))
                         }
                     ) { screen ->
                         when (screen) {
@@ -335,9 +336,8 @@ fun main() = application {
                                 onBack = { currentScreen = "main" }
                             )
                         }
-                    }
                     // Dialogs
-                    if (showErrorCodesDialog) {
+                    AnimatedVisibility(visible=showErrorCodesDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         AlertDialog(
                             onDismissRequest = { showErrorCodesDialog = false },
                             title = { Text("ERROR 错误代码", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
@@ -347,7 +347,7 @@ fun main() = application {
                             }
                         )
                     }
-                    if (showAboutDialog) {
+                    AnimatedVisibility(visible=showAboutDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         AlertDialog(
                             onDismissRequest = { showAboutDialog = false },
                             title = { Text("关于软件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
@@ -371,9 +371,8 @@ fun main() = application {
                             }
                         )
                     }
-                    if (showCsvPickerDialog) {
-                        var csvDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }
-                        var csvFiles by remember { mutableStateOf(csvDir.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()) }
+                    if (showCsvPickerDialog) { var csvDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }; var csvFiles by remember { mutableStateOf(csvDir.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()) }
+                        AnimatedVisibility(visible=showCsvPickerDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         AlertDialog(
                             onDismissRequest = { showCsvPickerDialog = false },
                             title = { Text("选择 CSV 文件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
@@ -406,41 +405,34 @@ fun main() = application {
                                 TextButton(onClick = { showCsvPickerDialog = false }) { Text("取消", fontFamily = silverFontFamily) }
                             }
                         )
+                        }
                     }
-
-                    if (showWhitelistDialog) {
+                    AnimatedVisibility(visible=showWhitelistDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         AlertDialog(
                             onDismissRequest = { showWhitelistDialog = false },
                             title = { Text("模组白名单", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
                             text = {
-                                Text(
-                                    "Whitelisted mods will not be removed by the orphan file cleaner.\n\nDesktop edition currently supports config-file editing only:\n~/.xdyl_config.properties\nadd: mod_whitelist=<file1>,<file2>",
-                                    fontFamily = silverFontFamily,
-                                    color = Color.White,
-                                    fontSize = 14.sp
-                                )
+                                Text("Whitelisted mods will not be removed by the orphan file cleaner.\n\nDesktop edition currently supports config-file editing only:\n~/.xdyl_config.properties\nadd: mod_whitelist=<file1>,<file2>", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
                             },
                             confirmButton = {
                                 TextButton(onClick = { showWhitelistDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
                             }
                         )
                     }
-                    if (showThreadInfoDialog) {
+                    AnimatedVisibility(visible=showThreadInfoDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         AlertDialog(
                             onDismissRequest = { showThreadInfoDialog = false },
                             title = { Text("线程与分块说明", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
                             text = {
-                                Text("「下载线程数」指的是同时下载的文件数量，越大的值会让更多文件并行下载。\n\n「分块规则」是适应性的：≤1MB 的文件默认用 2 个 HTTP 下载块，大于 1MB 的每多 0.5MB 就多分配 1 个下载块。例如 3MB 的文件会被拆成 6 块同时下载。\n\n下载线程数不是越大越好，请根据网络带宽和设备性能合理设置。", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
+                                Text("「下载线程数」指的是同时下载的文件数量，越大的值会让更多文件并行下载。\n\n「分块规则」是适应性的：≤1MB 的文件默认用 2 个 HTTP 下载块，大于 1MB 的每多 0.5MB 就多分配 2 个下载块。例如 3MB 的文件会被拆成 6 块同时下载。\n\n下载线程数不是越大越好，请根据网络带宽和设备性能合理设置。", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
                             },
                             confirmButton = {
                                 TextButton(onClick = { showThreadInfoDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
                             }
                         )
                     }
-                    if (showFileBrowserDialog) {
-                        var fbDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }
-                        var fbFiles by remember { mutableStateOf(fbDir.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()) }
-                        val roots = remember { File.listRoots().filter { it.exists() }.sortedBy { it.absolutePath } }
+                    if (showFileBrowserDialog) { var fbDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }; var fbFiles by remember { mutableStateOf(fbDir.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()) }; val roots = remember { File.listRoots().filter { it.exists() }.sortedBy { it.absolutePath } }
+                        AnimatedVisibility(visible=showFileBrowserDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         AlertDialog(
                             onDismissRequest = { showFileBrowserDialog = false },
                             title = { Text("选择启动器根目录", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 16.sp) },
@@ -490,9 +482,9 @@ fun main() = application {
                                 }) { Text("选择此文件夹", fontFamily = silverFontFamily) }
                             }
                         )
+                        }
                     }
-
-                    if (showFolderErrorDialog) {
+                    AnimatedVisibility(visible=showFolderErrorDialog,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         AlertDialog(
                             onDismissRequest = { showFolderErrorDialog = false },
                             title = { Text("意外错误!", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
@@ -502,8 +494,7 @@ fun main() = application {
                             }
                         )
                     }
-
-                    if (showExtensionModeConfirm) {
+                    AnimatedVisibility(visible=showExtensionModeConfirm,enter=slideInVertically{it}+fadeIn(tween(300)),exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         AlertDialog(
                             onDismissRequest = {
                                 showExtensionModeConfirm = false
@@ -527,6 +518,7 @@ fun main() = application {
                                 }) { Text("取消", fontFamily = silverFontFamily) }
                             }
                         )
+                    }
                     }
                 }
             }
