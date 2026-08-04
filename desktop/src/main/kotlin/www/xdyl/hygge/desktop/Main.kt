@@ -369,8 +369,10 @@ fun main() = application {
                                 Column(modifier = Modifier.padding(14.dp)) {
                                     Text("ERROR 错误代码", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
                                     Spacer(Modifier.height(8.dp))
-                                    Text(getErrorCodesText(), fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
-                                    Spacer(Modifier.height(16.dp))
+                                    Box(modifier = Modifier.heightIn(max = 200.dp).verticalScroll(rememberScrollState())) {
+                                        Text(getErrorCodesText(), fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
+                                    }
+                                    Spacer(Modifier.height(12.dp))
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                                         TextButton(onClick = { showErrorCodesDialog = false }) { Text("关闭", fontFamily = silverFontFamily) }
                                     }
@@ -738,8 +740,8 @@ fun SettingsScreen(
                 textStyle = tfTextStyle,
                 colors = tfColors
             )
-            IconButton(onClick = onThreadInfo, modifier = Modifier.size(24.dp)) {
-                Text("ℹ", color = Color(0xFFA0C4FF).copy(alpha = 0.7f), fontSize = 16.sp)
+            IconButton(onClick = onThreadInfo, modifier = Modifier.size(32.dp)) {
+                Icon(DesktopIcons.Info, contentDescription = "线程说明", modifier = Modifier.size(22.dp), tint = Color(0xFFA0C4FF).copy(alpha = 0.7f))
             }
         }
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
