@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -366,10 +365,10 @@ fun main() = application {
                     // Dialogs
                     AnimatedVisibility(visible=showErrorCodesDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showErrorCodesDialog = false }, contentAlignment = Alignment.Center) {
-                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 320.dp).padding(16.dp)) {
-                                Column(modifier = Modifier.padding(20.dp)) {
+                            Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 340.dp).padding(12.dp)) {
+                                Column(modifier = Modifier.padding(14.dp)) {
                                     Text("ERROR 错误代码", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
-                                    Spacer(Modifier.height(12.dp))
+                                    Spacer(Modifier.height(8.dp))
                                     Text(getErrorCodesText(), fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
                                     Spacer(Modifier.height(16.dp))
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -381,7 +380,7 @@ fun main() = application {
                     }
                     AnimatedVisibility(visible=showAboutDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showAboutDialog = false }, contentAlignment = Alignment.Center) {
-                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 320.dp).padding(16.dp)) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
                                 Column(modifier = Modifier.padding(20.dp)) {
                                     Text("关于软件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
                                     Spacer(Modifier.height(12.dp))
@@ -406,13 +405,13 @@ fun main() = application {
                         var csvDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }
                         var csvFiles by remember { mutableStateOf(csvDir.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()) }
                         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showCsvPickerDialog = false }, contentAlignment = Alignment.Center) {
-                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 320.dp).padding(16.dp)) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
                                 Column(modifier = Modifier.padding(20.dp)) {
                                     Text("选择 CSV 文件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
                                     Spacer(Modifier.height(8.dp))
                                     Text(csvDir.absolutePath, color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
                                     Spacer(Modifier.height(8.dp))
-                                    LazyColumn(modifier = Modifier.height(150.dp)) {
+                                    LazyColumn(modifier = Modifier.height(140.dp)) {
                                         items(csvFiles) { f ->
                                             TextButton(onClick = {
                                                 if (f.isDirectory) {
@@ -439,7 +438,7 @@ fun main() = application {
                     }
                     AnimatedVisibility(visible=showWhitelistDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showWhitelistDialog = false }, contentAlignment = Alignment.Center) {
-                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 320.dp).padding(16.dp)) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
                                 Column(modifier = Modifier.padding(20.dp)) {
                                     Text("模组白名单", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
                                     Spacer(Modifier.height(12.dp))
@@ -454,7 +453,7 @@ fun main() = application {
                     }
                     AnimatedVisibility(visible=showThreadInfoDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showThreadInfoDialog = false }, contentAlignment = Alignment.Center) {
-                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 320.dp).padding(16.dp)) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
                                 Column(modifier = Modifier.padding(20.dp)) {
                                     Text("线程与分块说明", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
                                     Spacer(Modifier.height(12.dp))
@@ -472,7 +471,7 @@ fun main() = application {
                         var fbFiles by remember { mutableStateOf(fbDir.listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: emptyList()) }
                         val roots = remember { File.listRoots().filter { it.exists() }.sortedBy { it.absolutePath } }
                         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showFileBrowserDialog = false }, contentAlignment = Alignment.Center) {
-                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 340.dp).padding(16.dp)) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 420.dp).padding(16.dp)) {
                                 Column(modifier = Modifier.padding(20.dp)) {
                                     Text("选择启动器根目录", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
                                     Spacer(Modifier.height(8.dp))
@@ -491,7 +490,7 @@ fun main() = application {
                                     }
                                     Text(fbDir.absolutePath, color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
                                     Spacer(Modifier.height(8.dp))
-                                    LazyColumn(modifier = Modifier.height(150.dp)) {
+                                    LazyColumn(modifier = Modifier.height(130.dp)) {
                                         items(fbFiles) { f ->
                                             TextButton(onClick = {
                                                 fbDir = f
@@ -522,7 +521,7 @@ fun main() = application {
                     }
                     AnimatedVisibility(visible=showFolderErrorDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showFolderErrorDialog = false }, contentAlignment = Alignment.Center) {
-                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 320.dp).padding(16.dp)) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
                                 Column(modifier = Modifier.padding(20.dp)) {
                                     Text("意外错误!", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
                                     Spacer(Modifier.height(12.dp))
@@ -541,7 +540,7 @@ fun main() = application {
                             extensionMode = false
                             prefs.putBoolean("extension_mode", false)
                         }, contentAlignment = Alignment.Center) {
-                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 320.dp).padding(16.dp)) {
+                            Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
                                 Column(modifier = Modifier.padding(20.dp)) {
                                     Text("警告!", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
                                     Spacer(Modifier.height(12.dp))
@@ -708,10 +707,11 @@ fun SettingsScreen(
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text("设置", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
+        }
         Spacer(modifier = Modifier.height(24.dp))
         // 版本文件夹
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Folder, null, tint = Color(0xFFA0C4FF), modifier = Modifier.size(28.dp))
+            Icon(DesktopIcons.Folder, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
             Spacer(modifier = Modifier.width(12.dp))
             OutlinedTextField(
                 value = versionName,
@@ -727,7 +727,7 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(12.dp))
         // 下载线程数
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.AllInclusive, null, tint = Color(0xFFA0C4FF), modifier = Modifier.size(28.dp))
+            Icon(DesktopIcons.Thread, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
             Spacer(modifier = Modifier.width(12.dp))
             OutlinedTextField(
                 value = threadCount.toString(),
@@ -739,7 +739,7 @@ fun SettingsScreen(
                 colors = tfColors
             )
             IconButton(onClick = onThreadInfo, modifier = Modifier.size(24.dp)) {
-                Icon(Icons.Outlined.Info, null, tint = Color(0xFFA0C4FF).copy(alpha = 0.7f))
+                Text("ℹ", color = Color(0xFFA0C4FF).copy(alpha = 0.7f), fontSize = 16.sp)
             }
         }
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
@@ -747,7 +747,7 @@ fun SettingsScreen(
 
         // 扩展模式
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Extension, null, tint = Color(0xFFA0C4FF), modifier = Modifier.size(28.dp))
+            Icon(DesktopIcons.Extension, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
             Spacer(modifier = Modifier.width(12.dp))
             Switch(checked = extensionMode, onCheckedChange = onExtensionChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
@@ -765,7 +765,7 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(24.dp))
         // 导出日志
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.FileDownload, null, tint = Color(0xFFA0C4FF), modifier = Modifier.size(28.dp))
+            Icon(DesktopIcons.Export, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
             Spacer(modifier = Modifier.width(12.dp))
             OutlinedButton(
                 onClick = onExportLog,
@@ -773,7 +773,6 @@ fun SettingsScreen(
                 border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
             ) { Text("导出日志", fontSize = 24.sp, fontFamily = silverFontFamily) }
-        }
         }
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedButton(
