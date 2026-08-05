@@ -26,7 +26,7 @@ object AdbClient {
 
     private fun execLocal(command: String): String {
         return try {
-            val process = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-v", "time", "-t", "500"))
+            val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
             val reader = BufferedReader(InputStreamReader(process.inputStream))
             val lines = reader.readLines()
             process.waitFor()
