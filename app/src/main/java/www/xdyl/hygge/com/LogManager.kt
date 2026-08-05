@@ -75,20 +75,33 @@ object LogManager {
         Log.i(TAG, "系统日志自动收集已停止")
     }
 
-    fun getSystemLog(): String {
-        if (wifiAdbEnabled && deviceIp != null) {
-            try {
-                val adbOutput = AdbClient.exec(deviceIp!!, devicePort, "logcat -d -v time -t 200")
-                if (adbOutput.isNotBlank()) {
-                    val filtered = adbOutput.lines().filter { line ->
-                        line.contains("FATAL") || line.contains("NebulaUpdater") || line.contains("xdyl")
+    fun getSystemLog(context: android.content.Context? = null): String {
+        // 如果已启用，尝试通过 ADB 获取
+        if (wifiAdbEnabled) {
+            val ip = deviceIp ?: try {
+                context?.getSharedPreferences("xdyl_settings", android.content.Context.MODE_PRIVATE)
+                    ?.getString("wifi_adb_ip", null)
+            } catch (_: Exception) { null }
+            val port = if (devicePort != 5555) devicePort else try {
+                context?.getSharedPreferences("xdyl_settings", android.content.Context.MODE_PRIVATE)
+                    ?.getInt("wifi_adb_port", 5555) ?: 5555
+            } catch (_: Exception) { 5555 }
+
+            if (!ip.isNullOrBlank()) {
+                try {
+                    val adbOutput = AdbClient.exec(ip, port, "logcat -d -v time -t 200")
+                    if (adbOutput.isNotBlank()) {
+                        val filtered = adbOutput.lines().filter { line ->
+                            line.contains("FATAL") || line.contains("NebulaUpdater") || line.contains("xdyl")
+                        }
+                        return if (filtered.isEmpty()) "(无系统崩溃记录)" else filtered.joinToString("\n")
                     }
-                    return if (filtered.isEmpty()) "(无系统崩溃记录)" else filtered.joinToString("\n")
+                } catch (e: Exception) {
+                    Log.d(TAG, "ADB 连接失败: ${e.message}，降级到本地 logcat")
                 }
-            } catch (e: Exception) {
-                Log.d(TAG, "ADB 连接失败: ${e.message}，降级到本地 logcat")
             }
         }
+        // 降级
         return try {
             val process = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-v", "time", "-t", "200"))
             val reader = BufferedReader(InputStreamReader(process.inputStream))
