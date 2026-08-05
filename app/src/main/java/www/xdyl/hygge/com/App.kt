@@ -10,8 +10,8 @@ class App : Application() {
         if (prefs.getBoolean("wifi_adb_enabled", false)) {
             val savedIp = prefs.getString("wifi_adb_ip", "")
             if (!savedIp.isNullOrBlank()) {
-                LogManager.remoteIp = savedIp
-                LogManager.remotePort = prefs.getInt("wifi_adb_port", 5555)
+                LogManager.deviceIp = savedIp
+                LogManager.devicePort = prefs.getInt("wifi_adb_port", 5555)
                 LogManager.wifiAdbEnabled = true
             }
         }
