@@ -25,6 +25,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.platform.Font
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
@@ -215,7 +216,8 @@ fun main() = application {
                 },
                 title = "星云更新器",
                 state = rememberWindowState(width = 640.dp, height = 480.dp),
-                resizable = false
+                resizable = false,
+                icon = androidx.compose.ui.res.painterResource("icon.ico")
             ) {
                 Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
                     AnimatedContent(
