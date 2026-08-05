@@ -615,14 +615,14 @@ fun MainScreen(
                     modifier = Modifier.weight(1f).height(42.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-                ) { Text("选择目录", fontSize = 15.sp, fontFamily = silverFontFamily) }
+                ) { Text("选择目录", fontSize = 18.sp, fontFamily = silverFontFamily) }
                 Button(
                     onClick = onStartDownload,
                     enabled = targetModsDir != null && !downloading,
                     modifier = Modifier.weight(1f).height(42.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-                ) { Text(if (targetModsDir == null) "请先选择目录" else "开始下载", fontSize = 15.sp, fontFamily = silverFontFamily) }
+                ) { Text(if (targetModsDir == null) "请先选择目录" else "开始下载", fontSize = 18.sp, fontFamily = silverFontFamily) }
             }
 
             Spacer(Modifier.height(8.dp))
