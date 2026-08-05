@@ -1,7 +1,7 @@
 package www.xdyl.hygge.com
 
-import com.mobile_dev.dadb.AdbClient
-import com.mobile_dev.dadb.AdbKey
+import dev.mobile.dadb.AdbClient
+import dev.mobile.dadb.AdbKey
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
