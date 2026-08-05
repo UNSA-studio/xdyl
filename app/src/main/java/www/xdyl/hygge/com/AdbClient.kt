@@ -17,9 +17,8 @@ object AdbClient {
         val pub = File(dir, "adbkey.pub")
         // 如果密钥不存在，生成一对并写入文件
         if (!priv.exists() || !pub.exists()) {
-            val pair = AdbKeyPair.generate(priv, pub)
+            AdbKeyPair.generate(priv, pub)
             Log.i("AdbClient", "ADB 密钥已生成: ${priv.absolutePath}")
-            return pair
         }
         return AdbKeyPair.read(priv, pub)
     }
