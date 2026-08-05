@@ -33,7 +33,12 @@
     </InstallExecuteSequence>
 
     <!-- 强制在用户选择的目录下创建 NebulaUpdater 子目录 -->
-    <SetDirectory Id="INSTALLDIR" Value="[INSTALLDIR]NebulaUpdater\" />
+    <CustomAction Id="AppendNebulaDir" Property="INSTALLDIR" Value="[INSTALLDIR]NebulaUpdater\" />
+
+    <InstallExecuteSequence>
+        <Custom Action="AppendNebulaDir" Before="CostFinalize" />
+        <Custom Action="RunJavaInstall" After="InstallFiles">NOT JAVACHECK</Custom>
+    </InstallExecuteSequence>
 
     <!-- 其余内容由 jpackage 自动注入，无需额外定义 -->
     <Include File="overrides.wxi" />
