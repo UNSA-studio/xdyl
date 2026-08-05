@@ -75,13 +75,25 @@ object AdbClient {
 
     /** 执行 shell 命令 */
     fun exec(host: String, port: Int, command: String): String {
+        // 本机直接用 Runtime.exec，更可靠
+        if (host == "127.0.0.1" || host == "localhost" || host == "::1") {
+            return execLocal(command)
+        }
+
         Socket(host, port).use { sock ->
             sock.soTimeout = 10000
             val input = DataInputStream(sock.getInputStream())
             val output = DataOutputStream(sock.getOutputStream())
 
             // 1. 发送 CNXN 连接请求
-            output.sendAdbPacket("CNXN\u0000\u0000\u0000\u0001\u0000\u0000\u0004\u0000host::\u0000".toByteArray())
+            // ADB 协议: "CNXN" + version(4B big-endian, 0x01000000) + maxdata(4B big-endian, 0x00100000) + "host::\0"
+            val cnxn = ByteArray(24 + 7)
+            System.arraycopy("CNXN".toByteArray(), 0, cnxn, 0, 4)
+            cnxn[4] = 0x01.toByte()  // version = 0x01000000 big-endian
+            cnxn[8] = 0x00
+            cnxn[9] = 0x10.toByte()  // maxdata = 0x00100000 big-endian
+            System.arraycopy("host::\u0000".toByteArray(), 0, cnxn, 24, 7)
+            output.sendAdbPacket(cnxn)
 
             // 2. 读取响应 — 应该是 AUTH 挑战
             val response = input.readAdbPacket()
@@ -136,6 +148,20 @@ object AdbClient {
             } catch (_: Exception) {}
 
             return sb.toString().trim()
+        }
+    }
+
+    /** 本地直接执行（等同 adb shell） */
+    private fun execLocal(command: String): String {
+        return try {
+            val process = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-v", "time", "-t", "200"))
+            val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
+            val lines = reader.readLines()
+            process.waitFor()
+            reader.close()
+            lines.joinToString("\n")
+        } catch (e: Exception) {
+            ""
         }
     }
 }
