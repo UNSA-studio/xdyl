@@ -2,145 +2,138 @@ package www.xdyl.hygge.com
 
 import java.io.DataInputStream
 import java.io.DataOutputStream
-import java.io.InputStream
-import java.io.OutputStream
 import java.net.Socket
 import java.security.KeyPairGenerator
 import java.security.Signature
 import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
-import java.security.spec.PKCS8EncodedKeySpec
-import java.security.spec.X509EncodedKeySpec
 import java.util.Base64
 
 /**
- * 精简 ADB 客户端 — TCP 连接 ADB daemon 并执行 shell 命令
- * 协议参考: https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/protocol.txt
+ * ADB 客户端 — TCP 连接 ADB daemon，通过 ADB 协议执行 shell 命令。
+ * 握手流程: CNXN → AUTH(公钥) → AUTH(签名) → CNXN(已连接) → OPEN(shell)
  */
 object AdbClient {
 
-    /** 发送 ADB 消息: 4 字节 hex 长度 + payload */
-    private fun OutputStream.sendAdb(msg: String) {
-        val payload = msg.toByteArray(Charsets.UTF_8)
-        val header = String.format("%04X", payload.size).toByteArray()
+    /** 发送 ADB 控制消息: 4 字节 hex 长度 + ASCII payload */
+    private fun DataOutputStream.sendAdbPacket(payload: ByteArray) {
+        val header = String.format("%04X", payload.size).toByteArray(Charsets.UTF_8)
         write(header)
         write(payload)
         flush()
     }
 
-    /** 读取 ADB 消息，返回 payload 字符串 */
-    private fun InputStream.readAdb(): String {
+    /** 读取 ADB 控制消息，返回 payload */
+    private fun DataInputStream.readAdbPacket(): ByteArray {
         val header = ByteArray(4)
-        var read =0
-        while (read <4) {
-            val n = this.read(header, read, 4 - read)
-            if (n <0) throw Exception("连接断开")
-            read += n
-        }
+        readFully(header)
         val len = String(header, Charsets.UTF_8).toInt(16)
         val payload = ByteArray(len)
-        read =0
-        while (read < len) {
-            val n = this.read(payload, read, len - read)
-            if (n <0) throw Exception("连接断开")
-            read += n
-        }
-        return String(payload, Charsets.UTF_8)
+        readFully(payload)
+        return payload
     }
 
-    /** 生成 ADB RSA 密钥对（3072 位），首次使用需用户在设备上授权 */
-    private fun generateAdbKey(): Pair<RSAPublicKey, RSAPrivateKey> {
+    private fun DataInputStream.readFully(buf: ByteArray) {
+        var off =0
+        while (off < buf.size) {
+            val n = read(buf, off, buf.size - off)
+            if (n <0) throw Exception("ADB 连接断开")
+            off += n
+        }
+    }
+
+    /** 生成 2048 位 RSA 密钥 */
+    private fun generateRsaKey(): Pair<RSAPublicKey, RSAPrivateKey> {
         val gen = KeyPairGenerator.getInstance("RSA")
-        gen.initialize(3072)
+        gen.initialize(2048)
         val kp = gen.generateKeyPair()
         return Pair(kp.public as RSAPublicKey, kp.private as RSAPrivateKey)
     }
 
-    /** 将 RSA 公钥编码为 ADB AUTH 消息所需格式 */
-    private fun RSAPublicKey.toAdbAuthPayload(): ByteArray {
-        // ADB 期望: 32-bit little-endian 长度 + "ADB RSA public key\0" + Base64 编码的公钥 + '\0'
-        val keyBytes = Base64.getEncoder().encode(encoded)
-        val header = "ADB RSA public key\u0000".toByteArray()
-        val out = ByteArray(4 + header.size + keyBytes.size +1)
-        // 小端 32-bit 长度 = header.size + keyBytes.size +1
-val total = header.size + keyBytes.size + 1
-        out[0] = (total and 0xFF).toByte()
-        out[1] = ((total shr 8) and 0xFF).toByte()
-        out[2] = ((total shr 16) and 0xFF).toByte()
-        out[3] = ((total shr 24) and 0xFF).toByte()
-        System.arraycopy(header, 0, out, 4, header.size)
-        System.arraycopy(keyBytes, 0, out, 4 + header.size, keyBytes.size)
-        out[out.size -1] =0
-        return out
+    /** 将公钥编码为 ADB 格式: 4 字节 little-endian len + "adb public key\0" + base64(der) + '\0' */
+    private fun RSAPublicKey.toAdbKey(): ByteArray {
+        val b64 = Base64.getEncoder().encode(encoded)
+        val head = "ADB RSA public key\u0000".toByteArray()
+        val total = head.size + b64.size +1
+        return ByteArray(4 + total).also { out ->
+            out[0] = (total and 0xFF).toByte()
+            out[1] = ((total shr 8) and 0xFF).toByte()
+            out[2] = ((total shr 16) and 0xFF).toByte()
+            out[3] = ((total shr 24) and 0xFF).toByte()
+            System.arraycopy(head, 0, out, 4, head.size)
+            System.arraycopy(b64, 0, out, 4 + head.size, b64.size)
+        }
     }
 
-    /** 用 RSA 私钥签名 token */
-    private fun RSAPrivateKey.signToken(token: ByteArray): ByteArray {
+    /** RSA 签名 */
+    private fun RSAPrivateKey.sign(data: ByteArray): ByteArray {
         val sig = Signature.getInstance("SHA256withRSA")
         sig.initSign(this)
-        sig.update(token)
+        sig.update(data)
         return sig.sign()
     }
 
-    /** 执行 shell 命令，返回标准输出 */
+    /** 执行 shell 命令 */
     fun exec(host: String, port: Int, command: String): String {
         Socket(host, port).use { sock ->
             sock.soTimeout = 10000
             val input = DataInputStream(sock.getInputStream())
             val output = DataOutputStream(sock.getOutputStream())
 
-            // 1. 读取 banner
-            val banner = input.readAdb()
+            // 1. 发送 CNXN 连接请求
+            output.sendAdbPacket("CNXN\u0000\u0000\u0000\u0001\u0000\u0000\u0004\u0000host::\u0000".toByteArray())
 
-            // 2. 发送 AUTH 签名认证
-            val (pubKey, privKey) = generateAdbKey()
-            val authPayload = pubKey.toAdbAuthPayload()
-            output.write("AUTH".toByteArray())
-            output.writeInt(Integer.reverseBytes(authPayload.size)) // 大端序 32-bit
-            output.write(authPayload)
-            output.flush()
+            // 2. 读取响应 — 应该是 AUTH 挑战
+            val response = input.readAdbPacket()
+            val respStr = String(response.take(4), Charsets.UTF_8)
 
-            // 3. 接收 AUTH 响应（可能是 token 挑战）
-            val authResponse = input.readAdb()
-            if (authResponse.startsWith("FAIL")) {
-                // 设备未授权此密钥 — 需要用户手动确认
-                throw Exception("ADB 认证失败 — 请在设备上授权调试连接")
-            }
+            if (respStr == "AUTH") {
+                val (pubKey, privKey) = generateRsaKey()
 
-            // 如果收到 SIGNATURE token，计算签名并发送
-            if (authResponse.startsWith("SIGNATURE")) {
-                val tokenHex = authResponse.substringAfter("SIGNATURE").trim()
-                val token = tokenHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-                val signature = privKey.signToken(token)
-                output.write("AUTH".toByteArray())
-                output.writeInt(Integer.reverseBytes(signature.size))
-                output.write(signature)
-                output.flush()
+                // 发送公钥
+                val keyPayload = pubKey.toAdbKey()
+                output.sendAdbPacket("AUTH\u0003\u0000\u0000\u0000".toByteArray() + keyPayload)
 
-                val finalResponse = input.readAdb()
-                if (finalResponse.startsWith("FAIL")) {
-                    throw Exception("ADB 签名验证失败")
+                // 读取 SIGNATURE 挑战
+                val challenge = input.readAdbPacket()
+                val chalStr = String(challenge.take(4), Charsets.UTF_8)
+                if (chalStr == "AUTH") {
+                    // 签名并发送
+                    val token = challenge.drop(4).toByteArray()
+                    val signature = privKey.sign(token)
+                    output.sendAdbPacket("AUTH\u0002\u0000\u0000\u0000".toByteArray() + signature)
+
+                    // 读取 CNXN 确认
+                    val confirm = input.readAdbPacket()
+                    val confStr = String(confirm.take(4), Charsets.UTF_8)
+                    if (confStr != "CNXN") throw Exception("ADB 认证失败 — 请在设备上确认授权")
                 }
-                // CONNECT 消息表示认证成功
+            } else if (respStr != "CNXN") {
+                throw Exception("ADB 握手失败: 意外响应")
             }
 
-            // 4. 选择设备（host:transport-any）
-            output.sendAdb("host:transport-any")
+            // 3. 发送 OPEN shell 命令
+            val cmdBytes = "shell:$command\u0000".toByteArray()
+            val openPayload = ByteArray(4 + cmdBytes.size)
+            openPayload[0] = 0 // local-id 低字节
+            openPayload[1] = 0
+            openPayload[2] = 0
+            openPayload[3] = 0
+            System.arraycopy(cmdBytes, 0, openPayload, 4, cmdBytes.size)
+            output.sendAdbPacket("OPEN".toByteArray() + openPayload)
 
-            // 5. 发送 shell 命令
-            output.sendAdb("shell:$command")
-
-            // 6. 读取所有输出
+            // 4. 读取 shell 输出
             val sb = StringBuilder()
             try {
                 while (true) {
-                    val line = input.readAdb()
-                    sb.append(line)
-                    if (line == "CLSE" || line.startsWith("CLSE")) break
+                    val pkt = input.readAdbPacket()
+                    val type = String(pkt.take(4), Charsets.UTF_8)
+                    when (type) {
+                        "WRTE" -> sb.append(String(pkt.drop(4), Charsets.UTF_8))
+                        "CLSE" -> break
+                    }
                 }
-            } catch (_: Exception) {
-                // 超时或正常结束
-            }
+            } catch (_: Exception) {}
 
             return sb.toString().trim()
         }
