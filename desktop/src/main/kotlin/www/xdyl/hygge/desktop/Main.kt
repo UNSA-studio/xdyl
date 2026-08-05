@@ -85,10 +85,13 @@ fun main() = application {
     var slideDirection by remember { mutableStateOf(1) }
 
     var dailyQuote by remember { mutableStateOf(null as Quote?) }
+    var cachedQuoteDate by remember { mutableStateOf("") }
     val quoteCategories = listOf("WH", "RW", "HC", "ED", "CE", "AC")
 
     fun loadDailyQuote() {
         val today = SimpleDateFormat("yyyyMMdd").format(Date())
+        // 内存缓存命中，直接返回
+        if (dailyQuote != null && cachedQuoteDate == today) return
         val lastDate = prefs.getString("quote_date", "")
         if (lastDate != today) {
             scope.launch(Dispatchers.IO) {
