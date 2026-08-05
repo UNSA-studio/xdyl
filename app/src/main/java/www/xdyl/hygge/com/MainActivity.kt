@@ -583,11 +583,19 @@ class MainActivity : AppCompatActivity() {
     private fun exportLogToFile() {
         scope.launch(Dispatchers.IO) {
             try {
-                val log = LogManager.getFullLog(); val downloadsDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: filesDir
-                if (!downloadsDir.exists()) downloadsDir.mkdirs(); val file = File(downloadsDir, "mod_update_log_${System.currentTimeMillis()}.txt")
+                val log = LogManager.getFullLog()
+                val exportDir = File(Environment.getExternalStorageDirectory(), "NebulaUpdater")
+                if (!exportDir.exists()) exportDir.mkdirs()
+                val file = File(exportDir, "nebula_log_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.txt")
                 FileOutputStream(file).use { it.write(log.toByteArray()) }
-                withContext(Dispatchers.Main) { Toast.makeText(this@MainActivity, "日志已保存至 ${file.absolutePath}", Toast.LENGTH_LONG).show() }
-            } catch (e: Exception) { withContext(Dispatchers.Main) { Toast.makeText(this@MainActivity, "导出失败: ${e.message}", Toast.LENGTH_LONG).show() } }
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "日志已导出: ${file.absolutePath}", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "导出失败: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
