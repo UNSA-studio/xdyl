@@ -61,14 +61,56 @@ class EasterEggActivity : AppCompatActivity() {
         val btnWhitelist = findViewById<MaterialButton>(R.id.btnWhitelist)
         btnWhitelist.setOnClickListener { showWhitelistDialog() }
 
-        // WiFi ADB 远程日志 — 启用后在导出日志时附带系统 logcat 崩溃记录
+        // WiFi ADB 远程日志
         val swWifiAdb = findViewById<SwitchMaterial>(R.id.swWifiAdb)
+        val layoutWifiConfig = findViewById<LinearLayout>(R.id.layoutWifiConfig)
+        val etWifiIp = findViewById<TextInputEditText>(R.id.etWifiIp)
+        val etWifiPort = findViewById<TextInputEditText>(R.id.etWifiPort)
+        val btnWifiConnect = findViewById<MaterialButton>(R.id.btnWifiConnect)
+
         swWifiAdb.isChecked = prefs.getBoolean("wifi_adb_enabled", false)
+        layoutWifiConfig.visibility = if (swWifiAdb.isChecked) View.VISIBLE else View.GONE
         LogManager.wifiAdbEnabled = swWifiAdb.isChecked
+
+        // 回显保存的 IP 和端口
+        etWifiIp.setText(prefs.getString("wifi_adb_ip", ""))
+        val savedPort = prefs.getInt("wifi_adb_port", 5555)
+        etWifiPort.setText(savedPort.toString())
+
         swWifiAdb.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("wifi_adb_enabled", isChecked).apply()
+            layoutWifiConfig.visibility = if (isChecked) View.VISIBLE else View.GONE
             LogManager.wifiAdbEnabled = isChecked
-            Toast.makeText(this, if (isChecked) "系统崩溃日志已启用 — 导出时将包含 logcat" else "系统崩溃日志已关闭", Toast.LENGTH_SHORT).show()
+        }
+
+        btnWifiConnect.setOnClickListener {
+            val ip = etWifiIp.text.toString().trim()
+            val port = etWifiPort.text.toString().trim().toIntOrNull() ?: 5555
+
+            if (ip.isBlank()) {
+                Toast.makeText(this, "请输入 IP 地址", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            prefs.edit()
+                .putString("wifi_adb_ip", ip)
+                .putInt("wifi_adb_port", port)
+                .apply()
+
+            LogManager.deviceIp = ip
+            LogManager.devicePort = port
+
+            Toast.makeText(this, "已保存: $ip:$port", Toast.LENGTH_SHORT).show()
+        }
+
+        // 如果已启用且 IP 已配置，启动时自动激活
+        if (swWifiAdb.isChecked) {
+            val savedIp = prefs.getString("wifi_adb_ip", "")
+            val savedPort = prefs.getInt("wifi_adb_port", 5555)
+            if (!savedIp.isNullOrBlank()) {
+                LogManager.deviceIp = savedIp
+                LogManager.devicePort = savedPort
+            }
         }
     }
 
