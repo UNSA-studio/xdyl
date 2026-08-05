@@ -214,7 +214,7 @@ fun main() = application {
                     exitApplication()
                 },
                 title = "星云更新器",
-                state = rememberWindowState(width = 720.dp, height = 540.dp),
+                state = rememberWindowState(width = 640.dp, height = 480.dp),
                 resizable = false
             ) {
                 Box(modifier = Modifier.fillMaxSize().background(Color(0xFF1E1E1E))) {
@@ -657,15 +657,17 @@ fun MainScreen(
             // 名言面板（底部固定）
             dailyQuote?.let { quote ->
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 3.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, Color(0xFF3A3A3A))
                 ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Text(quote.chinese, color = Color(0xFFA0C4FF), fontSize = 14.sp, fontFamily = silverFontFamily, maxLines = Int.MAX_VALUE)
-                        Text(quote.english, color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 12.sp, fontFamily = silverFontFamily, maxLines = Int.MAX_VALUE)
-                        Text("— ${quote.author} / ${quote.authorEn}", color = Color.Gray, fontSize = 11.sp, fontFamily = silverFontFamily)
-                        Text("《${quote.source}》 / ${quote.sourceEn}", color = Color.Gray.copy(alpha = 0.7f), fontSize = 10.sp, fontFamily = silverFontFamily)
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(quote.chinese, color = Color(0xFFA0C4FF), fontSize = 16.sp, fontFamily = silverFontFamily, maxLines = Int.MAX_VALUE)
+                        Text(quote.english, color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 13.sp, fontFamily = silverFontFamily, maxLines = Int.MAX_VALUE)
+                        Spacer(Modifier.height(4.dp))
+                        Text("— ${quote.author} / ${quote.authorEn}", color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
+                        Text("《${quote.source}》 / ${quote.sourceEn}", color = Color.Gray.copy(alpha = 0.7f), fontSize = 11.sp, fontFamily = silverFontFamily)
                     }
                 }
             }
