@@ -63,11 +63,11 @@ object AdbClient {
         val header = "ADB RSA public key\u0000".toByteArray()
         val out = ByteArray(4 + header.size + keyBytes.size +1)
         // 小端 32-bit 长度 = header.size + keyBytes.size +1
-        val total = header.size + keyBytes.size +1
-        out[0] = (total and0xFF).toByte()
-        out[1] = ((total shr8) and0xFF).toByte()
-        out[2] = ((total shr16) and0xFF).toByte()
-        out[3] = ((total shr24) and0xFF).toByte()
+val total = header.size + keyBytes.size + 1
+        out[0] = (total and 0xFF).toByte()
+        out[1] = ((total shr 8) and 0xFF).toByte()
+        out[2] = ((total shr 16) and 0xFF).toByte()
+        out[3] = ((total shr 24) and 0xFF).toByte()
         System.arraycopy(header, 0, out, 4, header.size)
         System.arraycopy(keyBytes, 0, out, 4 + header.size, keyBytes.size)
         out[out.size -1] =0
@@ -84,11 +84,8 @@ object AdbClient {
 
     /** 执行 shell 命令，返回标准输出 */
     fun exec(host: String, port: Int, command: String): String {
-        val startTime = System.currentTimeMillis()
-        val timeout = 10_000L // 10 秒超时
-
         Socket(host, port).use { sock ->
-            sock.soTimeout = timeout
+            sock.soTimeout = 10000
             val input = DataInputStream(sock.getInputStream())
             val output = DataOutputStream(sock.getOutputStream())
 
