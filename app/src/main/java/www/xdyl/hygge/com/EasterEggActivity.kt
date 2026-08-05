@@ -61,70 +61,14 @@ class EasterEggActivity : AppCompatActivity() {
         val btnWhitelist = findViewById<MaterialButton>(R.id.btnWhitelist)
         btnWhitelist.setOnClickListener { showWhitelistDialog() }
 
-        // WiFi ADB 远程日志
+        // WiFi ADB 远程日志 — 启用后在导出日志时附带系统 logcat 崩溃记录
         val swWifiAdb = findViewById<SwitchMaterial>(R.id.swWifiAdb)
-        val layoutWifiConfig = findViewById<LinearLayout>(R.id.layoutWifiConfig)
-        val etWifiIp = findViewById<TextInputEditText>(R.id.etWifiIp)
-        val etWifiPort = findViewById<TextInputEditText>(R.id.etWifiPort)
-        val btnWifiConnect = findViewById<MaterialButton>(R.id.btnWifiConnect)
-
         swWifiAdb.isChecked = prefs.getBoolean("wifi_adb_enabled", false)
-        layoutWifiConfig.visibility = if (swWifiAdb.isChecked) View.VISIBLE else View.GONE
-
-        // 回显保存的 IP 和端口
-        etWifiIp.setText(prefs.getString("wifi_adb_ip", ""))
-        val savedPort = prefs.getInt("wifi_adb_port", 5555)
-        etWifiPort.setText(if (savedPort != 5555) savedPort.toString() else "5555")
-
-        // 如果已启用 WiFi ADB 且 IP 已配置，自动启动监听
-        if (swWifiAdb.isChecked) {
-            val savedIp = prefs.getString("wifi_adb_ip", "")
-            if (!savedIp.isNullOrBlank()) {
-                LogManager.remoteIp = savedIp
-                LogManager.remotePort = savedPort
-                LogManager.wifiAdbEnabled = true
-            }
-        }
-
+        LogManager.wifiAdbEnabled = swWifiAdb.isChecked
         swWifiAdb.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("wifi_adb_enabled", isChecked).apply()
-            layoutWifiConfig.visibility = if (isChecked) View.VISIBLE else View.GONE
-            if (isChecked) {
-                val savedIp = prefs.getString("wifi_adb_ip", "")
-                val savedPort = prefs.getInt("wifi_adb_port", 5555)
-                if (!savedIp.isNullOrBlank()) {
-                    LogManager.remoteIp = savedIp
-                    LogManager.remotePort = savedPort
-                    LogManager.wifiAdbEnabled = true
-                }
-            } else {
-                LogManager.wifiAdbEnabled = false
-            }
-        }
-
-        btnWifiConnect.setOnClickListener {
-            val ip = etWifiIp.text.toString().trim()
-            val port = etWifiPort.text.toString().trim().toIntOrNull() ?: 5555
-
-            if (ip.isBlank()) {
-                Toast.makeText(this, "请输入 IP 地址", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            prefs.edit()
-                .putString("wifi_adb_ip", ip)
-                .putInt("wifi_adb_port", port)
-                .apply()
-
-            LogManager.remoteIp = ip
-            LogManager.remotePort = port
-
-            if (swWifiAdb.isChecked) {
-                LogManager.wifiAdbEnabled = true
-                Toast.makeText(this, "远程日志已就绪：$ip:$port", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "IP/端口已保存，请先开启 WIFI ADB 开关", Toast.LENGTH_SHORT).show()
-            }
+            LogManager.wifiAdbEnabled = isChecked
+            Toast.makeText(this, if (isChecked) "系统崩溃日志已启用 — 导出时将包含 logcat" else "系统崩溃日志已关闭", Toast.LENGTH_SHORT).show()
         }
     }
 
