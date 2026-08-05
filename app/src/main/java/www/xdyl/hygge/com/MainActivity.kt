@@ -220,10 +220,17 @@ class MainActivity : AppCompatActivity() {
 
     // ========== 每日名言 ==========
     private var quoteLoading = false
+    private var cachedQuote: Pair<String, Quote>? = null
+    private var cachedQuoteDate: String = ""
 
     private fun loadDailyQuote() {
         if (quoteLoading) return
         val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
+        // 内存缓存命中，直接显示
+        if (cachedQuote != null && cachedQuoteDate == today) {
+            displayQuote(cachedQuote!!.first, cachedQuote!!.second)
+            return
+        }
         val lastDate = prefs.getString("quote_date", "")
         if (lastDate != today) {
             quoteLoading = true
@@ -245,6 +252,8 @@ class MainActivity : AppCompatActivity() {
                     }
                     if (allQuotes.isNotEmpty()) {
                         val (cat, idx, quote) = allQuotes[Random().nextInt(allQuotes.size)]
+                        cachedQuote = Pair(cat, quote)
+                        cachedQuoteDate = today
                         withContext(Dispatchers.Main) { displayQuote(cat, quote) }
                         prefs.edit().putString("quote_date", today).putString("quote_cat", cat)
                             .putInt("quote_index", idx).commit()
@@ -261,11 +270,14 @@ class MainActivity : AppCompatActivity() {
                     val quotesArray = JSONObject(jsonStr).getJSONArray("quotes")
                     if (index in 0 until quotesArray.length()) {
                         val obj = quotesArray.getJSONObject(index)
-                        withContext(Dispatchers.Main) { displayQuote(cat, Quote(
+                        val quote = Quote(
                             obj.getString("chinese"), obj.getString("english"),
                             obj.getString("author"), obj.getString("author_en"),
                             obj.getString("source"), obj.getString("source_en")
-                        )) }
+                        )
+                        cachedQuote = Pair(cat, quote)
+                        cachedQuoteDate = today
+                        withContext(Dispatchers.Main) { displayQuote(cat, quote) }
                     } else { prefs.edit().putString("quote_date", "").apply(); loadDailyQuote() }
                 } catch (e: Exception) { LogManager.log("恢复名言失败: ${e.message}"); prefs.edit().putString("quote_date", "").apply(); loadDailyQuote() }
             }
