@@ -4,22 +4,16 @@ import dadb.Dadb
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
-/**
- * ADB 客户端封装 — 基于 dadb 库
- * 本机调用 Runtime.exec，远程通过 Dadb.create 连接
- */
 object AdbClient {
 
     fun exec(host: String, port: Int, command: String): String {
-        if (host == "127.0.0.1" || host == "localhost" || host == "::1") {
-            return execLocal(command)
-        }
         try {
             Dadb.create(host, port).use { dadb ->
                 val response = dadb.shell(command)
                 return response.output
             }
         } catch (e: Exception) {
+            // ADB 失败则降级到本地 logcat
             return execLocal(command)
         }
     }
