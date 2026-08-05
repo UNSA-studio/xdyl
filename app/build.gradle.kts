@@ -56,4 +56,5 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("com.google.code.gson:gson:2.10.1")   // 新增
+    implementation("com.mobile-dev-inc:dadb:1.2.3")       // ADB 客户端库
 }
