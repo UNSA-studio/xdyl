@@ -56,6 +56,7 @@ class MainActivity : AppCompatActivity() {
     private var currentBrowseDir: File = Environment.getExternalStorageDirectory()
     private var fileAdapter: FileAdapter? = null
     private var tvPath: TextView? = null
+    private var tvRestrictWarning: TextView? = null
     private var recyclerView: RecyclerView? = null
 
     private val quoteCategories = listOf("WH", "RW", "HC", "ED", "CE", "AC")
@@ -324,7 +325,7 @@ class MainActivity : AppCompatActivity() {
     private fun showFileBrowser() {
         currentBrowseDir = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath) ?: Environment.getExternalStorageDirectory().absolutePath)
         val view = layoutInflater.inflate(R.layout.dialog_file_browser, null)
-        tvPath = view.findViewById(R.id.tvPath); recyclerView = view.findViewById(R.id.recyclerView)
+        tvPath = view.findViewById(R.id.tvPath); tvRestrictWarning = view.findViewById(R.id.tvRestrictWarning); recyclerView = view.findViewById(R.id.recyclerView)
         recyclerView!!.layoutManager = LinearLayoutManager(this); recyclerView!!.itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator()
         val dialog = MaterialAlertDialogBuilder(this).setView(view)
             .setPositiveButton("选择此文件夹") { _, _ -> prefs.edit().putString("launcher_root", currentBrowseDir.absolutePath).apply(); handleSelectedFolder(currentBrowseDir) }
@@ -334,6 +335,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadDirectory(dir: File) {
+        // Android 11+ 限制访问检测
+        val isRestricted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                (dir.absolutePath.contains("/Android/data") || dir.absolutePath.contains("/Android/obb"))
+        tvRestrictWarning?.visibility = if (isRestricted) View.VISIBLE else View.GONE
         scope.launch(Dispatchers.IO) {
             val files = dir.listFiles()?.toList()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
             withContext(Dispatchers.Main) {
