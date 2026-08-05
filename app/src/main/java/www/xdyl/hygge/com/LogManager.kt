@@ -29,10 +29,17 @@ object LogManager {
             sb.appendLine("目标设备: ${deviceIp}:${devicePort}")
         }
         sb.append(logBuilder.toString())
-        if (wifiAdbEnabled && systemLogBuffer.isNotEmpty()) {
+        if (wifiAdbEnabled) {
             sb.appendLine()
-            sb.appendLine("=== 系统崩溃日志 (自动收集) ===")
-            sb.append(systemLogBuffer.toString())
+            // 实时抓取当前系统日志（不管自动收集是否已有结果）
+            val snap = getSystemLog()
+            sb.appendLine("=== 系统崩溃日志 (实时抓取) ===")
+            sb.append(snap)
+            if (systemLogBuffer.isNotEmpty()) {
+                sb.appendLine()
+                sb.appendLine("=== 系统崩溃日志 (自动收集历史) ===")
+                sb.append(systemLogBuffer.toString())
+            }
         }
         return sb.toString()
     }
@@ -41,21 +48,25 @@ object LogManager {
         collectorThread?.interrupt()
         collectorThread = Thread {
             systemLogBuffer.clear()
+            Log.i(TAG, "自动收集线程已启动")
             while (wifiAdbEnabled) {
                 try {
                     val result = getSystemLog()
-                    if (result.isNotBlank() && result != "(无系统崩溃记录)") {
+                    if (result.isNotBlank() && result != "(无系统崩溃记录)" && result != "(无法获取系统日志: )") {
                         systemLogBuffer.appendLine(result)
                         systemLogBuffer.appendLine("---")
+                        Log.i(TAG, "自动收集: 捕获到系统日志 ${result.length} 字符")
                     }
-                } catch (_: Exception) {}
+                } catch (e: Exception) {
+                    Log.e(TAG, "自动收集异常: ${e.message}")
+                }
                 try { Thread.sleep(30_000) } catch (_: InterruptedException) { break }
             }
         }.also {
             it.isDaemon = true
             it.start()
         }
-        Log.i(TAG, "系统日志自动收集已启动")
+        Log.i(TAG, "系统日志自动收集已启动 (每30秒)")
     }
 
     private fun stopAutoCollect() {
