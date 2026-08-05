@@ -7,9 +7,15 @@ import java.io.InputStreamReader
 object LogManager {
     private const val TAG = "NebulaUpdater"
     private val logBuilder = StringBuilder()
+    private val systemLogBuffer = StringBuilder()
     @Volatile var wifiAdbEnabled: Boolean = false
+        set(value) {
+            field = value
+            if (value) startAutoCollect() else stopAutoCollect()
+        }
     @Volatile var deviceIp: String? = null
     @Volatile var devicePort: Int = 5555
+    private var collectorThread: Thread? = null
 
     fun log(msg: String) {
         Log.i(TAG, msg)
@@ -23,19 +29,45 @@ object LogManager {
             sb.appendLine("目标设备: ${deviceIp}:${devicePort}")
         }
         sb.append(logBuilder.toString())
-        if (wifiAdbEnabled) {
+        if (wifiAdbEnabled && systemLogBuffer.isNotEmpty()) {
             sb.appendLine()
-            sb.appendLine("=== 系统崩溃日志 (logcat) ===")
-            sb.append(getSystemLog())
+            sb.appendLine("=== 系统崩溃日志 (自动收集) ===")
+            sb.append(systemLogBuffer.toString())
         }
         return sb.toString()
     }
 
+    private fun startAutoCollect() {
+        collectorThread?.interrupt()
+        collectorThread = Thread {
+            systemLogBuffer.clear()
+            while (wifiAdbEnabled) {
+                try {
+                    val result = getSystemLog()
+                    if (result.isNotBlank() && result != "(无系统崩溃记录)") {
+                        systemLogBuffer.appendLine(result)
+                        systemLogBuffer.appendLine("---")
+                    }
+                } catch (_: Exception) {}
+                try { Thread.sleep(30_000) } catch (_: InterruptedException) { break }
+            }
+        }.also {
+            it.isDaemon = true
+            it.start()
+        }
+        Log.i(TAG, "系统日志自动收集已启动")
+    }
+
+    private fun stopAutoCollect() {
+        collectorThread?.interrupt()
+        collectorThread = null
+        Log.i(TAG, "系统日志自动收集已停止")
+    }
+
     fun getSystemLog(): String {
-        // 如果配置了 WiFi ADB 设备，优先通过 ADB 协议获取日志
         if (wifiAdbEnabled && deviceIp != null) {
             try {
-                val adbOutput = AdbClient.exec(deviceIp!!, devicePort, "logcat -d -v time -t 500")
+                val adbOutput = AdbClient.exec(deviceIp!!, devicePort, "logcat -d -v time -t 200")
                 if (adbOutput.isNotBlank()) {
                     val filtered = adbOutput.lines().filter { line ->
                         line.contains("FATAL") || line.contains("NebulaUpdater") || line.contains("xdyl")
@@ -43,13 +75,11 @@ object LogManager {
                     return if (filtered.isEmpty()) "(无系统崩溃记录)" else filtered.joinToString("\n")
                 }
             } catch (e: Exception) {
-                // ADB 连接失败，降级到本地 logcat
                 Log.d(TAG, "ADB 连接失败: ${e.message}，降级到本地 logcat")
             }
         }
-        // 降级：直接用 Runtime.exec 调用本地 logcat
         return try {
-            val process = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-v", "time", "-t", "500"))
+            val process = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-v", "time", "-t", "200"))
             val reader = BufferedReader(InputStreamReader(process.inputStream))
             val lines = reader.readLines()
             process.waitFor()
@@ -65,6 +95,7 @@ object LogManager {
 
     fun clear() {
         logBuilder.clear()
+        systemLogBuffer.clear()
         Log.d(TAG, "Log cleared")
     }
 }
