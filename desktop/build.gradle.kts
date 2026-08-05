@@ -27,6 +27,7 @@ compose.desktop {
                 menuGroup = "NebulaUpdater"
                 shortcut = true
                 menu = true
+                installDir = "NebulaUpdater"
             }
         }
     }
