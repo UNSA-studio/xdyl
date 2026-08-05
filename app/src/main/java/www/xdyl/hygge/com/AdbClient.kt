@@ -85,7 +85,7 @@ object AdbClient {
 
             // 2. 读取响应 — 应该是 AUTH 挑战
             val response = input.readAdbPacket()
-            val respStr = String(response.take(4), Charsets.UTF_8)
+            val respStr = String(response.copyOfRange(0, 4), Charsets.UTF_8)
 
             if (respStr == "AUTH") {
                 val (pubKey, privKey) = generateRsaKey()
@@ -96,16 +96,16 @@ object AdbClient {
 
                 // 读取 SIGNATURE 挑战
                 val challenge = input.readAdbPacket()
-                val chalStr = String(challenge.take(4), Charsets.UTF_8)
+                val chalStr = String(challenge.copyOfRange(0, 4), Charsets.UTF_8)
                 if (chalStr == "AUTH") {
                     // 签名并发送
-                    val token = challenge.drop(4).toByteArray()
+                    val token = challenge.copyOfRange(4, challenge.size)
                     val signature = privKey.sign(token)
                     output.sendAdbPacket("AUTH\u0002\u0000\u0000\u0000".toByteArray() + signature)
 
                     // 读取 CNXN 确认
                     val confirm = input.readAdbPacket()
-                    val confStr = String(confirm.take(4), Charsets.UTF_8)
+                    val confStr = String(confirm.copyOfRange(0, 4), Charsets.UTF_8)
                     if (confStr != "CNXN") throw Exception("ADB 认证失败 — 请在设备上确认授权")
                 }
             } else if (respStr != "CNXN") {
@@ -127,9 +127,9 @@ object AdbClient {
             try {
                 while (true) {
                     val pkt = input.readAdbPacket()
-                    val type = String(pkt.take(4), Charsets.UTF_8)
+                    val type = String(pkt.copyOfRange(0, 4), Charsets.UTF_8)
                     when (type) {
-                        "WRTE" -> sb.append(String(pkt.drop(4), Charsets.UTF_8))
+                        "WRTE" -> sb.append(String(pkt.copyOfRange(4, pkt.size), Charsets.UTF_8))
                         "CLSE" -> break
                     }
                 }
