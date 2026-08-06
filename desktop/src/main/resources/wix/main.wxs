@@ -11,8 +11,8 @@
     <UI>
         <UIRef Id="WixUI_InstallDir" />
         <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="JavaCheckDlg" Order="3" />
-        <!-- 用户确认安装时，自动在路径后追加 NebulaUpdater 子目录 -->
-        <Publish Dialog="VerifyReadyDlg" Control="Install" Event="DoAction" Value="ForceNebulaSubDir" Order="1">1</Publish>
+        <!-- 用户选完目录后立即追加 NebulaUpdater，确认页显示完整路径 -->
+        <Publish Dialog="InstallDirDlg" Control="Next" Event="DoAction" Value="ForceNebulaSubDir" Order="1">1</Publish>
         <!-- 自定义对话框 -->
         <Dialog Id="JavaCheckDlg" Width="370" Height="270" Title="Java 8 安装程序">
             <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15" Text="{\WixUI_Font_Title}Java 8 检测" />
