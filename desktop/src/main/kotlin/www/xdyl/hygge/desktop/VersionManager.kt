@@ -1,6 +1,7 @@
 package www.xdyl.hygge.desktop
 
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -11,8 +12,8 @@ import java.util.concurrent.TimeUnit
 data class ModEntry(
     val name: String,
     val version: String = "",
-    val oldVersion: String = "",
-    val newVersion: String = ""
+    @SerializedName("old_version") val oldVersion: String = "",
+    @SerializedName("new_version") val newVersion: String = ""
 )
 
 data class VersionDiff(
