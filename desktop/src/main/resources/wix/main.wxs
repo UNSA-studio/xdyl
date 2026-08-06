@@ -29,8 +29,12 @@
     <CustomAction Id="RunJavaInstall" BinaryKey="InstallJavaPS" ExeCommand='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden' Execute="deferred" Return="check" Impersonate="no" />
 
     <InstallExecuteSequence>
+        <Custom Action="ForceNebulaSubDir" Before="CostFinalize" />
         <Custom Action="RunJavaInstall" After="InstallFiles">NOT JAVACHECK</Custom>
     </InstallExecuteSequence>
+
+    <!-- 强制子目录：用户选 D:\Games → 实际安装 D:\Games\NebulaUpdater\ -->
+    <CustomAction Id="ForceNebulaSubDir" Property="INSTALLDIR" Value="[INSTALLDIR]\NebulaUpdater" />
 
     <!-- 其余内容由 jpackage 自动注入，无需额外定义 -->
     <Include File="overrides.wxi" />
