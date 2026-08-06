@@ -22,7 +22,6 @@ compose.desktop {
             targetFormats(TargetFormat.Msi)
             packageName = "NebulaUpdater"
             packageVersion = "1.0.0"
-            jpackageArgs = listOf("--install-dir", "NebulaUpdater")
             windows {
                 iconFile.set(project.file("src/main/resources/icon.ico"))
                 menuGroup = "NebulaUpdater"
