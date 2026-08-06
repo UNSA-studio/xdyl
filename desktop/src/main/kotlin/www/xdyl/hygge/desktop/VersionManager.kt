@@ -8,11 +8,18 @@ import okhttp3.Request
 import java.io.File
 import java.util.concurrent.TimeUnit
 
+data class ModEntry(
+    val name: String,
+    val version: String = "",
+    val oldVersion: String = "",
+    val newVersion: String = ""
+)
+
 data class VersionDiff(
     val version: String,
-    val added: List<String>,
-    val removed: List<String>,
-    val updated: List<String>
+    val added: List<ModEntry> = emptyList(),
+    val removed: List<ModEntry> = emptyList(),
+    val updated: List<ModEntry> = emptyList()
 )
 
 class VersionManager(private val prefs: Preferences) {
