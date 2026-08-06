@@ -58,7 +58,7 @@ class VersionManager(private val prefs: Preferences) {
                 }
                 val remote = gson.fromJson(json, VersionDiff::class.java)
                 val localVer = getLocalVersion()
-                if (remote.version > localVer) {
+                if (compareVersions(remote.version, localVer) > 0) {
                     withContext(Dispatchers.Main) { onUpdateAvailable(remote) }
                 } else {
                     withContext(Dispatchers.Main) { onComplete() }
@@ -80,14 +80,30 @@ class VersionManager(private val prefs: Preferences) {
                 val response = client.newCall(request).execute()
                 if (response.isSuccessful) {
                     val csv = response.body?.string() ?: return@withContext
-                    val file = File(System.getProperty("user.home"), ".xdyl/file_list.csv")
-                    file.parentFile?.mkdirs()
+                    val dir = File(System.getProperty("user.home"), ".xdyl")
+                    if (!dir.exists()) dir.mkdirs()
+                    val file = File(dir, "file_list.csv")
                     file.writeText(csv)
                     saveLocalVersion(version)
+                    println("CSV 已下载到: ${file.absolutePath} (版本 $version)")
+                } else {
+                    println("CSV 下载失败: HTTP ${response.code}")
                 }
             } catch (e: Exception) {
+                println("CSV 下载异常: ${e.message}")
                 e.printStackTrace()
             }
         }
+    }
+
+    private fun compareVersions(v1: String, v2: String): Int {
+        val p1 = v1.split(".").map { it.toIntOrNull() ?: 0 }
+        val p2 = v2.split(".").map { it.toIntOrNull() ?: 0 }
+        for (i in 0 until maxOf(p1.size, p2.size)) {
+            val a = p1.getOrElse(i) { 0 }
+            val b = p2.getOrElse(i) { 0 }
+            if (a != b) return a - b
+        }
+        return 0
     }
 }
