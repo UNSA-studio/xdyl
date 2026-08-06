@@ -162,10 +162,13 @@ fun main() = application {
         val versionManager = VersionManager(prefs)
         versionManager.checkAndUpdate(
             onUpdateAvailable = { diff ->
-                println("New version found: ${diff.version}")
-                scope.launch { versionManager.downloadNewCsv(diff.version); println("CSV updated") }
+                println("New CSV version found: ${diff.version}")
+                scope.launch {
+                    versionManager.downloadNewCsv(diff.version)
+                    println("CSV updated to ${diff.version}")
+                }
             },
-            onComplete = {}
+            onComplete = { /* 无需弹窗，静默更新 */ }
         )
     }
 
@@ -1047,11 +1050,15 @@ suspend fun fetchDesktopServerFileList(): List<String> = withContext(Dispatchers
     } catch (e: Exception) { emptyList() }
 }
 
-fun parseDesktopCsvMods(): List<ModInfo> =
-    Constants.CSV_CONTENT.lines().drop(1).filter { it.isNotBlank() }.map { line ->
+fun parseDesktopCsvMods(): List<ModInfo> {
+    // 优先读取云端下载的 CSV 文件
+    val downloadedCsv = File(System.getProperty("user.home"), ".xdyl/file_list.csv")
+    val csvContent = if (downloadedCsv.exists()) downloadedCsv.readText() else Constants.CSV_CONTENT
+    return csvContent.lines().drop(1).filter { it.isNotBlank() }.map { line ->
         val p = line.split(",")
         ModInfo(p[0].trim('"').removePrefix("./"), p[2].toLong(), p[3].trim('"'), p[4].trim('"'))
     }
+}
 
 fun parseCsvFromFile(file: File): List<ModInfo> =
     file.readText().lines().drop(1).filter { it.isNotBlank() }.map { line ->
