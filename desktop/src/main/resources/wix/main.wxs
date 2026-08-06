@@ -2,6 +2,8 @@
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
     <!-- 使用内置的 WixUI_InstallDir 作为基础界面 -->
     <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+    <WixVariable Id="WixUIDialogBmp" Value="dialog_banner.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="top_banner.bmp" />
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
 
     <!-- Java 安装询问属性 -->
