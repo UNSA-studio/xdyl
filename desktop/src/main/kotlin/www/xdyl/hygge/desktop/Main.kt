@@ -82,6 +82,7 @@ fun main() = application {
     var showCsvPickerDialog by remember { mutableStateOf(false) }
     var showFolderErrorDialog by remember { mutableStateOf(false) }
     var showFileBrowserDialog by remember { mutableStateOf(false) }
+    var showResetConfirm by remember { mutableStateOf(false) }
     var folderErrorMsg by remember { mutableStateOf("") }
     var slideDirection by remember { mutableStateOf(1) }
 
@@ -202,6 +203,13 @@ fun main() = application {
             appendLine("$code: $desc")
             appendLine()
         }
+    }
+
+    fun resetData() {
+        prefs.clear()
+        LogManager.log("所有配置数据已清除")
+        logBuilder.appendLine("===数据格式化完成===")
+        logText = logBuilder.toString()
     }
 
     val darkColorScheme = darkColorScheme(
@@ -347,7 +355,8 @@ fun main() = application {
                                 onExportLog = { exportLog() },
                                 onErrorCodes = { showErrorCodesDialog = true },
                                 onAbout = { showAboutDialog = true },
-                                onThreadInfo = { showThreadInfoDialog = true }
+                                onThreadInfo = { showThreadInfoDialog = true },
+                                onResetData = { showResetConfirm = true }
                             )
                             "extension" -> ExtensionScreen(
                                 unlockThread = unlockThread,
@@ -582,6 +591,23 @@ fun main() = application {
                             }
                         }
                     }
+                    if (showResetConfirm) {
+                        AlertDialog(
+                            onDismissRequest = { showResetConfirm = false },
+                            title = { Text("数据格式化", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
+                            text = { Text("这将清除所有配置数据（目录路径、线程设置、CSV版本记录等），确定继续？", fontFamily = silverFontFamily, color = Color.White) },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showResetConfirm = false
+                                    resetData()
+                                    exitApplication()
+                                }) { Text("清除并重启", color = Color.Red, fontFamily = silverFontFamily) }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showResetConfirm = false }) { Text("取消", fontFamily = silverFontFamily) }
+                            }
+                        )
+                    }
                     }
                 }
             }
@@ -705,7 +731,8 @@ fun SettingsScreen(
     onExportLog: () -> Unit,
     onErrorCodes: () -> Unit,
     onAbout: () -> Unit,
-    onThreadInfo: () -> Unit = {}
+    onThreadInfo: () -> Unit = {},
+    onResetData: () -> Unit = {}
 ) {
     val tfColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = Color.White,
@@ -797,19 +824,41 @@ fun SettingsScreen(
             ) { Text("导出日志", fontSize = 24.sp, fontFamily = silverFontFamily) }
         }
         Spacer(modifier = Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = onErrorCodes,
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("ERROR 错误代码", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        // ERROR 错误代码
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(DesktopIcons.Info, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
+            Spacer(modifier = Modifier.width(12.dp))
+            OutlinedButton(
+                onClick = onErrorCodes,
+                modifier = Modifier.weight(1f).height(56.dp),
+                border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
+            ) { Text("ERROR 错误代码", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        }
         Spacer(modifier = Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = onAbout,
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("关于软件", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        // 关于软件
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(DesktopIcons.Info, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
+            Spacer(modifier = Modifier.width(12.dp))
+            OutlinedButton(
+                onClick = onAbout,
+                modifier = Modifier.weight(1f).height(56.dp),
+                border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
+            ) { Text("关于软件", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        // 数据格式化
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(DesktopIcons.Thread, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color.Red.copy(alpha = 0.7f))
+            Spacer(modifier = Modifier.width(12.dp))
+            OutlinedButton(
+                onClick = onResetData,
+                modifier = Modifier.weight(1f).height(56.dp),
+                border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.5f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red.copy(alpha = 0.8f))
+            ) { Text("数据格式化", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        }
     }
 }
 
