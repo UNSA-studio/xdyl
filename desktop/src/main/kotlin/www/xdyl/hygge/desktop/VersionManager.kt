@@ -98,28 +98,36 @@ class VersionManager(private val prefs: Preferences) {
 
     suspend fun downloadNewCsv(version: String) {
         withContext(Dispatchers.IO) {
-            try {
-                LogManager.log("[CSV] 开始下载 file_list.csv...")
-                val request = Request.Builder()
-                    .url("${BASE_URL}file_list.csv")
-                    .header("X-API-Key", API_KEY)
-                    .build()
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val csv = response.body?.string() ?: return@withContext
-                    LogManager.log("[CSV] 下载成功, 大小: ${csv.length} 字节")
-                    val dir = File(System.getProperty("user.home"), ".xdyl")
-                    if (!dir.exists()) dir.mkdirs()
-                    val file = File(dir, "file_list.csv")
-                    file.writeText(csv)
-                    saveLocalVersion(version)
-                    LogManager.log("[CSV] 已保存到: ${file.absolutePath} (版本 $version)")
-                } else {
-                    LogManager.log("[CSV] 下载失败: HTTP ${response.code}")
+            var lastEx: Exception? = null
+            for (attempt in 1..5) {
+                try {
+                    LogManager.log("[CSV] 下载尝试 $attempt/5 ...")
+                    val request = Request.Builder()
+                        .url("${BASE_URL}file_list.csv")
+                        .header("X-API-Key", API_KEY)
+                        .build()
+                    val response = client.newCall(request).execute()
+                    if (response.isSuccessful) {
+                        val csv = response.body?.string() ?: continue
+                        LogManager.log("[CSV] 下载成功, 大小: ${csv.length} 字节")
+                        val dir = File(System.getProperty("user.home"), ".xdyl")
+                        if (!dir.exists()) dir.mkdirs()
+                        val file = File(dir, "file_list.csv")
+                        file.writeText(csv)
+                        saveLocalVersion(version)
+                        LogManager.log("[CSV] 已保存到: ${file.absolutePath} (版本 $version)")
+                        return@withContext
+                    } else {
+                        lastEx = Exception("HTTP ${response.code}")
+                        LogManager.log("[CSV] 下载失败 (${attempt}/5): HTTP ${response.code}")
+                    }
+                } catch (e: Exception) {
+                    lastEx = e
+                    LogManager.log("[CSV] 下载异常 (${attempt}/5): ${e.javaClass.simpleName} - ${e.message}")
                 }
-            } catch (e: Exception) {
-                LogManager.log("[CSV] 下载异常: ${e.javaClass.simpleName} - ${e.message}")
+                if (attempt < 5) kotlinx.coroutines.delay((1000L * attempt).coerceAtMost(5000))
             }
+            LogManager.log("[CSV] 下载最终失败: ${lastEx?.message}")
         }
     }
 
