@@ -145,10 +145,15 @@ fun main() = application {
     }
 
     LaunchedEffect(Unit) {
+        LogManager.log("应用启动, 开始初始化...")
         val lastPath = prefs.getString("launcher_root", null)
         if (lastPath != null) {
             val dir = File(lastPath)
-            if (dir.exists() && dir.isDirectory) targetModsDir = findMinecraftModsDir(dir, prefs)
+            if (dir.exists() && dir.isDirectory) {
+                LogManager.log("恢复上次目录: $lastPath")
+                targetModsDir = findMinecraftModsDir(dir, prefs)
+                if (targetModsDir != null) LogManager.log("mods目录: ${targetModsDir!!.absolutePath}")
+            }
         }
         versionName = prefs.getString("version_folder", "1.21.1-NeoForge") ?: "1.21.1-NeoForge"
         threadCount = prefs.getInt("thread_limit", 256)
@@ -240,11 +245,16 @@ fun main() = application {
                                         downloading = true
                                         scope.launch {
                                             try {
+                                                LogManager.log("开始扫描服务器文件...")
                                                 val serverFiles = fetchDesktopServerFileList()
-                                                val csvMods = if (useLocalCsv && localCsvPath.isNotEmpty())
+                                                LogManager.log("服务器文件: ${serverFiles.size} 个")
+                                                val csvMods = if (useLocalCsv && localCsvPath.isNotEmpty()) {
+                                                    LogManager.log("使用本地CSV: $localCsvPath")
                                                     parseCsvFromFile(File(localCsvPath))
-                                                else
+                                                } else {
                                                     parseDesktopCsvMods()
+                                                }
+                                                LogManager.log("CSV 解析完成: ${csvMods.size} 个模组")
                                                 // 只下载服务器上实际存在的模组（和安卓逻辑一致）
                                                 val csvSet = csvMods.map { it.fileName }.toSet()
                                                 val serverMods = csvMods.filter { it.fileName in serverFiles.toSet() }

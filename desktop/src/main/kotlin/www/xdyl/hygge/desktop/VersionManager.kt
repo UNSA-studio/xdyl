@@ -44,28 +44,36 @@ class VersionManager(private val prefs: Preferences) {
     ) {
         withContext(Dispatchers.IO) {
             try {
+                LogManager.log("[CSV] 检查云端版本...")
                 val request = Request.Builder()
                     .url("${BASE_URL}Version_difference.json")
                     .header("X-API-Key", API_KEY)
                     .build()
                 val response = client.newCall(request).execute()
+                LogManager.log("[CSV] 服务器响应: HTTP ${response.code}")
                 if (!response.isSuccessful) {
+                    LogManager.log("[CSV] 服务器返回错误: ${response.code}")
                     withContext(Dispatchers.Main) { onComplete() }
                     return@withContext
                 }
                 val json = response.body?.string() ?: run {
+                    LogManager.log("[CSV] 响应体为空")
                     withContext(Dispatchers.Main) { onComplete() }
                     return@withContext
                 }
+                LogManager.log("[CSV] 收到JSON: ${json.take(200)}...")
                 val remote = gson.fromJson(json, VersionDiff::class.java)
                 val localVer = getLocalVersion()
+                LogManager.log("[CSV] 云端版本=${remote.version}, 本地版本=$localVer")
                 if (compareVersions(remote.version, localVer) > 0) {
+                    LogManager.log("[CSV] 发现新版本! added=${remote.added.size}, removed=${remote.removed.size}, updated=${remote.updated.size}")
                     withContext(Dispatchers.Main) { onUpdateAvailable(remote) }
                 } else {
+                    LogManager.log("[CSV] 已是最新版本")
                     withContext(Dispatchers.Main) { onComplete() }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                LogManager.log("[CSV] 版本检查异常: ${e.javaClass.simpleName} - ${e.message}")
                 withContext(Dispatchers.Main) { onComplete() }
             }
         }
@@ -74,6 +82,7 @@ class VersionManager(private val prefs: Preferences) {
     suspend fun downloadNewCsv(version: String) {
         withContext(Dispatchers.IO) {
             try {
+                LogManager.log("[CSV] 开始下载 file_list.csv...")
                 val request = Request.Builder()
                     .url("${BASE_URL}file_list.csv")
                     .header("X-API-Key", API_KEY)
@@ -81,18 +90,18 @@ class VersionManager(private val prefs: Preferences) {
                 val response = client.newCall(request).execute()
                 if (response.isSuccessful) {
                     val csv = response.body?.string() ?: return@withContext
+                    LogManager.log("[CSV] 下载成功, 大小: ${csv.length} 字节")
                     val dir = File(System.getProperty("user.home"), ".xdyl")
                     if (!dir.exists()) dir.mkdirs()
                     val file = File(dir, "file_list.csv")
                     file.writeText(csv)
                     saveLocalVersion(version)
-                    println("CSV 已下载到: ${file.absolutePath} (版本 $version)")
+                    LogManager.log("[CSV] 已保存到: ${file.absolutePath} (版本 $version)")
                 } else {
-                    println("CSV 下载失败: HTTP ${response.code}")
+                    LogManager.log("[CSV] 下载失败: HTTP ${response.code}")
                 }
             } catch (e: Exception) {
-                println("CSV 下载异常: ${e.message}")
-                e.printStackTrace()
+                LogManager.log("[CSV] 下载异常: ${e.javaClass.simpleName} - ${e.message}")
             }
         }
     }
