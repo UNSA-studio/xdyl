@@ -212,6 +212,10 @@ fun main() = application {
         logText = logBuilder.toString()
     }
 
+    var pingResult by remember { mutableStateOf("") }
+    fun pingServer() { pingResult = executePing("82.157.155.86", "Server") }
+    fun pingWifi() { pingResult = executePing("8.8.8.8", "WiFi") }
+
     val darkColorScheme = darkColorScheme(
         primary = Color(0xFFA0C4FF),
         onPrimary = Color.Black,
@@ -364,7 +368,10 @@ fun main() = application {
                                 onErrorCodes = { showErrorCodesDialog = true },
                                 onAbout = { showAboutDialog = true },
                                 onThreadInfo = { showThreadInfoDialog = true },
-                                onResetData = { showResetConfirm = true }
+                                onResetData = { showResetConfirm = true },
+                                onPingServer = { scope.launch { pingServer() } },
+                                onPingWifi = { scope.launch { pingWifi() } },
+                                pingResult = pingResult
                             )
                             "extension" -> ExtensionScreen(
                                 unlockThread = unlockThread,
@@ -774,7 +781,10 @@ fun SettingsScreen(
     onErrorCodes: () -> Unit,
     onAbout: () -> Unit,
     onThreadInfo: () -> Unit = {},
-    onResetData: () -> Unit = {}
+    onResetData: () -> Unit = {},
+    onPingServer: () -> Unit = {},
+    onPingWifi: () -> Unit = {},
+    pingResult: String = ""
 ) {
     val tfColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = Color.White,
@@ -852,6 +862,20 @@ fun SettingsScreen(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
             ) { Text("进入扩展页面", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        // Ping 按钮
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = onPingServer, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
+                Text("Ping Server", fontSize = 14.sp, fontFamily = silverFontFamily)
+            }
+            Button(onClick = onPingWifi, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
+                Text("Ping WiFi", fontSize = 14.sp, fontFamily = silverFontFamily)
+            }
+        }
+        if (pingResult.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Text(pingResult, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
         }
         Spacer(modifier = Modifier.height(24.dp))
         // 导出日志
@@ -1209,4 +1233,15 @@ fun compareVersionStrings(v1: String, v2: String): Int {
         if (a != b) return a - b
     }
     return 0
+}
+
+fun executePing(address: String, label: String): String {
+    return try {
+        val process = Runtime.getRuntime().exec(arrayOf("ping", "-n", "4", address))
+        val output = process.inputStream.bufferedReader().readText()
+        process.waitFor()
+        val loss = Regex("(\\d+)% loss").find(output)?.groupValues?.get(1) ?: "?"
+        val avg = Regex("Average = (\\d+)ms").find(output)?.groupValues?.get(1) ?: "?"
+        "[$label] 丢包: $loss% 平均: ${avg}ms"
+    } catch (e: Exception) { "[$label] Ping失败: ${e.message}" }
 }
