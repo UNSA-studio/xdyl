@@ -278,8 +278,6 @@ fun main() = application {
                                                     parseDesktopCsvMods()
                                                 }
                                                 LogManager.log("CSV 解析完成: ${csvMods.size} 个模组")
-                                                // 只下载服务器上实际存在的模组（和安卓逻辑一致）
-                                                val csvSet = csvMods.map { it.fileName }.toSet()
                                                 val serverMods = csvMods.filter { it.fileName in serverFiles.toSet() }
                                                 val toDownload = filterOutUnchangedModsDesktop(targetModsDir!!, serverMods)
                                                 if (toDownload.isEmpty()) {
