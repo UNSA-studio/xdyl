@@ -1,6 +1,7 @@
 package www.xdyl.hygge.desktop
 
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,7 +29,7 @@ class VersionManager(private val prefs: Preferences) {
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
-    private val gson = Gson()
+    private val gson = GsonBuilder().disableJdkUnsafe().create()
     private val BASE_URL = "https://unsa-fdws.cc.cd/api/download/"
     private val API_KEY = "US.Kx9Qm2p"
 
