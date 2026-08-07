@@ -9,14 +9,14 @@ import okhttp3.Request
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-data class ModEntry(
+data class ModEntry @JvmOverloads constructor(
     val name: String,
     val version: String = "",
     @SerializedName("old_version") val oldVersion: String = "",
     @SerializedName("new_version") val newVersion: String = ""
 )
 
-data class VersionDiff(
+data class VersionDiff @JvmOverloads constructor(
     val version: String,
     val added: List<ModEntry> = emptyList(),
     val removed: List<ModEntry> = emptyList(),
