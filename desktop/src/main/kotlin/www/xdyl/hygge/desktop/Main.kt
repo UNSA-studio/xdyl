@@ -298,25 +298,34 @@ fun main() = application {
                                                     toDownload.map { mod ->
                                                         launch {
                                                             sem.acquire()
-                                                            try {
-                                                                val file = File(targetModsDir!!, mod.fileName)
-                                                                val encodedName = URLEncoder.encode(mod.fileName, "UTF-8").replace("+", "%20")
-                                                                val chunks = if (mod.size > 0) maxOf(2, (mod.size / 524288).toInt()) else 2
-                                                                        val useChunked = chunks > 1
-                                                                        DownloadManager(Constants.BASE_URL + encodedName, mod.size, chunks, useChunked)
-                                                                    .download(file) { /* 只用文件数进度 */ }
-                                                                if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256))
-                                                                    throw RuntimeException("Checksum mismatch")
+                                                            var success = false
+                                                            for (attempt in 1..5) {
+                                                                try {
+                                                                    val file = File(targetModsDir!!, mod.fileName)
+                                                                    val encodedName = URLEncoder.encode(mod.fileName, "UTF-8").replace("+", "%20")
+                                                                    val chunks = if (mod.size > 0) maxOf(2, (mod.size / 524288).toInt()) else 2
+                                                                            val useChunked = chunks > 1
+                                                                            DownloadManager(Constants.BASE_URL + encodedName, mod.size, chunks, useChunked)
+                                                                        .download(file) { /* 只用文件数进度 */ }
+                                                                    if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256))
+                                                                        throw RuntimeException("校验失败")
+                                                                    success = true
+                                                                    break
+                                                                } catch (e: Exception) {
+                                                                    if (attempt < 5) kotlinx.coroutines.delay((1000L * attempt).coerceAtMost(5000))
+                                                                }
+                                                            }
+                                                            if (success) {
                                                                 completed++
                                                                 logBuilder.appendLine("[OK] ${mod.fileName}")
-                                                                logText = logBuilder.toString()
-                                                                progress = (completed * 100f) / total
-                                                                statusText = "$completed/$total"
-                                                            } catch (e: Exception) {
+                                                            } else {
                                                                 logBuilder.appendLine("[FAILED] ${mod.fileName}")
-                                                                logText = logBuilder.toString()
                                                                 failed.incrementAndGet()
-                                                            } finally { sem.release() }
+                                                            }
+                                                            logText = logBuilder.toString()
+                                                            progress = (completed * 100f) / total
+                                                            statusText = "$completed/$total"
+                                                            sem.release()
                                                         }
                                                     }.joinAll()
                                                 }
@@ -1270,8 +1279,15 @@ fun executePing(address: String, label: String): String {
         val process = Runtime.getRuntime().exec(arrayOf("ping", "-n", "4", address))
         val output = process.inputStream.bufferedReader().readText()
         process.waitFor()
-        val loss = Regex("(\\d+)% loss").find(output)?.groupValues?.get(1) ?: "?"
-        val avg = Regex("Average = (\\d+)ms").find(output)?.groupValues?.get(1) ?: "?"
-        "[$label] 丢包: $loss% 平均: ${avg}ms"
-    } catch (e: Exception) { "[$label] Ping失败: ${e.message}" }
+        val loss = Regex("(\\d+)%").find(output)?.groupValues?.get(1) ?: "?"
+        val avg = Regex("Average = (\\d+)ms").find(output)?.groupValues?.get(1)
+        val min = Regex("Minimum = (\\d+)ms").find(output)?.groupValues?.get(1)
+        val max = Regex("Maximum = (\\d+)ms").find(output)?.groupValues?.get(1)
+        buildString {
+            appendLine("[$label]")
+            appendLine("丢包率: $loss%")
+            if (min != null) appendLine("最小/平均/最大: ${min}/${avg ?: "?"}/${max ?: "?"}ms")
+            else if (avg != null) appendLine("平均: ${avg}ms")
+        }
+    } catch (e: Exception) { "[$label] Ping 失败: ${e.message}" }
 }
