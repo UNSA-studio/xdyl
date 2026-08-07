@@ -255,14 +255,16 @@ fun main() = application {
                                 neoforgeCheckEnabled = neoforgeCheckEnabled,
                                 onStartDownload = {
                                     if (!downloading && targetModsDir != null) {
+                                        var blocked = false
                                         if (neoforgeCheckEnabled) {
-                                            val neoforgeVersion = getNeoForgeVersion(targetModsDir!!, prefs)
-                                            if (neoforgeVersion != null && compareVersionStrings(neoforgeVersion, "21.1.235") < 0) {
-                                                showError("NeoForge 版本过低: $neoforgeVersion (需要 ≥ 21.1.235)")
-                                                return@onStartDownload
+                                            val nv = getNeoForgeVersion(targetModsDir!!, prefs)
+                                            if (nv != null && compareVersionStrings(nv, "21.1.235") < 0) {
+                                                showError("NeoForge 版本过低: $nv (需要 ≥ 21.1.235)")
+                                                blocked = true
                                             }
                                         }
-                                        downloading = true
+                                        if (!blocked) {
+                                            downloading = true
                                         scope.launch {
                                             try {
                                                 LogManager.log("开始扫描服务器文件...")
@@ -341,6 +343,7 @@ fun main() = application {
                                                 logBuilder.appendLine("Exception: ${e.message}")
                                                 logText = logBuilder.toString()
                                             } finally { downloading = false }
+                                        }
                                         }
                                     }
                                 },
