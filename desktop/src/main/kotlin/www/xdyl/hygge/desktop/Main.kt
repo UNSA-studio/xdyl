@@ -83,6 +83,8 @@ fun main() = application {
     var showFolderErrorDialog by remember { mutableStateOf(false) }
     var showFileBrowserDialog by remember { mutableStateOf(false) }
     var showResetConfirm by remember { mutableStateOf(false) }
+    var showCsvUpdateDialog by remember { mutableStateOf(false) }
+    var csvUpdateInfo by remember { mutableStateOf<VersionDiff?>(null) }
     var folderErrorMsg by remember { mutableStateOf("") }
     var slideDirection by remember { mutableStateOf(1) }
 
@@ -168,11 +170,9 @@ fun main() = application {
         val versionManager = VersionManager(prefs)
         versionManager.checkAndUpdate(
             onUpdateAvailable = { diff ->
-                println("New CSV version found: ${diff.version}")
-                scope.launch {
-                    versionManager.downloadNewCsv(diff.version)
-                    println("CSV updated to ${diff.version}")
-                }
+                LogManager.log("[CSV] 发现新版本 ${diff.version}，弹窗通知用户")
+                csvUpdateInfo = diff
+                showCsvUpdateDialog = true
             },
             onComplete = { /* 无需弹窗，静默更新 */ }
         )
@@ -605,6 +605,39 @@ fun main() = application {
                             },
                             dismissButton = {
                                 TextButton(onClick = { showResetConfirm = false }) { Text("取消", fontFamily = silverFontFamily) }
+                            }
+                        )
+                    }
+                    if (showCsvUpdateDialog && csvUpdateInfo != null) {
+                        val diff = csvUpdateInfo!!
+                        AlertDialog(
+                            onDismissRequest = { showCsvUpdateDialog = false },
+                            title = { Text("CSV 需要更新 (${diff.version})", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
+                            text = {
+                                Column {
+                                    Text(buildString {
+                                        appendLine("【新增】")
+                                        diff.added.forEach { appendLine("  • ${it.name}") }
+                                        appendLine()
+                                        appendLine("【移除】")
+                                        diff.removed.forEach { appendLine("  • ${it.name}") }
+                                        appendLine()
+                                        appendLine("【更新】")
+                                        diff.updated.forEach { appendLine("  • ${it.name} (${it.oldVersion} → ${it.newVersion})") }
+                                    }.trim(), fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showCsvUpdateDialog = false
+                                    scope.launch {
+                                        VersionManager(prefs).downloadNewCsv(diff.version)
+                                        LogManager.log("[CSV] 用户确认更新完成")
+                                    }
+                                }) { Text("更新", fontFamily = silverFontFamily) }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showCsvUpdateDialog = false }) { Text("稍后", fontFamily = silverFontFamily) }
                             }
                         )
                     }
