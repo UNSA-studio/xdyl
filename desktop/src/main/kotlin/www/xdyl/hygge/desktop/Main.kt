@@ -86,6 +86,7 @@ fun main() = application {
     var showCsvUpdateDialog by remember { mutableStateOf(false) }
     var csvUpdateInfo by remember { mutableStateOf<VersionDiff?>(null) }
     var folderErrorMsg by remember { mutableStateOf("") }
+    var showResourcePackDialog by remember { mutableStateOf(false) }
     var slideDirection by remember { mutableStateOf(1) }
 
     var dailyQuote by remember { mutableStateOf(null as Quote?) }
@@ -339,6 +340,10 @@ fun main() = application {
                                                 }
                                                 else logBuilder.appendLine("Update completed!")
                                                 logText = logBuilder.toString()
+                                                // 材质包检查
+                                                val vn = prefs.getString("version_folder", "1.21.1-NeoForge") ?: "1.21.1-NeoForge"
+                                                val rpFile = File(targetModsDir!!.parentFile, "$vn/resourcepacks/generated.zip")
+                                                if (!rpFile.exists()) showResourcePackDialog = true
                                             } catch (e: Exception) {
                                                 logBuilder.appendLine("Exception: ${e.message}")
                                                 logText = logBuilder.toString()
@@ -657,6 +662,30 @@ fun main() = application {
                             dismissButton = {
                                 TextButton(onClick = { showCsvUpdateDialog = false }) { Text("稍后", fontFamily = silverFontFamily) }
                             }
+                        )
+                    }
+                    if (showResourcePackDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showResourcePackDialog = false },
+                            title = { Text("安装服务器材质包", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
+                            text = { Text("是否要安装 Server 材质包？\n这是必要的，如不装进服将下载材质包，\n在这里安装可以加快速度。", fontFamily = silverFontFamily, color = Color.White) },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showResourcePackDialog = false
+                                    scope.launch {
+                                        try {
+                                            val vn = prefs.getString("version_folder", "1.21.1-NeoForge") ?: "1.21.1-NeoForge"
+                                            val dest = File(targetModsDir!!.parentFile, "$vn/resourcepacks/generated.zip")
+                                            dest.parentFile?.mkdirs()
+                                            okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder().url("${Constants.BASE_URL}generated.zip").build()).execute().use { resp ->
+                                                if (resp.isSuccessful) dest.outputStream().use { it.write(resp.body!!.bytes()) }
+                                            }
+                                            LogManager.log("材质包已安装")
+                                        } catch (e: Exception) { LogManager.log("材质包下载失败: ${e.message}") }
+                                    }
+                                }) { Text("好的", fontFamily = silverFontFamily) }
+                            },
+                            dismissButton = { TextButton(onClick = { showResourcePackDialog = false }) { Text("取消", fontFamily = silverFontFamily) } }
                         )
                     }
                     }
