@@ -248,8 +248,16 @@ fun main() = application {
                             "main" -> MainScreen(
                                 targetModsDir = targetModsDir,
                                 onSelectDir = { showFileBrowserDialog = true },
+                                neoforgeCheckEnabled = neoforgeCheckEnabled,
                                 onStartDownload = {
                                     if (!downloading && targetModsDir != null) {
+                                        if (neoforgeCheckEnabled) {
+                                            val neoforgeVersion = getNeoForgeVersion(targetModsDir!!, prefs)
+                                            if (neoforgeVersion != null && compareVersionStrings(neoforgeVersion, "21.1.235") < 0) {
+                                                showError("NeoForge 版本过低: $neoforgeVersion (需要 ≥ 21.1.235)")
+                                                return@onStartDownload
+                                            }
+                                        }
                                         downloading = true
                                         scope.launch {
                                             try {
@@ -659,7 +667,8 @@ fun MainScreen(
     progress: Float,
     statusText: String,
     onSettings: () -> Unit,
-    dailyQuote: Quote?
+    dailyQuote: Quote?,
+    neoforgeCheckEnabled: Boolean = true
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -1173,3 +1182,31 @@ fun calculateMD5Desktop(file: File): String? = try {
     }
     digest.digest().joinToString("") { "%02x".format(it) }
 } catch (e: Exception) { null }
+
+fun getNeoForgeVersion(modsDir: File, prefs: Preferences): String? {
+    return try {
+        val versionName = prefs.getString("version_folder", "1.21.1-NeoForge") ?: "1.21.1-NeoForge"
+        val mc = findMinecraftDir(modsDir)
+        val versionDir = File(File(mc, "versions"), versionName)
+        val jsonFile = File(versionDir, "$versionName.json")
+        if (!jsonFile.exists()) return null
+        val content = jsonFile.readText()
+        val match = Regex("\"--fml\\.neoForgeVersion\",\\s*\"(\\d+\\.\\d+\\.\\d+)\"").find(content)
+        match?.groupValues?.get(1)
+    } catch (e: Exception) { null }
+}
+
+fun findMinecraftDir(start: File): File? {
+    val mc = File(start, ".minecraft"); if (mc.exists()) return mc
+    val mcAlt = File(start, "minecraft"); return if (mcAlt.exists()) mcAlt else null
+}
+
+fun compareVersionStrings(v1: String, v2: String): Int {
+    val p1 = v1.split(".").map { it.toIntOrNull() ?: 0 }
+    val p2 = v2.split(".").map { it.toIntOrNull() ?: 0 }
+    for (i in 0 until maxOf(p1.size, p2.size)) {
+        val a = p1.getOrElse(i) { 0 }; val b = p2.getOrElse(i) { 0 }
+        if (a != b) return a - b
+    }
+    return 0
+}
