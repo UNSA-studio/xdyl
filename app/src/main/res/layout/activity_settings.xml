@@ -47,8 +47,6 @@
             app:cardBackgroundColor="#2A2A2A"
             app:cardCornerRadius="12dp"
             app:cardElevation="0dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#3A3A3A">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -99,8 +97,6 @@
             app:cardBackgroundColor="#2A2A2A"
             app:cardCornerRadius="12dp"
             app:cardElevation="0dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#3A3A3A">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -164,8 +160,6 @@
             app:cardBackgroundColor="#2A2A2A"
             app:cardCornerRadius="12dp"
             app:cardElevation="0dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#3A3A3A">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -218,8 +212,6 @@
             app:cardBackgroundColor="#2A2A2A"
             app:cardCornerRadius="12dp"
             app:cardElevation="0dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#3A3A3A"
             android:layout_marginTop="8dp">
 
             <LinearLayout
@@ -281,8 +273,6 @@
             app:cardBackgroundColor="#2A2A2A"
             app:cardCornerRadius="12dp"
             app:cardElevation="0dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#3A3A3A">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -333,8 +323,6 @@
             app:cardBackgroundColor="#2A2A2A"
             app:cardCornerRadius="12dp"
             app:cardElevation="0dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#3A3A3A">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -390,8 +378,6 @@
             android:text="数据格式化"
             android:textColor="@color/primary_light_blue"
             android:backgroundTint="#330000"
-            android:strokeColor="#FF4444"
-            android:strokeWidth="1dp"
             android:layout_marginTop="12dp"
             android:textSize="16sp"/>
     </LinearLayout>
