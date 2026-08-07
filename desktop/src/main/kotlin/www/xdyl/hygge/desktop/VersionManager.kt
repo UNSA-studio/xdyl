@@ -1,8 +1,6 @@
 package www.xdyl.hygge.desktop
 
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
-import com.google.gson.annotations.SerializedName
+import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -10,14 +8,14 @@ import okhttp3.Request
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-data class ModEntry @JvmOverloads constructor(
+data class ModEntry(
     val name: String,
     val version: String = "",
-    @SerializedName("old_version") val oldVersion: String = "",
-    @SerializedName("new_version") val newVersion: String = ""
+    val oldVersion: String = "",
+    val newVersion: String = ""
 )
 
-data class VersionDiff @JvmOverloads constructor(
+data class VersionDiff(
     val version: String,
     val added: List<ModEntry> = emptyList(),
     val removed: List<ModEntry> = emptyList(),
@@ -29,7 +27,6 @@ class VersionManager(private val prefs: Preferences) {
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
-    private val gson = GsonBuilder().disableJdkUnsafe().create()
     private val BASE_URL = "https://unsa-fdws.cc.cd/api/download/"
     private val API_KEY = "US.Kx9Qm2p"
 
@@ -37,6 +34,25 @@ class VersionManager(private val prefs: Preferences) {
 
     fun saveLocalVersion(version: String) {
         prefs.putString("local_version", version)
+    }
+
+    /**手动解析 JSON，不用 Gson 类型安全反序列化（JVM 兼容性问题） */
+    private fun parseVersionDiff(json: String): VersionDiff {
+        val root = JsonParser.parseString(json).asJsonObject
+        val version = root.get("version").asString
+        fun parseModList(key: String): List<ModEntry> {
+            val arr = root.getAsJsonArray(key) ?: return emptyList()
+            return arr.map { elem ->
+                val obj = elem.asJsonObject
+                ModEntry(
+                    name = obj.get("name").asString,
+                    version = obj.get("version")?.asString ?: "",
+                    oldVersion = obj.get("old_version")?.asString ?: "",
+                    newVersion = obj.get("new_version")?.asString ?: ""
+                )
+            }
+        }
+        return VersionDiff(version, parseModList("added"), parseModList("removed"), parseModList("updated"))
     }
 
     suspend fun checkAndUpdate(
@@ -63,7 +79,7 @@ class VersionManager(private val prefs: Preferences) {
                     return@withContext
                 }
                 LogManager.log("[CSV] 收到JSON: ${json.take(200)}...")
-                val remote = gson.fromJson(json, VersionDiff::class.java)
+                val remote = parseVersionDiff(json)
                 val localVer = getLocalVersion()
                 LogManager.log("[CSV] 云端版本=${remote.version}, 本地版本=$localVer")
                 if (compareVersions(remote.version, localVer) > 0) {
