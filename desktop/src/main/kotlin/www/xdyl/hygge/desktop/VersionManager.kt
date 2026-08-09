@@ -109,7 +109,14 @@ class VersionManager(private val prefs: Preferences) {
                     val response = client.newCall(request).execute()
                     if (response.isSuccessful) {
                         val csv = response.body?.string() ?: continue
-                        LogManager.log("[CSV] 下载成功, 大小: ${csv.length} 字节")
+                        LogManager.log("[CSV] 下载成功, 大小: ${csv.length} 字节, 行数: ${csv.lines().size}")
+                        val lineCount = csv.lines().size
+                        if (lineCount < 80) {
+                            LogManager.log("[CSV] 警告: CSV 仅有 $lineCount 行, 可能不完整!")
+                            lastEx = Exception("CSV 不完整: 仅 $lineCount 行")
+                            if (attempt < 5) kotlinx.coroutines.delay((1000L * attempt).coerceAtMost(5000))
+                            continue
+                        }
                         val dir = File(System.getProperty("user.home"), ".xdyl")
                         if (!dir.exists()) dir.mkdirs()
                         val file = File(dir, "file_list.csv")

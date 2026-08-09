@@ -69,7 +69,7 @@ class VersionManager(private val context: Context) {
                 val remote = gson.fromJson(json, VersionDiff::class.java)
                 val localVer = getLocalVersion()
                 LogManager.log("[CSV] Remote version: ${remote.version}, local: $localVer")
-                if (remote.version > localVer) {
+                if (compareVersion(remote.version, localVer) > 0) {
                     withContext(Dispatchers.Main) { onUpdateAvailable(remote) }
                 } else {
                     withContext(Dispatchers.Main) { onComplete() }
@@ -83,36 +83,53 @@ class VersionManager(private val context: Context) {
 
     suspend fun downloadNewCsv(version: String) {
         withContext(Dispatchers.IO) {
-            try {
-                val request = Request.Builder()
-                    .url("${BASE_URL}file_list.csv")
-                    .header("X-API-Key", API_KEY)
-                    .build()
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val body = response.body ?: run {
-                        LogManager.log("[CSV] Download failed: empty body")
+            var lastEx: Exception? = null
+            for (attempt in 1..5) {
+                try {
+                    LogManager.log("[CSV] 下载尝试 $attempt/5 ...")
+                    val request = Request.Builder()
+                        .url("${BASE_URL}file_list.csv")
+                        .header("X-API-Key", API_KEY)
+                        .build()
+                    val response = client.newCall(request).execute()
+                    if (response.isSuccessful) {
+                        val body = response.body ?: continue
+                        val csv = body.string()
+                        LogManager.log("[CSV] 下载成功, 大小=${csv.length} 字符, 行数=${csv.lines().size}")
+                        val lineCount = csv.lines().size
+                        if (lineCount < 80) {
+                            LogManager.log("[CSV] 警告: 下载的 CSV 仅有 $lineCount 行, 可能不完整!")
+                            lastEx = Exception("CSV 不完整: 仅 $lineCount 行")
+                            if (attempt < 5) kotlinx.coroutines.delay((1000L * attempt).coerceAtMost(5000))
+                            continue
+                        }
+                        val file = File(context.filesDir, "file_list.csv")
+                        file.writeText(csv)
+                        saveLocalVersion(version)
+                        LogManager.log("[CSV] 已保存到 ${file.absolutePath} (版本 $version)")
                         return@withContext
+                    } else {
+                        lastEx = Exception("HTTP ${response.code}")
+                        LogManager.log("[CSV] 下载失败 (${attempt}/5): HTTP ${response.code}")
                     }
-                    val csv = body.string()
-                    LogManager.log("[CSV] Downloaded file_list.csv, size=${csv.length} chars, lines=${csv.lines().size}")
-                    // 完整性检查：CSV 至少要有 80 行（表头 + 至少 80 个模组）
-                    val lineCount = csv.lines().size
-                    if (lineCount < 80) {
-                        LogManager.log("[CSV] WARNING: downloaded CSV has only $lineCount lines, might be truncated!")
-                        // 不保存不完整的文件
-                        return@withContext
-                    }
-                    val file = File(context.filesDir, "file_list.csv")
-                    file.writeText(csv)
-                    saveLocalVersion(version)
-                    LogManager.log("[CSV] Saved to ${file.absolutePath}")
-                } else {
-                    LogManager.log("[CSV] Download failed: HTTP ${response.code}")
+                } catch (e: Exception) {
+                    lastEx = e
+                    LogManager.log("[CSV] 下载异常 (${attempt}/5): ${e.javaClass.simpleName} - ${e.message}")
                 }
-            } catch (e: Exception) {
-                LogManager.log("[CSV] Download exception: ${e.javaClass.simpleName} - ${e.message}")
+                if (attempt < 5) kotlinx.coroutines.delay((1000L * attempt).coerceAtMost(5000))
             }
+            LogManager.log("[CSV] 下载最终失败: ${lastEx?.message}")
         }
+    }
+
+    private fun compareVersion(v1: String, v2: String): Int {
+        val p1 = v1.split(".").map { it.toIntOrNull() ?: 0 }
+        val p2 = v2.split(".").map { it.toIntOrNull() ?: 0 }
+        for (i in 0 until maxOf(p1.size, p2.size)) {
+            val a = p1.getOrElse(i) { 0 }
+            val b = p2.getOrElse(i) { 0 }
+            if (a != b) return a - b
+        }
+        return 0
     }
 }
