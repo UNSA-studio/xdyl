@@ -213,9 +213,10 @@ fun main() = application {
         logText = logBuilder.toString()
     }
 
-    var pingResult by remember { mutableStateOf("") }
-    fun pingServer() { pingResult = executePing("82.157.155.86", "Server") }
-    fun pingWifi() { pingResult = executePing("8.8.8.8", "WiFi") }
+    var pingServerResult by remember { mutableStateOf("") }
+    var pingWifiResult by remember { mutableStateOf("") }
+    fun pingServer() { pingServerResult = executePing("82.157.155.86", "Server", true) }
+    fun pingWifi() { pingWifiResult = executePing("8.8.8.8", "WiFi", false) }
 
     val darkColorScheme = darkColorScheme(
         primary = Color(0xFFA0C4FF),
@@ -304,14 +305,16 @@ fun main() = application {
                                                                     val file = File(targetModsDir!!, mod.fileName)
                                                                     val encodedName = URLEncoder.encode(mod.fileName, "UTF-8").replace("+", "%20")
                                                                     val chunks = if (mod.size > 0) maxOf(2, (mod.size / 524288).toInt()) else 2
-                                                                            val useChunked = chunks > 1
-                                                                            DownloadManager(Constants.BASE_URL + encodedName, mod.size, chunks, useChunked)
+                                                                    val useChunked = chunks > 1
+                                                                    DownloadManager(Constants.BASE_URL + encodedName, mod.size, chunks, useChunked)
                                                                         .download(file) { /* 只用文件数进度 */ }
                                                                     if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256))
                                                                         throw RuntimeException("校验失败")
                                                                     success = true
                                                                     break
                                                                 } catch (e: Exception) {
+                                                                    logBuilder.appendLine("[RETRY $attempt] ${mod.fileName}")
+                                                                    logText = logBuilder.toString()
                                                                     if (attempt < 5) kotlinx.coroutines.delay((1000L * attempt).coerceAtMost(5000))
                                                                 }
                                                             }
@@ -386,7 +389,8 @@ fun main() = application {
                                 onResetData = { showResetConfirm = true },
                                 onPingServer = { scope.launch { pingServer() } },
                                 onPingWifi = { scope.launch { pingWifi() } },
-                                pingResult = pingResult
+                                pingServerResult = pingServerResult,
+                                pingWifiResult = pingWifiResult
                             )
                             "extension" -> ExtensionScreen(
                                 unlockThread = unlockThread,
@@ -823,7 +827,8 @@ fun SettingsScreen(
     onResetData: () -> Unit = {},
     onPingServer: () -> Unit = {},
     onPingWifi: () -> Unit = {},
-    pingResult: String = ""
+    pingServerResult: String = "",
+    pingWifiResult: String = ""
 ) {
     val tfColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = Color.White,
@@ -912,9 +917,13 @@ fun SettingsScreen(
                 Text("Ping WiFi", fontSize = 14.sp, fontFamily = silverFontFamily)
             }
         }
-        if (pingResult.isNotEmpty()) {
+        if (pingServerResult.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
-            Text(pingResult, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+            Text(pingServerResult, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+        }
+        if (pingWifiResult.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Text(pingWifiResult, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
         }
         Spacer(modifier = Modifier.height(24.dp))
         // 导出日志
@@ -1274,7 +1283,7 @@ fun compareVersionStrings(v1: String, v2: String): Int {
     return 0
 }
 
-fun executePing(address: String, label: String): String {
+fun executePing(address: String, label: String, hideIp: Boolean = false): String {
     return try {
         val process = Runtime.getRuntime().exec(arrayOf("ping", "-n", "4", address))
         val output = process.inputStream.bufferedReader().readText()
@@ -1283,11 +1292,14 @@ fun executePing(address: String, label: String): String {
         val avg = Regex("Average = (\\d+)ms").find(output)?.groupValues?.get(1)
         val min = Regex("Minimum = (\\d+)ms").find(output)?.groupValues?.get(1)
         val max = Regex("Maximum = (\\d+)ms").find(output)?.groupValues?.get(1)
+        val raw = if (hideIp) output.replace(Regex("\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b"), "***") else output
         buildString {
             appendLine("[$label]")
             appendLine("丢包率: $loss%")
             if (min != null) appendLine("最小/平均/最大: ${min}/${avg ?: "?"}/${max ?: "?"}ms")
             else if (avg != null) appendLine("平均: ${avg}ms")
+            appendLine()
+            appendLine(raw.trim())
         }
     } catch (e: Exception) { "[$label] Ping 失败: ${e.message}" }
 }
