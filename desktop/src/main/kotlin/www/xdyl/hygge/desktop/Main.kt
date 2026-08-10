@@ -38,6 +38,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.URI
 import java.net.URLEncoder
+import java.nio.charset.Charset
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.*
@@ -1286,7 +1287,7 @@ fun compareVersionStrings(v1: String, v2: String): Int {
 fun executePing(address: String, label: String, hideIp: Boolean = false): String {
     return try {
         val process = Runtime.getRuntime().exec(arrayOf("ping", "-n", "4", address))
-        val output = process.inputStream.bufferedReader(Charsets.GBK).readText()
+        val output = process.inputStream.bufferedReader(Charset.forName("GBK")).readText()
         process.waitFor()
         val loss = Regex("(\\d+)%").find(output)?.groupValues?.get(1) ?: "?"
         val avg = Regex("Average = (\\d+)ms").find(output)?.groupValues?.get(1)
