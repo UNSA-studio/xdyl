@@ -1286,7 +1286,7 @@ fun compareVersionStrings(v1: String, v2: String): Int {
 fun executePing(address: String, label: String, hideIp: Boolean = false): String {
     return try {
         val process = Runtime.getRuntime().exec(arrayOf("ping", "-n", "4", address))
-        val output = process.inputStream.bufferedReader().readText()
+        val output = process.inputStream.bufferedReader(Charsets.GBK).readText()
         process.waitFor()
         val loss = Regex("(\\d+)%").find(output)?.groupValues?.get(1) ?: "?"
         val avg = Regex("Average = (\\d+)ms").find(output)?.groupValues?.get(1)
