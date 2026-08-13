@@ -83,7 +83,6 @@ fun main() = application {
     var showCsvPickerDialog by remember { mutableStateOf(false) }
     var showFolderErrorDialog by remember { mutableStateOf(false) }
     var showFileBrowserDialog by remember { mutableStateOf(false) }
-    var showResetConfirm by remember { mutableStateOf(false) }
     var showCsvUpdateDialog by remember { mutableStateOf(false) }
     var csvUpdateInfo by remember { mutableStateOf<VersionDiff?>(null) }
     var folderErrorMsg by remember { mutableStateOf("") }
@@ -205,13 +204,6 @@ fun main() = application {
             appendLine("$code: $desc")
             appendLine()
         }
-    }
-
-    fun resetData() {
-        prefs.clear()
-        LogManager.log("所有配置数据已清除")
-        logBuilder.appendLine("===数据格式化完成===")
-        logText = logBuilder.toString()
     }
 
     var pingServerResult by remember { mutableStateOf("") }
@@ -387,7 +379,6 @@ fun main() = application {
                                 onErrorCodes = { showErrorCodesDialog = true },
                                 onAbout = { showAboutDialog = true },
                                 onThreadInfo = { showThreadInfoDialog = true },
-                                onResetData = { showResetConfirm = true },
                                 onPingServer = { scope.launch { pingServer() } },
                                 onPingWifi = { scope.launch { pingWifi() } },
                                 pingServerResult = pingServerResult,
@@ -626,23 +617,6 @@ fun main() = application {
                             }
                         }
                     }
-                    if (showResetConfirm) {
-                        AlertDialog(
-                            onDismissRequest = { showResetConfirm = false },
-                            title = { Text("数据格式化", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
-                            text = { Text("这将清除所有配置数据（目录路径、线程设置、CSV版本记录等），确定继续？", fontFamily = silverFontFamily, color = Color.White) },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    showResetConfirm = false
-                                    resetData()
-                                    exitApplication()
-                                }) { Text("清除并重启", color = Color.Red, fontFamily = silverFontFamily) }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showResetConfirm = false }) { Text("取消", fontFamily = silverFontFamily) }
-                            }
-                        )
-                    }
                     if (showCsvUpdateDialog && csvUpdateInfo != null) {
                         val diff = csvUpdateInfo!!
                         AlertDialog(
@@ -825,7 +799,6 @@ fun SettingsScreen(
     onErrorCodes: () -> Unit,
     onAbout: () -> Unit,
     onThreadInfo: () -> Unit = {},
-    onResetData: () -> Unit = {},
     onPingServer: () -> Unit = {},
     onPingWifi: () -> Unit = {},
     pingServerResult: String = "",
@@ -963,20 +936,8 @@ fun SettingsScreen(
             ) { Text("关于软件", fontSize = 24.sp, fontFamily = silverFontFamily) }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        // 数据格式化
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(DesktopIcons.Thread, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color.Red.copy(alpha = 0.7f))
-            Spacer(modifier = Modifier.width(12.dp))
-            OutlinedButton(
-                onClick = onResetData,
-                modifier = Modifier.weight(1f).height(56.dp),
-                border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.5f)),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red.copy(alpha = 0.8f))
-            ) { Text("数据格式化", fontSize = 24.sp, fontFamily = silverFontFamily) }
-        }
     }
 }
-
 // ===== Extension Screen =====
 @Composable
 fun ExtensionScreen(
