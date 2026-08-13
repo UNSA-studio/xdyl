@@ -79,21 +79,6 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.btnErrorCodes.setOnClickListener { showErrorCodes() }
         binding.btnAbout.setOnClickListener { showAbout() }
-
-        binding.btnResetData.setOnClickListener {
-            MaterialAlertDialogBuilder(this)
-                .setTitle("数据格式化")
-                .setMessage("这将清除所有配置数据（目录路径、线程设置、CSV版本记录等），确定继续？")
-                .setPositiveButton("清除并重启") { _, _ ->
-                    prefs.edit().clear().commit()
-                    LogManager.clear()
-                    Toast.makeText(this, "数据已清除，正在重启...", Toast.LENGTH_SHORT).show()
-                    finishAffinity()
-                    System.exit(0)
-                }
-                .setNegativeButton("取消", null)
-                .show()
-        }
     }
 
     private fun loadPrefs() {

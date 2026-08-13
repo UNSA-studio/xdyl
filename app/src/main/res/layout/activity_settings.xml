@@ -382,15 +382,5 @@
             android:backgroundTint="@color/primary_light_blue"
             android:layout_marginTop="12dp"
             android:textSize="16sp"/>
-
-        <Button
-            android:id="@+id/btnResetData"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="数据格式化"
-            android:textColor="@color/primary_light_blue"
-            android:backgroundTint="#330000"
-            android:layout_marginTop="12dp"
-            android:textSize="16sp"/>
     </LinearLayout>
 </ScrollView>
