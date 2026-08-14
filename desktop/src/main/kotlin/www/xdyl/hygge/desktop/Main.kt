@@ -919,14 +919,34 @@ fun SettingsScreen(
             Button(onClick = onPingWifi, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
                 Text("Ping WiFi", fontSize = 14.sp, fontFamily = silverFontFamily)
             }
+AnimatedContent(
+            targetState = pingServerResult,
+            transitionSpec = {
+                (fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 4 }) togetherWith
+                        (fadeOut(tween(150)) + slideOutVertically(tween(150)) { -it / 4 })
+            }
+        ) { result ->
+            Column {
+                if (result.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(result, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                }
+            }
         }
-        if (pingServerResult.isNotEmpty()) {
-            Spacer(Modifier.height(4.dp))
-            Text(pingServerResult, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+        AnimatedContent(
+            targetState = pingWifiResult,
+            transitionSpec = {
+                (fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 4 }) togetherWith
+                        (fadeOut(tween(150)) + slideOutVertically(tween(150)) { -it / 4 })
+            }
+        ) { result ->
+            Column {
+                if (result.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(result, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                }
+            }
         }
-        if (pingWifiResult.isNotEmpty()) {
-            Spacer(Modifier.height(4.dp))
-            Text(pingWifiResult, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
         }
         Spacer(modifier = Modifier.height(24.dp))
         // 导出日志

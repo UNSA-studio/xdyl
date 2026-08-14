@@ -131,7 +131,10 @@ class SettingsActivity : AppCompatActivity() {
         textView.text = "Pinging..."
         scope.launch {
             val result = withContext(Dispatchers.IO) { executePing(address, hideIp) }
+            // 结果淡入动画
+            textView.alpha = 0f
             textView.text = result
+            textView.animate().alpha(1f).setDuration(300).start()
         }
     }
 
