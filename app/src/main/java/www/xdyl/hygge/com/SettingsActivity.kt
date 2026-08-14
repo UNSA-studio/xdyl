@@ -74,8 +74,14 @@ class SettingsActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
         }
 
-        binding.btnPingServer.setOnClickListener { startPing("82.157.155.86", binding.tvPingServerResult, true) }
-        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", binding.tvPingWifiResult, false) }
+        binding.btnPingServer.setOnClickListener {
+            scrollToTarget(binding.btnPingServer)
+            startPing("82.157.155.86", binding.tvPingServerResult, true)
+        }
+        binding.btnPingWifi.setOnClickListener {
+            scrollToTarget(binding.btnPingWifi)
+            startPing("8.8.8.8", binding.tvPingWifiResult, false)
+        }
 
         binding.btnExtensionPage.setOnClickListener {
             startActivity(Intent(this, EasterEggActivity::class.java))
@@ -131,10 +137,20 @@ class SettingsActivity : AppCompatActivity() {
         textView.text = "Pinging..."
         scope.launch {
             val result = withContext(Dispatchers.IO) { executePing(address, hideIp) }
-            // 结果淡入动画
-            textView.alpha = 0f
             textView.text = result
-            textView.animate().alpha(1f).setDuration(300).start()
+        }
+    }
+
+    // 平滑滚动到目标视图（相对 ScrollView 内容坐标）
+    private fun scrollToTarget(target: View) {
+        binding.settingsScrollView.post {
+            var y = 0
+            var v: View? = target
+            while (v != null && v != binding.settingsScrollView) {
+                y += v.top
+                v = v.parent as? View
+            }
+            binding.settingsScrollView.smoothScrollTo(0, (y - 50).coerceAtLeast(0))
         }
     }
 
