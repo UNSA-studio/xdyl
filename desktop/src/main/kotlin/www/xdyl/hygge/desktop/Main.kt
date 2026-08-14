@@ -3,6 +3,7 @@ package www.xdyl.hygge.desktop
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,6 +21,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -459,6 +462,7 @@ fun main() = application {
                     AnimatedVisibility(visible=showCsvPickerDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         var csvDir by remember { mutableStateOf(File(System.getProperty("user.home"))) }
                         var csvFiles by remember { mutableStateOf(csvDir.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()) }
+                        var csvNavDir by remember { mutableStateOf(1) }
                         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showCsvPickerDialog = false }, contentAlignment = Alignment.Center) {
                             Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
                                 Column(modifier = Modifier.padding(20.dp)) {
@@ -466,25 +470,35 @@ fun main() = application {
                                     Spacer(Modifier.height(8.dp))
                                     Text(csvDir.absolutePath, color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
                                     Spacer(Modifier.height(8.dp))
-                                    LazyColumn(modifier = Modifier.height(140.dp)) {
-                                        items(csvFiles) { f ->
-                                            TextButton(onClick = {
-                                                if (f.isDirectory) {
-                                                    csvDir = f
-                                                    csvFiles = f.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()
-                                                } else {
-                                                    localCsvPath = f.absolutePath
-                                                    prefs.putString("local_csv_path", localCsvPath)
-                                                    showCsvPickerDialog = false
+                                    AnimatedContent(
+                                        targetState = csvDir,
+                                        transitionSpec = {
+                                            val d = csvNavDir
+                                            (slideInHorizontally { d * it } + fadeIn(tween(250))) togetherWith
+                                                    (slideOutHorizontally { -d * it } + fadeOut(tween(250)))
+                                        }
+                                    ) { _ ->
+                                        LazyColumn(modifier = Modifier.height(140.dp)) {
+                                            items(csvFiles) { f ->
+                                                TextButton(onClick = {
+                                                    if (f.isDirectory) {
+                                                        csvNavDir = 1
+                                                        csvDir = f
+                                                        csvFiles = f.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()
+                                                    } else {
+                                                        localCsvPath = f.absolutePath
+                                                        prefs.putString("local_csv_path", localCsvPath)
+                                                        showCsvPickerDialog = false
+                                                    }
+                                                }, modifier = Modifier.fillMaxWidth()) {
+                                                    Text(if (f.isDirectory) "📁 ${f.name}" else "📄 ${f.name}", color = if (f.isDirectory) Color(0xFFA0C4FF) else Color.White, fontSize = 14.sp, fontFamily = silverFontFamily)
                                                 }
-                                            }, modifier = Modifier.fillMaxWidth()) {
-                                                Text(if (f.isDirectory) "📁 ${f.name}" else "📄 ${f.name}", color = if (f.isDirectory) Color(0xFFA0C4FF) else Color.White, fontSize = 14.sp, fontFamily = silverFontFamily)
                                             }
                                         }
                                     }
                                     Spacer(Modifier.height(8.dp))
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        TextButton(onClick = { csvDir.parentFile?.let { csvDir = it; csvFiles = it.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList() } }) { Text("返回上级", fontFamily = silverFontFamily) }
+                                        TextButton(onClick = { csvDir.parentFile?.let { csvNavDir = -1; csvDir = it; csvFiles = it.listFiles()?.filter { it.isDirectory || it.name.endsWith(".csv") }?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList() } }) { Text("返回上级", fontFamily = silverFontFamily) }
                                         TextButton(onClick = { showCsvPickerDialog = false }) { Text("取消", fontFamily = silverFontFamily) }
                                     }
                                 }
@@ -695,6 +709,18 @@ fun MainScreen(
     dailyQuote: Quote?,
     neoforgeCheckEnabled: Boolean = true
 ) {
+    val animScope = rememberCoroutineScope()
+    // 设置按钮旋转（对应 Android 点击旋转 180°）
+    val settingsRotation = remember { Animatable(0f) }
+    // 选择目录/开始下载按钮点击脉冲
+    val selectScale = remember { Animatable(1f) }
+    val downloadScale = remember { Animatable(1f) }
+    fun pulse(anim: Animatable<Float, *>) {
+        animScope.launch {
+            anim.snapTo(0.94f)
+            anim.animateTo(1f, tween(150))
+        }
+    }
     val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
@@ -709,8 +735,11 @@ fun MainScreen(
                     Text("星云更新器-Windows端", color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 18.sp, fontFamily = silverFontFamily)
                 }
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = onSettings) {
-                    Icon(Icons.Default.Settings, contentDescription = "设置", tint = Color(0xFFA0C4FF), modifier = Modifier.size(28.dp))
+                IconButton(onClick = {
+                    animScope.launch { settingsRotation.animateTo(settingsRotation.value + 180f, tween(300)) }
+                    onSettings()
+                }) {
+                    Icon(Icons.Default.Settings, contentDescription = "设置", tint = Color(0xFFA0C4FF), modifier = Modifier.size(28.dp).rotate(settingsRotation.value))
                 }
             }
 
@@ -719,15 +748,15 @@ fun MainScreen(
             // 按钮组
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 Button(
-                    onClick = onSelectDir,
-                    modifier = Modifier.weight(1f).height(42.dp),
+                    onClick = { pulse(selectScale); onSelectDir() },
+                    modifier = Modifier.weight(1f).height(42.dp).scale(selectScale.value),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
                 ) { Text("选择目录", fontSize = 18.sp, fontFamily = silverFontFamily) }
                 Button(
-                    onClick = onStartDownload,
+                    onClick = { pulse(downloadScale); onStartDownload() },
                     enabled = targetModsDir != null && !downloading,
-                    modifier = Modifier.weight(1f).height(42.dp),
+                    modifier = Modifier.weight(1f).height(42.dp).scale(downloadScale.value),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
                 ) { Text(if (targetModsDir == null) "请先选择目录" else "开始下载", fontSize = 18.sp, fontFamily = silverFontFamily) }
@@ -1044,12 +1073,15 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
         )
     }
     val roots = remember { File.listRoots().filter { it.exists() }.sortedBy { it.absolutePath } }
+    // 目录切换方向：1=前进(右滑入)，-1=后退(左滑入)
+    var navDirection by remember { mutableStateOf(1) }
 
     val displayFiles = files.filter { f ->
         !f.name.startsWith(".") && !f.name.startsWith("$") && f.isDirectory
     }
 
-    val onNavigate: (File) -> Unit = { dir ->
+    val onNavigate: (File, Int) -> Unit = { dir, dirNav ->
+        navDirection = dirNav
         currentDir = dir
         files = dir.listFiles()?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()
     }
@@ -1074,7 +1106,7 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
                     val active = currentDir.absolutePath.startsWith(root.absolutePath)
                     FilterChip(
                         selected = active,
-                        onClick = { onNavigate(root) },
+                        onClick = { onNavigate(root, 1) },
                         label = {
                             Text(
                                 root.absolutePath.removeSuffix("\\"),
@@ -1100,7 +1132,7 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
 
         val isRoot = currentDir.parentFile == null
         Button(
-            onClick = { currentDir.parentFile?.let { onNavigate(it) } },
+            onClick = { currentDir.parentFile?.let { onNavigate(it, -1) } },
             enabled = !isRoot,
             modifier = Modifier.height(48.dp).padding(horizontal = 16.dp),
             shape = RoundedCornerShape(12.dp),
@@ -1108,22 +1140,31 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
         ) { Text("返回上级", fontSize = 20.sp, fontFamily = silverFontFamily) }
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            items(displayFiles) { file ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { if (file.isDirectory) onNavigate(file) }
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "${if (file.isDirectory) "[DIR] " else "[FILE] "}${file.name}",
-                        color = if (file.isDirectory) Color(0xFFA0C4FF) else Color.White,
-                        fontSize = 22.sp,
-                        fontFamily = silverFontFamily
-                    )
+        AnimatedContent(
+            targetState = currentDir,
+            transitionSpec = {
+                val dir = navDirection
+                (slideInHorizontally { dir * it } + fadeIn(tween(250))) togetherWith
+                        (slideOutHorizontally { -dir * it } + fadeOut(tween(250)))
+            },
+            modifier = Modifier.weight(1f).fillMaxWidth()
+        ) { _ ->
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(displayFiles) { file ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { if (file.isDirectory) onNavigate(file, 1) }
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${if (file.isDirectory) "[DIR] " else "[FILE] "}${file.name}",
+                            color = if (file.isDirectory) Color(0xFFA0C4FF) else Color.White,
+                            fontSize = 22.sp,
+                            fontFamily = silverFontFamily
+                        )
+                    }
                 }
             }
         }

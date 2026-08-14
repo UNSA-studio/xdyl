@@ -6,6 +6,7 @@ import android.os.Environment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AnimationUtils
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -26,6 +27,13 @@ class EasterEggActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_easter_egg)
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
+
+        val btnBack = findViewById<ImageButton>(R.id.btnBack)
+        btnBack.setOnClickListener {
+            finish()
+            @Suppress("DEPRECATION")
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        }
 
         val swUnlock = findViewById<SwitchMaterial>(R.id.swUnlockThread)
         swUnlock.isChecked = prefs.getBoolean("unlock_thread_limit", false)
@@ -119,7 +127,7 @@ class EasterEggActivity : AppCompatActivity() {
         val items = whitelist.toTypedArray()
         val checked = BooleanArray(items.size)
 
-        MaterialAlertDialogBuilder(this)
+        MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
             .setTitle("模组白名单")
             .setMultiChoiceItems(items, checked) { _, which, isChecked ->
                 checked[which] = isChecked
@@ -127,7 +135,7 @@ class EasterEggActivity : AppCompatActivity() {
             .setPositiveButton("添加") { _, _ ->
                 val input = EditText(this)
                 input.hint = "输入模组文件名"
-                MaterialAlertDialogBuilder(this)
+                MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
                     .setTitle("添加白名单")
                     .setView(input)
                     .setPositiveButton("确定") { _, _ ->
@@ -186,8 +194,7 @@ class EasterEggActivity : AppCompatActivity() {
                     (holder.itemView as TextView).text = f.name
                     holder.itemView.setOnClickListener {
                         if (f.isDirectory) {
-                            currentDir = f; prefs.edit().putString("csv_browser_last_path", f.absolutePath).apply()
-                            loadDir(f)
+                            navigate(f, true)
                         } else if (f.name.endsWith(".csv")) {
                             prefs.edit().putString("local_csv_path", f.absolutePath).apply()
                             csvBrowseDialog?.dismiss()
@@ -202,17 +209,34 @@ class EasterEggActivity : AppCompatActivity() {
             recycler.adapter = adapter
             updateUpButton(dir)
         }
+
+        // 目录切换滑动动画：前进向右滑出+左滑入，返回反向
+        fun navigate(dir: File, forward: Boolean) {
+            val width = recycler.width.toFloat()
+            recycler.animate()
+                .translationX(if (forward) -width else width)
+                .setDuration(250)
+                .setListener(object : android.animation.AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: android.animation.Animator) {
+                        currentDir = dir
+                        prefs.edit().putString("csv_browser_last_path", dir.absolutePath).apply()
+                        loadDir(dir)
+                        recycler.translationX = if (forward) width else -width
+                        recycler.animate().translationX(0f).setDuration(250).setListener(null).start()
+                    }
+                })
+                .start()
+        }
         loadDir(currentDir!!)
 
-        val dialog = MaterialAlertDialogBuilder(this)
+        val dialog = MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
             .setView(view)
             .setNegativeButton("返回上级", null)
             .create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
                 val parent = currentDir!!.parentFile ?: return@setOnClickListener
-                currentDir = parent; prefs.edit().putString("csv_browser_last_path", parent.absolutePath).apply()
-                loadDir(parent)
+                navigate(parent, false)
             }
         }
         csvBrowseDialog = dialog

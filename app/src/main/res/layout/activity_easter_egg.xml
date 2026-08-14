@@ -18,14 +18,32 @@
             android:padding="16dp"
             android:animateLayoutChanges="true">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="扩展页面"
-                android:textColor="@color/primary_light_blue"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="16dp"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+
+                <ImageButton
+                    android:id="@+id/btnBack"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_arrow_back"
+                    android:contentDescription="返回"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:tint="@color/primary_light_blue"/>
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="扩展页面"
+                    android:textColor="@color/primary_light_blue"
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:layout_marginStart="4dp"/>
+            </LinearLayout>
 
             <!-- 解锁线程上限 -->
             <com.google.android.material.card.MaterialCardView
