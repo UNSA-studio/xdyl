@@ -134,24 +134,34 @@ class EasterEggActivity : AppCompatActivity() {
             .setMultiChoiceItems(items, checked) { _, which, isChecked ->
                 checked[which] = isChecked
             }
-            .setPositiveButton("添加") { _, _ ->
+            .setPositiveButton("添加") { d, _ ->
+                d.dismiss()
                 val input = EditText(this)
                 input.hint = "输入模组文件名"
                 MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
                     .setTitle("添加白名单")
                     .setView(input)
-                    .setPositiveButton("确定") { _, _ ->
+                    .setPositiveButton("确定") { d2, _ ->
+                        d2.dismiss()
                         val name = input.text.toString().trim()
                         if (name.isNotEmpty() && !whitelist.contains(name)) {
                             whitelist.add(name)
                             saveWhitelist(whitelist)
                             Toast.makeText(this, "已添加", Toast.LENGTH_SHORT).show()
                         }
+                        // 添加后回到白名单（刷新列表）
+                        showWhitelistDialog()
                     }
-                    .setNegativeButton("取消", null)
+                    .setNegativeButton("取消") { _, _ ->
+                        // 取消也回到白名单
+                        showWhitelistDialog()
+                    }
+                    .setOnCancelListener {
+                        showWhitelistDialog()
+                    }
                     .show()
             }
-            .setNegativeButton("删除选中") { _, _ ->
+            .setNegativeButton("删除选中") { d, _ ->
                 val toRemove = mutableListOf<String>()
                 for (i in items.indices) {
                     if (checked[i]) toRemove.add(items[i])
@@ -163,6 +173,9 @@ class EasterEggActivity : AppCompatActivity() {
                 } else {
                     Toast.makeText(this, "未选中任何项", Toast.LENGTH_SHORT).show()
                 }
+                d.dismiss()
+                // 删除后回到白名单（刷新列表）
+                showWhitelistDialog()
             }
             .setNeutralButton("关闭", null)
             .show()
