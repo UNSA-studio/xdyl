@@ -103,7 +103,7 @@ class MainActivity : AppCompatActivity() {
             versionManager.checkAndUpdate(
                 onUpdateAvailable = { diff ->
                     LogManager.log("[CSV] New version detected: ${diff.version}, added=${diff.added.size}, removed=${diff.removed.size}, updated=${diff.updated.size}")
-                    MaterialAlertDialogBuilder(this@MainActivity)
+                    MaterialAlertDialogBuilder(this@MainActivity, R.style.DialogAnimation)
                         .setTitle("CSV 需要更新 (${diff.version})")
                         .setMessage(
                             buildString {
@@ -148,7 +148,7 @@ class MainActivity : AppCompatActivity() {
                 verifyNeoforgeVersion { verified ->
                     if (verified) startUpdateProcess()
                     else {
-                        MaterialAlertDialogBuilder(this)
+                        MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
                             .setTitle("NeoForge 版本过低")
                             .setMessage("需要更新 NeoForge 驱动至 21.1.235 或更高版本。")
                             .setPositiveButton("确定", null).show()
@@ -327,7 +327,7 @@ class MainActivity : AppCompatActivity() {
         val view = layoutInflater.inflate(R.layout.dialog_file_browser, null)
         tvPath = view.findViewById(R.id.tvPath); tvRestrictWarning = view.findViewById(R.id.tvRestrictWarning); recyclerView = view.findViewById(R.id.recyclerView)
         recyclerView!!.layoutManager = LinearLayoutManager(this); recyclerView!!.itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator()
-        val dialog = MaterialAlertDialogBuilder(this).setView(view)
+        val dialog = MaterialAlertDialogBuilder(this, R.style.DialogAnimation).setView(view)
             .setPositiveButton("选择此文件夹") { _, _ -> prefs.edit().putString("launcher_root", currentBrowseDir.absolutePath).apply(); handleSelectedFolder(currentBrowseDir) }
             .setNegativeButton("返回上级", null).create()
         dialog.setOnShowListener { dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener { navigateUp() }; loadDirectory(currentBrowseDir) }
@@ -392,7 +392,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showError(errorCode: String) {
         LogManager.log("错误: $errorCode")
-        MaterialAlertDialogBuilder(this).setTitle("意外错误!").setMessage("错误码: $errorCode\n请查看是否是您的问题,如不是,请联系开发者").setPositiveButton("确定", null).show()
+        MaterialAlertDialogBuilder(this, R.style.DialogAnimation).setTitle("意外错误!").setMessage("错误码: $errorCode\n请查看是否是您的问题,如不是,请联系开发者").setPositiveButton("确定", null).show()
     }
 
     // ========== NeoForge 检查 ==========
@@ -553,7 +553,7 @@ class MainActivity : AppCompatActivity() {
                     val resourcePackFile = File(modsDir, "../$targetVersion/resourcepacks/generated.zip")
                     if (!resourcePackFile.exists()) {
                         withContext(Dispatchers.Main) {
-                            MaterialAlertDialogBuilder(this@MainActivity)
+                            MaterialAlertDialogBuilder(this@MainActivity, R.style.DialogAnimation)
                                 .setTitle("安装服务器材质包")
                                 .setMessage("是否要安装 Server 材质包？\n注意！这是必要，如不装，进服将下载材质包，在这里安装可以加快速度。")
                                 .setPositiveButton("好的") { _, _ -> scope.launch { installResourcePack() } }

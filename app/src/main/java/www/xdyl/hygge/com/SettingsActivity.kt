@@ -30,6 +30,8 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnBack.setOnClickListener {
             savePrefs()
             finish()
+            @Suppress("DEPRECATION")
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
         }
 
         // 先加载设置（此时监听器尚未绑定）
@@ -38,7 +40,7 @@ class SettingsActivity : AppCompatActivity() {
         // 绑定扩展模式开关监听器（确保在 loadPrefs 之后，避免初始化时触发）
         binding.swExtensionMode.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                MaterialAlertDialogBuilder(this)
+                MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
                     .setTitle("警告!")
                     .setMessage("您正在开启扩展模式，重启后生效。")
                     .setPositiveButton("开启并重启") { _, _ ->
@@ -68,6 +70,8 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnExportLog.setOnClickListener {
             prefs.edit().putBoolean("request_export_log", true).apply()
             finish()
+            @Suppress("DEPRECATION")
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
         }
 
         binding.btnPingServer.setOnClickListener { startPing("82.157.155.86", binding.tvPingServerResult, true) }
@@ -75,6 +79,8 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.btnExtensionPage.setOnClickListener {
             startActivity(Intent(this, EasterEggActivity::class.java))
+            @Suppress("DEPRECATION")
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
         binding.btnErrorCodes.setOnClickListener { showErrorCodes() }
@@ -149,7 +155,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun showErrorCodes() {
         val sb = StringBuilder()
         Constants.errorDescriptions.forEach { (code, desc) -> sb.append("$code: $desc\n\n") }
-        MaterialAlertDialogBuilder(this)
+        MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
             .setTitle("ERROR 错误代码")
             .setMessage(sb.toString().trim())
             .setPositiveButton("关闭", null)
@@ -157,7 +163,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showThreadInfo() {
-        MaterialAlertDialogBuilder(this)
+        MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
             .setTitle("线程与分块说明")
             .setMessage("「下载线程数」指的是同时下载的文件数量，越大的值会让更多文件并行下载。\n\n「分块规则」是适应性的：≤1MB 的文件默认用 2 个 HTTP 下载块，大于 1MB 的每多 0.5MB 就多分配 1 个下载块。例如 3MB 的文件会被拆成 6 块同时下载。\n\n下载线程数不是越大越好，请根据网络带宽和设备性能合理设置。")
             .setPositiveButton("关闭", null)
@@ -178,7 +184,7 @@ class SettingsActivity : AppCompatActivity() {
         val tvJE404 = view.findViewById<TextView>(R.id.tvJE404)
         tvJE404.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/UNSA-studio/Java-ERROR-404"))) }
 
-        MaterialAlertDialogBuilder(this)
+        MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
             .setTitle("关于软件")
             .setView(view)
             .setPositiveButton("关闭", null)
