@@ -919,13 +919,13 @@ fun SettingsScreen(
         // Ping 按钮
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().onGloballyPositioned { pingAreaY = it.positionInParent().y }) {
             Button(onClick = {
-                scrollScope.launch { scrollState.animateScrollTo((pingAreaY - 20).coerceAtLeast(0f).toInt()) }
+                scrollScope.launch { scrollState.animateScrollTo((pingAreaY - 20).coerceAtLeast(0f).toInt(), tween(1200)) }
                 onPingServer()
             }, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
                 Text("Ping Server", fontSize = 14.sp, fontFamily = silverFontFamily)
             }
             Button(onClick = {
-                scrollScope.launch { scrollState.animateScrollTo((pingAreaY - 20).coerceAtLeast(0f).toInt()) }
+                scrollScope.launch { scrollState.animateScrollTo((pingAreaY - 20).coerceAtLeast(0f).toInt(), tween(1200)) }
                 onPingWifi()
             }, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
                 Text("Ping WiFi", fontSize = 14.sp, fontFamily = silverFontFamily)

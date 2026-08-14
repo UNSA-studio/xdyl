@@ -141,7 +141,7 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    // 平滑滚动到目标视图（相对 ScrollView 内容坐标）
+    // 慢速平滑滚动到目标视图（1.2秒）
     private fun scrollToTarget(target: View) {
         binding.settingsScrollView.post {
             var y = 0
@@ -150,7 +150,13 @@ class SettingsActivity : AppCompatActivity() {
                 y += v.top
                 v = v.parent as? View
             }
-            binding.settingsScrollView.smoothScrollTo(0, (y - 50).coerceAtLeast(0))
+            val dest = (y - 50).coerceAtLeast(0)
+            val start = binding.settingsScrollView.scrollY
+            val animator = android.animation.ValueAnimator.ofInt(start, dest)
+            animator.duration = 1200
+            animator.interpolator = android.view.animation.DecelerateInterpolator()
+            animator.addUpdateListener { binding.settingsScrollView.scrollTo(0, it.animatedValue as Int) }
+            animator.start()
         }
     }
 
