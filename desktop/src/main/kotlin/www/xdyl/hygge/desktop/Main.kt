@@ -732,7 +732,7 @@ fun MainScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column {
                     Text("Nebula updater-NU", color = Color(0xFFA0C4FF), fontSize = 28.sp, fontFamily = silverFontFamily)
-                    Text("星云更新器-Windows端", color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 18.sp, fontFamily = silverFontFamily)
+                    Text("星云更新器-Windows端", color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 16.sp, fontFamily = silverFontFamily)
                 }
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = {
@@ -752,14 +752,14 @@ fun MainScreen(
                     modifier = Modifier.weight(1f).height(42.dp).scale(selectScale.value),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-                ) { Text("选择目录", fontSize = 18.sp, fontFamily = silverFontFamily) }
+                ) { Text("选择目录", fontSize = 16.sp, fontFamily = silverFontFamily) }
                 Button(
                     onClick = { pulse(downloadScale); onStartDownload() },
                     enabled = targetModsDir != null && !downloading,
                     modifier = Modifier.weight(1f).height(42.dp).scale(downloadScale.value),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-                ) { Text(if (targetModsDir == null) "请先选择目录" else "开始下载", fontSize = 18.sp, fontFamily = silverFontFamily) }
+                ) { Text(if (targetModsDir == null) "请先选择目录" else "开始下载", fontSize = 16.sp, fontFamily = silverFontFamily) }
             }
 
             Spacer(Modifier.height(8.dp))
@@ -838,7 +838,7 @@ fun SettingsScreen(
         unfocusedTextColor = Color.White,
         cursorColor = Color(0xFFA0C4FF)
     )
-    val tfTextStyle = TextStyle(fontSize = 22.sp, color = Color.White, fontFamily = silverFontFamily)
+    val tfTextStyle = TextStyle(fontSize = 18.sp, color = Color.White, fontFamily = silverFontFamily)
     val swColors = SwitchDefaults.colors(
         checkedThumbColor = Color(0xFFA0C4FF),
         checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)
@@ -851,10 +851,10 @@ fun SettingsScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) {
-                Text("返回", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
+                Text("返回", color = Color(0xFFA0C4FF), fontSize = 16.sp, fontFamily = silverFontFamily)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text("设置", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
+            Text("设置", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
         }
         Spacer(modifier = Modifier.height(24.dp))
         // 版本文件夹
@@ -864,7 +864,7 @@ fun SettingsScreen(
             OutlinedTextField(
                 value = versionName,
                 onValueChange = onVersionChange,
-                label = { Text("Minecraft 版本文件夹名", fontSize = 20.sp, color = Color.Gray, fontFamily = silverFontFamily) },
+                label = { Text("Minecraft 版本文件夹名", fontSize = 16.sp, color = Color.Gray, fontFamily = silverFontFamily) },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
                 textStyle = tfTextStyle,
@@ -880,7 +880,7 @@ fun SettingsScreen(
             OutlinedTextField(
                 value = threadCount.toString(),
                 onValueChange = { v -> v.toIntOrNull()?.let { onThreadChange(it.coerceIn(20, maxThreads)) } },
-                label = { Text("下载线程数 (20-$maxThreads)", fontSize = 14.sp, color = Color.Gray, fontFamily = silverFontFamily) },
+                label = { Text("下载线程数 (20-$maxThreads)", fontSize = 16.sp, color = Color.Gray, fontFamily = silverFontFamily) },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
                 textStyle = tfTextStyle,
@@ -899,7 +899,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.width(12.dp))
             Switch(checked = extensionMode, onCheckedChange = onExtensionChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("扩展模式", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
+            Text("扩展模式", color = Color.White, fontSize = 18.sp, fontFamily = silverFontFamily)
         }
         if (extensionMode) {
             Spacer(modifier = Modifier.height(16.dp))
@@ -908,16 +908,16 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-            ) { Text("进入扩展页面", fontSize = 24.sp, fontFamily = silverFontFamily) }
+            ) { Text("进入扩展页面", fontSize = 16.sp, fontFamily = silverFontFamily) }
         }
         Spacer(modifier = Modifier.height(16.dp))
         // Ping 按钮
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             Button(onClick = onPingServer, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
-                Text("Ping Server", fontSize = 14.sp, fontFamily = silverFontFamily)
+                Text("Ping Server", fontSize = 16.sp, fontFamily = silverFontFamily)
             }
             Button(onClick = onPingWifi, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
-                Text("Ping WiFi", fontSize = 14.sp, fontFamily = silverFontFamily)
+                Text("Ping WiFi", fontSize = 16.sp, fontFamily = silverFontFamily)
             }
         }
         // 结果区域自身展开动画（1.2秒）
@@ -928,7 +928,7 @@ fun SettingsScreen(
         ) {
             Column {
                 Spacer(Modifier.height(4.dp))
-                Text(pingServerResult, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                Text(pingServerResult, color = Color(0xFFA0C4FF), fontSize = 14.sp, fontFamily = FontFamily.Monospace)
             }
         }
         AnimatedVisibility(
@@ -938,7 +938,7 @@ fun SettingsScreen(
         ) {
             Column {
                 Spacer(Modifier.height(4.dp))
-                Text(pingWifiResult, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                Text(pingWifiResult, color = Color(0xFFA0C4FF), fontSize = 14.sp, fontFamily = FontFamily.Monospace)
             }
         }
         Spacer(modifier = Modifier.height(24.dp))
@@ -951,7 +951,7 @@ fun SettingsScreen(
                 modifier = Modifier.weight(1f).height(56.dp),
                 border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-            ) { Text("导出日志", fontSize = 24.sp, fontFamily = silverFontFamily) }
+            ) { Text("导出日志", fontSize = 16.sp, fontFamily = silverFontFamily) }
         }
         Spacer(modifier = Modifier.height(8.dp))
         // ERROR 错误代码
@@ -963,7 +963,7 @@ fun SettingsScreen(
                 modifier = Modifier.weight(1f).height(56.dp),
                 border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-            ) { Text("ERROR 错误代码", fontSize = 24.sp, fontFamily = silverFontFamily) }
+            ) { Text("ERROR 错误代码", fontSize = 16.sp, fontFamily = silverFontFamily) }
         }
         Spacer(modifier = Modifier.height(8.dp))
         // 关于软件
@@ -975,7 +975,7 @@ fun SettingsScreen(
                 modifier = Modifier.weight(1f).height(56.dp),
                 border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-            ) { Text("关于软件", fontSize = 24.sp, fontFamily = silverFontFamily) }
+            ) { Text("关于软件", fontSize = 16.sp, fontFamily = silverFontFamily) }
         }
         Spacer(modifier = Modifier.height(16.dp))
     }
@@ -1009,10 +1009,10 @@ fun ExtensionScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) {
-                Text("返回", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
+                Text("返回", color = Color(0xFFA0C4FF), fontSize = 16.sp, fontFamily = silverFontFamily)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text("扩展页面", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
+            Text("扩展页面", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -1020,7 +1020,7 @@ fun ExtensionScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = unlockThread, onCheckedChange = onUnlockChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("解锁线程数上限至 1024", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
+            Text("解锁线程数上限至 1024", color = Color.White, fontSize = 18.sp, fontFamily = silverFontFamily)
         }
 
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
@@ -1029,7 +1029,7 @@ fun ExtensionScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = neoforgeCheckEnabled, onCheckedChange = onNeoforgeChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
+            Text("开启 NeoForge 版本检查", color = Color.White, fontSize = 18.sp, fontFamily = silverFontFamily)
         }
 
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
@@ -1038,7 +1038,7 @@ fun ExtensionScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = cleanOrphanFiles, onCheckedChange = onCleanOrphanChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("更新后自动清理多余文件", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
+            Text("更新后自动清理多余文件", color = Color.White, fontSize = 18.sp, fontFamily = silverFontFamily)
         }
 
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
@@ -1047,7 +1047,7 @@ fun ExtensionScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = useLocalCsv, onCheckedChange = onLocalCsvChange, colors = swColors)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("使用本地 CSV", color = Color.White, fontSize = 22.sp, fontFamily = silverFontFamily)
+            Text("使用本地 CSV", color = Color.White, fontSize = 18.sp, fontFamily = silverFontFamily)
         }
 
         if (useLocalCsv) {
@@ -1057,10 +1057,10 @@ fun ExtensionScreen(
                 modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-            ) { Text("浏览...", fontSize = 24.sp, fontFamily = silverFontFamily) }
+            ) { Text("浏览...", fontSize = 16.sp, fontFamily = silverFontFamily) }
             if (localCsvPath.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("已选择: $localCsvPath", color = Color.White, fontSize = 20.sp, fontFamily = silverFontFamily)
+                Text("已选择: $localCsvPath", color = Color.White, fontSize = 16.sp, fontFamily = silverFontFamily)
             }
         }
 
@@ -1072,7 +1072,7 @@ fun ExtensionScreen(
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
             border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("模组白名单", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        ) { Text("模组白名单", fontSize = 16.sp, fontFamily = silverFontFamily) }
     }
 }
 
@@ -1102,10 +1102,10 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
     Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) {
-                Text("返回", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
+                Text("返回", color = Color(0xFFA0C4FF), fontSize = 16.sp, fontFamily = silverFontFamily)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text("选择启动器根目录", color = Color(0xFFA0C4FF), fontSize = 28.sp, fontFamily = silverFontFamily)
+            Text("选择启动器根目录", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -1137,7 +1137,7 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
         Text(
             "当前目录: ${currentDir.absolutePath}",
             color = Color.White,
-            fontSize = 22.sp,
+            fontSize = 16.sp,
             fontFamily = silverFontFamily
         )
 
@@ -1150,7 +1150,7 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
             modifier = Modifier.height(48.dp).padding(horizontal = 16.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("返回上级", fontSize = 20.sp, fontFamily = silverFontFamily) }
+        ) { Text("返回上级", fontSize = 16.sp, fontFamily = silverFontFamily) }
 
         Spacer(modifier = Modifier.height(8.dp))
         AnimatedContent(
@@ -1174,7 +1174,7 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
                         Text(
                             text = "${if (file.isDirectory) "[DIR] " else "[FILE] "}${file.name}",
                             color = if (file.isDirectory) Color(0xFFA0C4FF) else Color.White,
-                            fontSize = 22.sp,
+                            fontSize = 16.sp,
                             fontFamily = silverFontFamily
                         )
                     }
@@ -1189,7 +1189,7 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("选择此文件夹", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        ) { Text("选择此文件夹", fontSize = 16.sp, fontFamily = silverFontFamily) }
     }
 }
 
