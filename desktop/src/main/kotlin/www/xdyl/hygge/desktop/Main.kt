@@ -24,7 +24,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.platform.Font
@@ -844,15 +843,11 @@ fun SettingsScreen(
         checkedThumbColor = Color(0xFFA0C4FF),
         checkedTrackColor = Color(0xFFA0C4FF).copy(alpha = 0.5f)
     )
-    val scrollState = rememberScrollState()
-    val scrollScope = rememberCoroutineScope()
-    // Ping 结果区在内容中的 Y 坐标（用于点击后自动滚动）
-    var pingAreaY by remember { mutableStateOf(0f) }
     Column(
         modifier = Modifier
             .padding(24.dp)
             .fillMaxSize()
-            .verticalScroll(scrollState)
+            .verticalScroll(rememberScrollState())
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) {
@@ -917,27 +912,34 @@ fun SettingsScreen(
         }
         Spacer(modifier = Modifier.height(16.dp))
         // Ping 按钮
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth().onGloballyPositioned { pingAreaY = it.positionInParent().y }) {
-            Button(onClick = {
-                scrollScope.launch { scrollState.animateScrollTo((pingAreaY - 20).coerceAtLeast(0f).toInt(), tween(1200)) }
-                onPingServer()
-            }, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = onPingServer, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
                 Text("Ping Server", fontSize = 14.sp, fontFamily = silverFontFamily)
             }
-            Button(onClick = {
-                scrollScope.launch { scrollState.animateScrollTo((pingAreaY - 20).coerceAtLeast(0f).toInt(), tween(1200)) }
-                onPingWifi()
-            }, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
+            Button(onClick = onPingWifi, modifier = Modifier.weight(1f).height(42.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
                 Text("Ping WiFi", fontSize = 14.sp, fontFamily = silverFontFamily)
             }
         }
-        if (pingServerResult.isNotEmpty()) {
-            Spacer(Modifier.height(4.dp))
-            Text(pingServerResult, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+        // 结果区域自身展开动画（1.2秒）
+        AnimatedVisibility(
+            visible = pingServerResult.isNotEmpty(),
+            enter = expandVertically(tween(1200)) + fadeIn(tween(1200)),
+            exit = shrinkVertically(tween(300)) + fadeOut(tween(300))
+        ) {
+            Column {
+                Spacer(Modifier.height(4.dp))
+                Text(pingServerResult, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+            }
         }
-        if (pingWifiResult.isNotEmpty()) {
-            Spacer(Modifier.height(4.dp))
-            Text(pingWifiResult, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+        AnimatedVisibility(
+            visible = pingWifiResult.isNotEmpty(),
+            enter = expandVertically(tween(1200)) + fadeIn(tween(1200)),
+            exit = shrinkVertically(tween(300)) + fadeOut(tween(300))
+        ) {
+            Column {
+                Spacer(Modifier.height(4.dp))
+                Text(pingWifiResult, color = Color(0xFFA0C4FF), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+            }
         }
         Spacer(modifier = Modifier.height(24.dp))
         // 导出日志

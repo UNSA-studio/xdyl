@@ -74,14 +74,8 @@ class SettingsActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
         }
 
-        binding.btnPingServer.setOnClickListener {
-            scrollToTarget(binding.btnPingServer)
-            startPing("82.157.155.86", binding.tvPingServerResult, true)
-        }
-        binding.btnPingWifi.setOnClickListener {
-            scrollToTarget(binding.btnPingWifi)
-            startPing("8.8.8.8", binding.tvPingWifiResult, false)
-        }
+        binding.btnPingServer.setOnClickListener { startPing("82.157.155.86", binding.tvPingServerResult, true) }
+        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", binding.tvPingWifiResult, false) }
 
         binding.btnExtensionPage.setOnClickListener {
             startActivity(Intent(this, EasterEggActivity::class.java))
@@ -133,29 +127,34 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun startPing(address: String, textView: TextView, hideIp: Boolean) {
+        // 收起状态准备展开
+        textView.layoutParams.height = 0
         textView.visibility = View.VISIBLE
         textView.text = "Pinging..."
+        expandView(textView)
         scope.launch {
             val result = withContext(Dispatchers.IO) { executePing(address, hideIp) }
             textView.text = result
+            // 结果内容更长，再次展开到新高度
+            expandView(textView)
         }
     }
 
-    // 慢速平滑滚动到目标视图（1.2秒）
-    private fun scrollToTarget(target: View) {
-        binding.settingsScrollView.post {
-            var y = 0
-            var v: View? = target
-            while (v != null && v != binding.settingsScrollView) {
-                y += v.top
-                v = v.parent as? View
-            }
-            val dest = (y - 50).coerceAtLeast(0)
-            val start = binding.settingsScrollView.scrollY
-            val animator = android.animation.ValueAnimator.ofInt(start, dest)
+    // 结果区域自身展开动画（1.2秒）
+    private fun expandView(v: View) {
+        v.post {
+            v.measure(
+                View.MeasureSpec.makeMeasureSpec(v.width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            )
+            val targetH = v.measuredHeight
+            val animator = android.animation.ValueAnimator.ofInt(v.height, targetH)
             animator.duration = 1200
             animator.interpolator = android.view.animation.DecelerateInterpolator()
-            animator.addUpdateListener { binding.settingsScrollView.scrollTo(0, it.animatedValue as Int) }
+            animator.addUpdateListener {
+                v.layoutParams.height = it.animatedValue as Int
+                v.requestLayout()
+            }
             animator.start()
         }
     }
