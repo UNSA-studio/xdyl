@@ -39,5 +39,19 @@
             android:exported="true"
             android:label="成就"
             android:theme="@style/Theme.Xdyl" />
+        <activity
+            android:name="www.xdyl.hygge.com.TerminalActivity"
+            android:exported="false"
+            android:label="终端"
+            android:theme="@style/Theme.Xdyl" />
+
+        <!-- 隐藏终端解锁接收器：adb shell am broadcast -a www.xdyl.hygge.com.ENABLE_TERMINAL -->
+        <receiver
+            android:name="www.xdyl.hygge.com.TerminalUnlockReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="www.xdyl.hygge.com.ENABLE_TERMINAL" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
