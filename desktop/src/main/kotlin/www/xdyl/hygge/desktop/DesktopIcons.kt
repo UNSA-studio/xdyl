@@ -139,7 +139,36 @@ object DesktopIcons {
             }
         }.build()
     }
-
+    val Ping: ImageVector by lazy {
+        ImageVector.Builder("Ping", 24.dp, 24.dp, 24f, 24f).apply {
+            path(fill = SolidColor(iconColor), fillAlpha = 1f, pathFillType = PathFillType.NonZero) {
+                moveTo(4f, 12f)
+                horizontalLineTo(7f)
+                verticalLineTo(16f)
+                horizontalLineTo(4f)
+                verticalLineTo(12f)
+                close()
+                moveTo(8f, 7f)
+                horizontalLineTo(11f)
+                verticalLineTo(16f)
+                horizontalLineTo(8f)
+                verticalLineTo(7f)
+                close()
+                moveTo(12f, 3f)
+                horizontalLineTo(15f)
+                verticalLineTo(16f)
+                horizontalLineTo(12f)
+                verticalLineTo(3f)
+                close()
+                moveTo(16f, 11f)
+                horizontalLineTo(20f)
+                verticalLineTo(16f)
+                horizontalLineTo(16f)
+                verticalLineTo(11f)
+                close()
+            }
+        }.build()
+    }
     val ArrowBack: ImageVector by lazy {
         ImageVector.Builder("ArrowBack", 24.dp, 24.dp, 24f, 24f).apply {
             path(fill = SolidColor(iconColor), fillAlpha = 1f, pathFillType = PathFillType.NonZero) {
@@ -153,6 +182,97 @@ object DesktopIcons {
                 lineTo(7.83f, 13f)
                 horizontalLineTo(20f)
                 verticalLineToRelative(-2f)
+                close()
+            }
+        }.build()
+    }
+    val Unlock: ImageVector by lazy {
+        ImageVector.Builder("Unlock", 24.dp, 24.dp, 24f, 24f).apply {
+            path(fill = SolidColor(iconColor), fillAlpha = 1f, pathFillType = PathFillType.NonZero) {
+                moveTo(12f, 17f)
+                arcTo(2f, 2f, 0f, false, false, 14f, 15f)
+                curveTo(14f, 13.89f, 13.1f, 13f, 12f, 13f)
+                arcTo(2f, 2f, 0f, false, false, 10f, 15f)
+                arcTo(2f, 2f, 0f, false, false, 12f, 17f)
+                moveTo(18f, 8f)
+                arcTo(2f, 2f, 0f, false, true, 20f, 10f)
+                verticalLineTo(20f)
+                arcTo(2f, 2f, 0f, false, true, 18f, 22f)
+                horizontalLineTo(6f)
+                arcTo(2f, 2f, 0f, false, true, 4f, 20f)
+                verticalLineTo(10f)
+                curveTo(4f, 8.89f, 4.9f, 8f, 6f, 8f)
+                horizontalLineTo(7f)
+                verticalLineTo(6f)
+                arcTo(5f, 5f, 0f, false, true, 12f, 1f)
+                arcTo(5f, 5f, 0f, false, true, 17f, 6f)
+                verticalLineTo(8f)
+                horizontalLineTo(18f)
+                moveTo(12f, 3f)
+                arcTo(3f, 3f, 0f, false, false, 9f, 6f)
+                verticalLineTo(8f)
+                horizontalLineTo(15f)
+                verticalLineTo(6f)
+                arcTo(3f, 3f, 0f, false, false, 12f, 3f)
+                close()
+            }
+        }.build()
+    }
+    val Check: ImageVector by lazy {
+        ImageVector.Builder("Check", 24.dp, 24.dp, 24f, 24f).apply {
+            path(fill = SolidColor(iconColor), fillAlpha = 1f, pathFillType = PathFillType.NonZero) {
+                moveTo(21f, 7f)
+                lineTo(9f, 19f)
+                lineTo(3.5f, 13.5f)
+                lineTo(4.91f, 12.09f)
+                lineTo(9f, 16.17f)
+                lineTo(19.59f, 5.59f)
+                lineTo(21f, 7f)
+                close()
+            }
+        }.build()
+    }
+    val Clean: ImageVector by lazy {
+        ImageVector.Builder("Clean", 24.dp, 24.dp, 24f, 24f).apply {
+            path(fill = SolidColor(iconColor), fillAlpha = 1f, pathFillType = PathFillType.NonZero) {
+                moveTo(19f, 4f)
+                horizontalLineTo(15.5f)
+                lineTo(14.5f, 3f)
+                horizontalLineTo(9.5f)
+                lineTo(8.5f, 4f)
+                horizontalLineTo(5f)
+                verticalLineTo(6f)
+                horizontalLineTo(19f)
+                moveTo(6f, 19f)
+                arcTo(2f, 2f, 0f, false, false, 8f, 21f)
+                horizontalLineTo(16f)
+                arcTo(2f, 2f, 0f, false, false, 18f, 19f)
+                verticalLineTo(7f)
+                horizontalLineTo(6f)
+                verticalLineTo(19f)
+                close()
+            }
+        }.build()
+    }
+    val Csv: ImageVector by lazy {
+        ImageVector.Builder("Csv", 24.dp, 24.dp, 24f, 24f).apply {
+            path(fill = SolidColor(iconColor), fillAlpha = 1f, pathFillType = PathFillType.NonZero) {
+                moveTo(14f, 2f)
+                horizontalLineTo(6f)
+                arcTo(2f, 2f, 0f, false, false, 4f, 4f)
+                verticalLineTo(20f)
+                arcTo(2f, 2f, 0f, false, false, 6f, 22f)
+                horizontalLineTo(18f)
+                arcTo(2f, 2f, 0f, false, false, 20f, 20f)
+                verticalLineTo(8f)
+                lineTo(14f, 2f)
+                moveTo(18f, 20f)
+                horizontalLineTo(6f)
+                verticalLineTo(4f)
+                horizontalLineTo(13f)
+                verticalLineTo(9f)
+                horizontalLineTo(18f)
+                verticalLineTo(20f)
                 close()
             }
         }.build()
