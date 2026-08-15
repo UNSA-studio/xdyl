@@ -986,7 +986,8 @@ Spacer(modifier = Modifier.height(24.dp))
                     )
                 }
             }
-Spacer(modifier = Modifier.height(24.dp))
+        }
+        Spacer(modifier = Modifier.height(24.dp))
         // 导出日志
         Card(
             shape = RoundedCornerShape(12.dp),
