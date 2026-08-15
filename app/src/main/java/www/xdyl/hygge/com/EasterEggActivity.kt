@@ -195,8 +195,6 @@ class EasterEggActivity : AppCompatActivity() {
         csvRecycler = view.findViewById(R.id.recyclerView)
         csvRecycler!!.layoutManager = LinearLayoutManager(this)
 
-        loadCsvDir(currentDir!!)
-
         val dialog = MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
             .setView(view)
             .setNegativeButton("返回上级", null)
@@ -208,7 +206,11 @@ class EasterEggActivity : AppCompatActivity() {
             }
         }
         csvBrowseDialog = dialog
+        // csvBrowseDialog 赋值后再加载，updateUpButton 才能正确设置按钮状态
+        loadCsvDir(currentDir!!)
         dialog.show()
+        // show 后按钮视图已构建，再刷一次确保状态正确
+        updateUpButton(currentDir!!)
     }
 
     // 目录切换滑动动画：前进向右滑出+左滑入，返回反向
@@ -233,7 +235,11 @@ class EasterEggActivity : AppCompatActivity() {
     private fun loadCsvDir(dir: File) {
         val tvPath = csvTvPath ?: return
         val recycler = csvRecycler ?: return
-        val files = dir.listFiles()?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name }) ?: emptyList()
+        // 只显示文件夹和 .csv 文件
+        val files = dir.listFiles()
+            ?.filter { it.isDirectory || it.name.endsWith(".csv") }
+            ?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name })
+            ?: emptyList()
         tvPath.text = dir.absolutePath
         val adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -247,12 +253,10 @@ class EasterEggActivity : AppCompatActivity() {
                 holder.itemView.setOnClickListener {
                     if (f.isDirectory) {
                         navigateCsvDir(f, true)
-                    } else if (f.name.endsWith(".csv")) {
+                    } else {
                         prefs.edit().putString("local_csv_path", f.absolutePath).apply()
                         csvBrowseDialog?.dismiss()
                         Toast.makeText(this@EasterEggActivity, "已选择 CSV: ${f.name}", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this@EasterEggActivity, "请选择 .csv 文件", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
