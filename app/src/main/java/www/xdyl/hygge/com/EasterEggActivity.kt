@@ -1,5 +1,6 @@
 package www.xdyl.hygge.com
 
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.Environment
@@ -71,6 +72,15 @@ class EasterEggActivity : AppCompatActivity() {
         val btnWhitelist = findViewById<MaterialButton>(R.id.btnWhitelist)
         btnWhitelist.setOnClickListener { showWhitelistDialog() }
 
+        // 隐藏终端：仅 ADB 广播解锁后显示入口
+        val btnTerminal = findViewById<MaterialButton>(R.id.btnTerminal)
+        updateTerminalVisibility(btnTerminal)
+        btnTerminal.setOnClickListener {
+            startActivity(Intent(this, TerminalActivity::class.java))
+            @Suppress("DEPRECATION")
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+        }
+
         // WiFi ADB 远程日志
         val swWifiAdb = findViewById<SwitchMaterial>(R.id.swWifiAdb)
         val layoutWifiConfig = findViewById<LinearLayout>(R.id.layoutWifiConfig)
@@ -122,6 +132,18 @@ class EasterEggActivity : AppCompatActivity() {
                 LogManager.devicePort = savedPort
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 广播解锁后返回页面刷新终端入口
+        val btnTerminal = findViewById<MaterialButton>(R.id.btnTerminal)
+        updateTerminalVisibility(btnTerminal)
+    }
+
+    private fun updateTerminalVisibility(btn: MaterialButton) {
+        val enabled = prefs.getBoolean("terminal_enabled", false)
+        btn.visibility = if (enabled) View.VISIBLE else View.GONE
     }
 
     private fun showWhitelistDialog() {

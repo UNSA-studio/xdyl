@@ -265,6 +265,18 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- 隐藏终端入口：ADB 广播解锁后才显示 -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnTerminal"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="进入终端"
+                android:textColor="@android:color/black"
+                app:backgroundTint="@color/primary_light_blue"
+                android:layout_marginTop="12dp"
+                android:textSize="16sp"
+                android:visibility="gone"/>
+
             <!-- 不再有重置按钮 -->
 
             <View
