@@ -94,7 +94,16 @@ fun main() = application {
 
     var dailyQuote by remember { mutableStateOf(null as Quote?) }
     var cachedQuoteDate by remember { mutableStateOf("") }
+    var dailyQuoteCategory by remember { mutableStateOf("") }
     val quoteCategories = listOf("WH", "RW", "HC", "ED", "CE", "AC")
+    val quoteCategoryNames = mapOf(
+        "WH" to "警世箴言",
+        "RW" to "理性思辨",
+        "HC" to "心灵疗愈",
+        "ED" to "存在哲思",
+        "CE" to "人际纽带",
+        "AC" to "行动召唤"
+    )
 
     fun loadDailyQuote() {
         val today = SimpleDateFormat("yyyyMMdd").format(Date())
@@ -120,6 +129,7 @@ fun main() = application {
                     if (allQuotes.isNotEmpty()) {
                         val (cat, idx, quote) = allQuotes[Random().nextInt(allQuotes.size)]
                         dailyQuote = quote
+                        dailyQuoteCategory = quoteCategoryNames[cat] ?: cat
                         prefs.putString("quote_date", today)
                         prefs.putString("quote_cat", cat)
                         prefs.putInt("quote_index", idx)
@@ -139,6 +149,7 @@ fun main() = application {
                     if (idx in quotes.indices) {
                         val it = quotes[idx]
                         dailyQuote = Quote(it["chinese"]!!, it["english"]!!, it["author"]!!, it["author_en"]!!, it["source"]!!, it["source_en"]!!)
+                        dailyQuoteCategory = quoteCategoryNames[cat] ?: cat
                     } else {
                         prefs.putString("quote_date", "")
                         loadDailyQuote()
@@ -211,8 +222,18 @@ fun main() = application {
 
     var pingServerResult by remember { mutableStateOf("") }
     var pingWifiResult by remember { mutableStateOf("") }
-    fun pingServer() { pingServerResult = executePing("82.157.155.86", "Server", true) }
-    fun pingWifi() { pingWifiResult = executePing("8.8.8.8", "WiFi", false) }
+    fun pingServer() {
+        pingServerResult = "Pinging..."
+        scope.launch(Dispatchers.IO) {
+            pingServerResult = executePing("82.157.155.86", "Server", true)
+        }
+    }
+    fun pingWifi() {
+        pingWifiResult = "Pinging..."
+        scope.launch(Dispatchers.IO) {
+            pingWifiResult = executePing("8.8.8.8", "WiFi", false)
+        }
+    }
 
     val darkColorScheme = darkColorScheme(
         primary = Color(0xFFA0C4FF),
@@ -363,7 +384,8 @@ fun main() = application {
                                 progress = progress,
                                 statusText = statusText,
                                 onSettings = { slideDirection = 1; currentScreen = "settings" },
-                                dailyQuote = dailyQuote
+                                dailyQuote = dailyQuote,
+                                dailyQuoteCategory = dailyQuoteCategory
                             )
                             "settings" -> SettingsScreen(
                                 versionName = versionName,
@@ -707,6 +729,7 @@ fun MainScreen(
     statusText: String,
     onSettings: () -> Unit,
     dailyQuote: Quote?,
+    dailyQuoteCategory: String = "",
     neoforgeCheckEnabled: Boolean = true
 ) {
     val animScope = rememberCoroutineScope()
@@ -800,11 +823,24 @@ fun MainScreen(
                     border = BorderStroke(1.dp, Color(0xFF3A3A3A))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text(quote.chinese, color = Color(0xFFA0C4FF), fontSize = 16.sp, fontFamily = silverFontFamily, maxLines = Int.MAX_VALUE)
-                        Text(quote.english, color = Color(0xFFA0C4FF).copy(alpha = 0.8f), fontSize = 13.sp, fontFamily = silverFontFamily, maxLines = Int.MAX_VALUE)
+                        // 标题：今日名言 - 分类名
+                        Text(
+                            if (dailyQuoteCategory.isEmpty()) "今日名言" else "今日名言 - $dailyQuoteCategory",
+                            color = Color(0xFFA0C4FF),
+                            fontSize = 14.sp,
+                            fontFamily = silverFontFamily
+                        )
                         Spacer(Modifier.height(4.dp))
-                        Text("— ${quote.author} / ${quote.authorEn}", color = Color.Gray, fontSize = 12.sp, fontFamily = silverFontFamily)
-                        Text("《${quote.source}》 / ${quote.sourceEn}", color = Color.Gray.copy(alpha = 0.7f), fontSize = 11.sp, fontFamily = silverFontFamily)
+                        // 中文：白色 16sp
+                        Text(quote.chinese, color = Color.White, fontSize = 16.sp, fontFamily = silverFontFamily, maxLines = Int.MAX_VALUE)
+                        Spacer(Modifier.height(4.dp))
+                        // 英文：白 80% 14sp
+                        Text(quote.english, color = Color(0xCCFFFFFF), fontSize = 14.sp, fontFamily = silverFontFamily, maxLines = Int.MAX_VALUE)
+                        Spacer(Modifier.height(8.dp))
+                        // 中文作者 / 出处
+                        Text("- ${quote.author} / ${quote.source}", color = Color(0xB0FFFFFF), fontSize = 13.sp, fontFamily = silverFontFamily)
+                        // 英文作者 / 出处
+                        Text("- ${quote.authorEn} / ${quote.sourceEn}", color = Color(0xB0FFFFFF), fontSize = 13.sp, fontFamily = silverFontFamily)
                     }
                 }
             }
@@ -850,8 +886,8 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState())
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) {
-                Text("返回", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                Icon(DesktopIcons.ArrowBack, contentDescription = "返回", modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text("设置", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
@@ -947,7 +983,7 @@ Spacer(modifier = Modifier.height(24.dp))
                     Icon(DesktopIcons.Ping, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
                     Spacer(modifier = Modifier.width(12.dp))
                     Button(onClick = onPingServer, modifier = Modifier.weight(1f).height(48.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
-                        Text("Ping (Server)", fontSize = 16.sp, fontFamily = silverFontFamily)
+                        Text("Ping (Server)", fontSize = 20.sp, fontFamily = silverFontFamily)
                     }
                 }
                 // 结果区域自身展开动画（1.2秒）
@@ -960,7 +996,7 @@ Spacer(modifier = Modifier.height(24.dp))
                         pingServerResult,
                         color = Color(0xFFA0C4FF),
                         fontSize = 14.sp,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = silverFontFamily,
                         modifier = Modifier.fillMaxWidth().padding(top = 4.dp).background(Color(0xFF1E1E1E)).padding(8.dp)
                     )
                 }
@@ -969,7 +1005,7 @@ Spacer(modifier = Modifier.height(24.dp))
                     Icon(DesktopIcons.Ping, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
                     Spacer(modifier = Modifier.width(12.dp))
                     Button(onClick = onPingWifi, modifier = Modifier.weight(1f).height(48.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
-                        Text("Ping (WiFi)", fontSize = 16.sp, fontFamily = silverFontFamily)
+                        Text("Ping (WiFi)", fontSize = 20.sp, fontFamily = silverFontFamily)
                     }
                 }
                 AnimatedVisibility(
@@ -981,7 +1017,7 @@ Spacer(modifier = Modifier.height(24.dp))
                         pingWifiResult,
                         color = Color(0xFFA0C4FF),
                         fontSize = 14.sp,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = silverFontFamily,
                         modifier = Modifier.fillMaxWidth().padding(top = 4.dp).background(Color(0xFF1E1E1E)).padding(8.dp)
                     )
                 }
@@ -1009,20 +1045,44 @@ Spacer(modifier = Modifier.height(24.dp))
         }
         Spacer(modifier = Modifier.height(12.dp))
         // ERROR 错误代码
-        Button(
-            onClick = onErrorCodes,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("ERROR 错误代码", fontSize = 20.sp, fontFamily = silverFontFamily) }
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
+            border = BorderStroke(1.dp, Color(0xFF3A3A3A)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
+                Icon(DesktopIcons.Info, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
+                Spacer(modifier = Modifier.width(12.dp))
+                Button(
+                    onClick = onErrorCodes,
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+                ) { Text("ERROR 错误代码", fontSize = 20.sp, fontFamily = silverFontFamily) }
+            }
+        }
         Spacer(modifier = Modifier.height(12.dp))
         // 关于软件
-        Button(
-            onClick = onAbout,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
-        ) { Text("关于软件", fontSize = 20.sp, fontFamily = silverFontFamily) }
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
+            border = BorderStroke(1.dp, Color(0xFF3A3A3A)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
+                Icon(DesktopIcons.About, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
+                Spacer(modifier = Modifier.width(12.dp))
+                Button(
+                    onClick = onAbout,
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+                ) { Text("关于软件", fontSize = 20.sp, fontFamily = silverFontFamily) }
+            }
+        }
         Spacer(modifier = Modifier.height(16.dp))
     }
 }
@@ -1054,8 +1114,8 @@ fun ExtensionScreen(
             .verticalScroll(rememberScrollState())
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) {
-                Text("返回", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                Icon(DesktopIcons.ArrowBack, contentDescription = "返回", modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text("扩展页面", color = Color(0xFFA0C4FF), fontSize = 36.sp, fontFamily = silverFontFamily)
@@ -1146,12 +1206,24 @@ Spacer(modifier = Modifier.height(24.dp))
         HorizontalDivider(color = Color(0xFF3A3A3A), thickness = 1.dp)
         Spacer(modifier = Modifier.height(24.dp))
 
-        OutlinedButton(
-            onClick = onWhitelist,
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
-            border = BorderStroke(1.dp, Color(0xFFA0C4FF)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFA0C4FF))
-        ) { Text("模组白名单", fontSize = 24.sp, fontFamily = silverFontFamily) }
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
+            border = BorderStroke(1.dp, Color(0xFF3A3A3A)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(12.dp)) {
+                Icon(DesktopIcons.Whitelist, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
+                Spacer(modifier = Modifier.width(12.dp))
+                Button(
+                    onClick = onWhitelist,
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)
+                ) { Text("模组白名单", fontSize = 20.sp, fontFamily = silverFontFamily) }
+            }
+        }
     }
 }
 
@@ -1180,8 +1252,8 @@ fun FileBrowserScreen(onSelect: (File) -> Unit, onBack: () -> Unit) {
 
     Column(modifier = Modifier.padding(24.dp).fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) {
-                Text("返回", color = Color(0xFFA0C4FF), fontSize = 24.sp, fontFamily = silverFontFamily)
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                Icon(DesktopIcons.ArrowBack, contentDescription = "返回", modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text("选择启动器根目录", color = Color(0xFFA0C4FF), fontSize = 28.sp, fontFamily = silverFontFamily)

@@ -277,4 +277,55 @@ object DesktopIcons {
             }
         }.build()
     }
+    val Whitelist: ImageVector by lazy {
+        ImageVector.Builder("Whitelist", 24.dp, 24.dp, 24f, 24f).apply {
+            path(fill = SolidColor(iconColor), fillAlpha = 1f, pathFillType = PathFillType.NonZero) {
+                moveTo(12f, 2f)
+                arcTo(10f, 10f, 0f, false, false, 2f, 12f)
+                arcTo(10f, 10f, 0f, false, false, 12f, 22f)
+                arcTo(10f, 10f, 0f, false, false, 22f, 12f)
+                arcTo(10f, 10f, 0f, false, false, 12f, 2f)
+                moveTo(12f, 20f)
+                arcTo(8f, 8f, 0f, false, true, 4f, 12f)
+                arcTo(8f, 8f, 0f, false, true, 12f, 4f)
+                arcTo(8f, 8f, 0f, false, true, 20f, 12f)
+                arcTo(8f, 8f, 0f, false, true, 12f, 20f)
+                moveTo(15f, 9f)
+                lineTo(10f, 14f)
+                lineTo(8f, 12f)
+                lineTo(6f, 14f)
+                lineTo(10f, 18f)
+                lineTo(17f, 11f)
+                lineTo(15f, 9f)
+                close()
+            }
+        }.build()
+    }
+    val About: ImageVector by lazy {
+        ImageVector.Builder("About", 24.dp, 24.dp, 24f, 24f).apply {
+            path(fill = SolidColor(iconColor), fillAlpha = 1f, pathFillType = PathFillType.NonZero) {
+                moveTo(11f, 7f)
+                horizontalLineTo(13f)
+                verticalLineTo(9f)
+                horizontalLineTo(11f)
+                verticalLineTo(7f)
+                moveTo(11f, 11f)
+                horizontalLineTo(13f)
+                verticalLineTo(17f)
+                horizontalLineTo(11f)
+                verticalLineTo(11f)
+                moveTo(12f, 2f)
+                arcTo(10f, 10f, 0f, false, false, 2f, 12f)
+                arcTo(10f, 10f, 0f, false, false, 12f, 22f)
+                arcTo(10f, 10f, 0f, false, false, 22f, 12f)
+                arcTo(10f, 10f, 0f, false, false, 12f, 2f)
+                moveTo(12f, 20f)
+                arcTo(8f, 8f, 0f, false, true, 4f, 12f)
+                arcTo(8f, 8f, 0f, false, true, 12f, 4f)
+                arcTo(8f, 8f, 0f, false, true, 20f, 12f)
+                arcTo(8f, 8f, 0f, false, true, 12f, 20f)
+                close()
+            }
+        }.build()
+    }
 }
