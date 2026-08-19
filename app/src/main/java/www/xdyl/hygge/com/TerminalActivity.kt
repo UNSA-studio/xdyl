@@ -13,13 +13,15 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.*
 import java.io.File
+import android.os.Environment
 
 class TerminalActivity : AppCompatActivity() {
     private lateinit var tvOutput: TextView
     private lateinit var etInput: EditText
     private lateinit var scrollView: ScrollView
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private var workingDir = File("/sdcard")
+    // 工作目录用公开目录，文件管理器可见可管理
+    private var workingDir = File(Environment.getExternalStorageDirectory(), "NebulaUpdater")
     private lateinit var pythonRoot: File
     private lateinit var pythonBinDir: File
 
@@ -30,9 +32,13 @@ class TerminalActivity : AppCompatActivity() {
         etInput = findViewById(R.id.etTerminalInput)
         scrollView = findViewById(R.id.terminalScrollView)
         tvOutput.movementMethod = ScrollingMovementMethod()
+
+        // Python 运行时必须留在私有目录（sdcard 不支持 exec 权限）
         pythonRoot = File(filesDir, "python_root")
         pythonBinDir = File(filesDir, "python_bin")
         pythonRoot.mkdirs(); pythonBinDir.mkdirs()
+        // 确保公开工作目录存在
+        if (!workingDir.exists()) workingDir.mkdirs()
 
         findViewById<ImageButton>(R.id.btnTerminalBack).setOnClickListener {
             finish()
@@ -71,7 +77,7 @@ class TerminalActivity : AppCompatActivity() {
             }
             cmd.startsWith("cd ") -> {
                 val dir = when (val t = cmd.removePrefix("cd ").trim()) {
-                    "" -> File("/sdcard")
+                    "" -> workingDir
                     else -> { val f = if (t.startsWith("/")) File(t) else File(workingDir, t); if (f.isDirectory) f else { appendLine("cd: 目录不存在: $t"); return } }
                 }
                 workingDir = dir; appendLine("当前目录: ${dir.absolutePath}"); return
