@@ -52,6 +52,7 @@ class TerminalActivity : AppCompatActivity() {
         appendLine("以应用权限执行命令（无 root）")
         appendLine("输入 'exit' 退出本页面")
         appendLine("输入 'pysetup' 下载安装 Python")
+        appendLine("输入 'pysetup <下载地址>' 从自定义地址安装")
         appendLine("输入 'pysetup status' 查看 Python 状态")
         appendLine("当前目录: ${workingDir.absolutePath}")
         appendLine("")
@@ -81,11 +82,20 @@ class TerminalActivity : AppCompatActivity() {
         }
 
         if (cmd == "pysetup") {
-            scope.launch(Dispatchers.IO) { installPython() }
+            scope.launch(Dispatchers.IO) { installPython("https://unsa-fdws.cc.cd/api/download/python_android.tar.gz") }
             return
         }
         if (cmd == "pysetup status") {
             scope.launch(Dispatchers.IO) { checkPythonStatus() }
+            return
+        }
+        if (cmd.startsWith("pysetup ")) {
+            val url = cmd.removePrefix("pysetup ").trim()
+            if (url.isEmpty()) {
+                appendLine("用法: pysetup [下载地址]")
+            } else {
+                scope.launch(Dispatchers.IO) { installPython(url) }
+            }
             return
         }
 
@@ -143,11 +153,11 @@ class TerminalActivity : AppCompatActivity() {
         appendLine(if (isPythonInstalled()) "Python: 已安装" else "Python: 未安装（输入 pysetup 安装）")
     }
 
-    private fun installPython() {
+    private fun installPython(downloadUrl: String) {
         try {
             appendLine("开始下载 Python 运行时...")
             val tarFile = File(filesDir, "python_android.tar.gz")
-            val conn = java.net.URL("https://unsa-fdws.cc.cd/api/download/python_android.tar.gz").openConnection() as java.net.HttpURLConnection
+            val conn = java.net.URL(downloadUrl).openConnection() as java.net.HttpURLConnection
             conn.connectTimeout = 15000
             conn.readTimeout = 120000
             conn.instanceFollowRedirects = true
