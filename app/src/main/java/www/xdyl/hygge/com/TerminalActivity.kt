@@ -105,7 +105,7 @@ class TerminalActivity : AppCompatActivity() {
     private fun isPythonInstalled() = File(pythonBinDir, "python3").let { it.exists() && it.canExecute() }
 
     private fun getSourceUrl() = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
-        .getString("python_download_url", "https://unsa-fdws.cc.cd/api/download/python_android.tar.gz")!!
+        .getString("python_download_url", "https://pan.vma.cc/pan/d/bb7ce82b195961c575901d8795ac4e78?ext=gz")!!
 
     private fun installPython() {
         try {
