@@ -18,6 +18,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import java.io.File
+import java.security.MessageDigest
 
 class EasterEggActivity : AppCompatActivity() {
     private lateinit var prefs: SharedPreferences
@@ -142,8 +143,17 @@ class EasterEggActivity : AppCompatActivity() {
     }
 
     private fun updateTerminalVisibility(btn: MaterialButton) {
-        val enabled = prefs.getBoolean("terminal_enabled", false)
-        btn.visibility = if (enabled) View.VISIBLE else View.GONE
+        val rawEnabled = prefs.getBoolean("terminal_enabled", false)
+        val savedSig = prefs.getString("terminal_sig", "") ?: ""
+        val expectSig = sha256("US.Kx9Qm2p" + packageName)
+        // 仅改 terminal_enabled 而无对应签名时拒绝显示
+        val valid = rawEnabled && savedSig == expectSig
+        btn.visibility = if (valid) View.VISIBLE else View.GONE
+    }
+
+    private fun sha256(input: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }
     }
 
     private fun showWhitelistDialog() {
