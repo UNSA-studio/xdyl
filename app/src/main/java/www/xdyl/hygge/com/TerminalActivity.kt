@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.*
 import java.io.File
 import android.os.Environment
+import android.os.Looper
 
 class TerminalActivity : AppCompatActivity() {
     private lateinit var tvOutput: TextView
@@ -151,7 +152,14 @@ class TerminalActivity : AppCompatActivity() {
         File(dir, "bin/python3"), File(dir, "bin/python"), File(dir, "python3"), File(dir, "python")
     ).firstOrNull { it.exists() && it.canExecute() }
 
-    private fun appendLine(text: String) { tvOutput.append(text + "\n"); scrollToBottom() }
+    private fun appendLine(text: String) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            tvOutput.append(text + "\n")
+            scrollToBottom()
+        } else {
+            runOnUiThread { appendLine(text) }
+        }
+    }
 
     private fun scrollToBottom() { scrollView.post { scrollView.fullScroll(View.FOCUS_DOWN) } }
 
