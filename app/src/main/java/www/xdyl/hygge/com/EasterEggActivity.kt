@@ -146,7 +146,6 @@ class EasterEggActivity : AppCompatActivity() {
         val rawEnabled = prefs.getBoolean("terminal_enabled", false)
         val savedSig = prefs.getString("terminal_sig", "") ?: ""
         val expectSig = sha256(internalTerminalSalt2() + packageName)
-        // 仅改 terminal_enabled 而无对应签名时拒绝显示
         val valid = rawEnabled && savedSig == expectSig
         btn.visibility = if (valid) View.VISIBLE else View.GONE
     }
