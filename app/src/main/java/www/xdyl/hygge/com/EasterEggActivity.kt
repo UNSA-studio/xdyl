@@ -145,11 +145,15 @@ class EasterEggActivity : AppCompatActivity() {
     private fun updateTerminalVisibility(btn: MaterialButton) {
         val rawEnabled = prefs.getBoolean("terminal_enabled", false)
         val savedSig = prefs.getString("terminal_sig", "") ?: ""
-        val expectSig = sha256("US.Kx9Qm2p" + packageName)
+        val expectSig = sha256(internalTerminalSalt2() + packageName)
         // 仅改 terminal_enabled 而无对应签名时拒绝显示
         val valid = rawEnabled && savedSig == expectSig
         btn.visibility = if (valid) View.VISIBLE else View.GONE
     }
+
+    private fun internalTerminalSalt2(): String = listOf(
+        "s", "t", "a", "r", "_", "x", "d", "y", "l"
+    ).joinToString("")
 
     private fun sha256(input: String): String {
         val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
