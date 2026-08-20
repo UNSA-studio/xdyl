@@ -3,6 +3,7 @@ package www.xdyl.hygge.com
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import java.io.File
 import java.security.SecureRandom
 import java.security.MessageDigest
