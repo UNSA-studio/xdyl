@@ -19,7 +19,9 @@ android {
     defaultConfig {
         applicationId = "www.xdyl.hygge.com"
         minSdk = 28
-        targetSdk = 35
+        // 保持 28 以豁免 Android10+ W^X 限制：targetSdk>=29 的应用私有目录 noexec，
+        // 无法执行下载解压的 Python ELF（Termux 同款做法）
+        targetSdk = 28
         versionCode = 1
         versionName = "1.0"
     }

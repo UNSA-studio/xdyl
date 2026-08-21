@@ -131,7 +131,26 @@ class TerminalActivity : AppCompatActivity() {
                 connectTimeout = 15000; readTimeout = 120000; instanceFollowRedirects = true
             }
             if (conn.responseCode != 200) { appendLine("下载失败: HTTP ${conn.responseCode}"); conn.disconnect(); return }
-            conn.inputStream.use { input -> tarFile.outputStream().use { input.copyTo(it) } }
+            val totalLen = conn.contentLengthLong
+            conn.inputStream.use { input ->
+                tarFile.outputStream().use { output ->
+                    val buf = ByteArray(8192)
+                    var done = 0L
+                    var lastPct = -1
+                    var n: Int
+                    while (input.read(buf).also { n = it } != -1) {
+                        output.write(buf, 0, n)
+                        done += n
+                        if (totalLen > 0) {
+                            val pct = (done * 100 / totalLen).toInt()
+                            if (pct >= lastPct + 10) {
+                                lastPct = pct
+                                appendLine("下载中 $pct% (${done / 1048576}MB / ${totalLen / 1048576}MB)")
+                            }
+                        }
+                    }
+                }
+            }
             conn.disconnect()
             appendLine("下载完成, 正在解压...")
 
