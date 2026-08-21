@@ -33,6 +33,8 @@ class TerminalActivity : AppCompatActivity() {
         etInput = findViewById(R.id.etTerminalInput)
         scrollView = findViewById(R.id.terminalScrollView)
         tvOutput.movementMethod = ScrollingMovementMethod()
+        // 长按可选中复制（Termux 同款）
+        tvOutput.setTextIsSelectable(true)
 
         // Python 运行时必须留在私有目录（sdcard 不支持 exec 权限）
         pythonRoot = File(filesDir, "python_root")
@@ -89,13 +91,20 @@ class TerminalActivity : AppCompatActivity() {
 
     private fun execShell(cmd: String) {
         try {
+            var realCmd = cmd
+            // python3/python 直接指向真实 ELF（wrapper 脚本受 SELinux execute_no_trans 限制不可执行）
+            if (isPythonInstalled()) {
+                findPythonExe(pythonRoot)?.let { exe ->
+                    realCmd = cmd.replace(Regex("^python3?\\b"), "\"${exe.absolutePath}\"")
+                }
+            }
             val shCmd = buildString {
                 append("cd \"${workingDir.absolutePath}\" && ")
                 if (isPythonInstalled()) {
                     append("export PATH=\"${pythonBinDir.absolutePath}:\$PATH\"; ")
                     append("export PYTHONHOME=\"${pythonRoot.absolutePath}\"; ")
                 }
-                append(cmd)
+                append(realCmd)
             }
             val p = Runtime.getRuntime().exec(arrayOf("/system/bin/sh", "-c", shCmd))
             val out = p.inputStream.bufferedReader().readText()
