@@ -102,8 +102,7 @@ class TerminalActivity : AppCompatActivity() {
                 append("cd \"${workingDir.absolutePath}\" && ")
                 if (isPythonInstalled()) {
                     append("export PATH=\"${pythonBinDir.absolutePath}:\$PATH\"; ")
-                    // 包内标准库直接铺在 lib/ 下（含 encodings），site-packages 与 dynload 一并加入
-                    append("export PYTHONPATH=\"${pythonRoot.absolutePath}/lib:${pythonRoot.absolutePath}/lib/site-packages:${pythonRoot.absolutePath}/lib/lib-dynload:\$PYTHONPATH\"; ")
+                    append("export PYTHONHOME=\"${pythonRoot.absolutePath}\"; ")
                     // python3 依赖的 .so 都在包内 bin 目录，注入库搜索路径
                     append("export LD_LIBRARY_PATH=\"${pythonRoot.absolutePath}/bin:\$LD_LIBRARY_PATH\"; ")
                 }
@@ -185,6 +184,13 @@ class TerminalActivity : AppCompatActivity() {
             for (name in listOf("python3", "python")) {
                 File(pythonBinDir, name).apply { writeText(wrapper); setExecutable(true, false) }
             }
+
+            // 建立 lib/python3.14 -> . 符号链接, 让 Python 按标准前缀路径找到库
+            val linkCmd = Runtime.getRuntime().exec(
+                arrayOf("/system/bin/sh", "-c",
+                    "ln -sfn . \"${pythonRoot.absolutePath}/lib/python3.14\"")
+            )
+            linkCmd.waitFor()
 
             // 强制修复权限：目录755、wrapper脚本755、可执行文件755、共享库755
             val fixPerms = Runtime.getRuntime().exec(
