@@ -103,6 +103,8 @@ class TerminalActivity : AppCompatActivity() {
                 if (isPythonInstalled()) {
                     append("export PATH=\"${pythonBinDir.absolutePath}:\$PATH\"; ")
                     append("export PYTHONHOME=\"${pythonRoot.absolutePath}\"; ")
+                    // python3 依赖的 .so 都在包内 bin 目录，注入库搜索路径
+                    append("export LD_LIBRARY_PATH=\"${pythonRoot.absolutePath}/bin:\$LD_LIBRARY_PATH\"; ")
                 }
                 append(realCmd)
             }
@@ -132,6 +134,7 @@ class TerminalActivity : AppCompatActivity() {
             }
             if (conn.responseCode != 200) { appendLine("下载失败: HTTP ${conn.responseCode}"); conn.disconnect(); return }
             val totalLen = conn.contentLengthLong
+            val startTime = System.currentTimeMillis()
             conn.inputStream.use { input ->
                 tarFile.outputStream().use { output ->
                     val buf = ByteArray(8192)
@@ -143,9 +146,19 @@ class TerminalActivity : AppCompatActivity() {
                         done += n
                         if (totalLen > 0) {
                             val pct = (done * 100 / totalLen).toInt()
-                            if (pct >= lastPct + 10) {
+                            if (pct >= lastPct + 2) {
                                 lastPct = pct
-                                appendLine("下载中 $pct% (${done / 1048576}MB / ${totalLen / 1048576}MB)")
+                                val bar = buildString {
+                                    append("[")
+                                    repeat(pct / 4) { append("=") }
+                                    repeat(25 - pct / 4) { append(" ") }
+                                    append("]")
+                                }
+                                val elapsed = (System.currentTimeMillis() - startTime) / 1000.0
+                                val speed = if (elapsed > 0) (done / 1048576.0 / elapsed) else 0.0
+                                val remainSec = if (speed > 0) ((totalLen - done) / 1048576.0 / speed).toLong() else 0
+                                appendLine("$bar $pct% | ${done / 1048576}/${totalLen / 1048576}MB | " +
+                                    String.format("%.1fMB/s", speed) + " | 剩余${remainSec}s")
                             }
                         }
                     }
