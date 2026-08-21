@@ -124,7 +124,7 @@ class TerminalActivity : AppCompatActivity() {
     private fun isPythonInstalled() = File(pythonBinDir, "python3").let { it.exists() && it.canExecute() }
 
     private fun getSourceUrl() = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
-        .getString("python_download_url", "https://pan.vma.cc/pan/d/bb7ce82b195961c575901d8795ac4e78?ext=gz")!!
+        .getString("python_download_url", "https://pan.vma.cc/pan/d/84239b97b46e273a193864eaf86b0e84?ext=gz")!!
 
     private fun installPython() {
         try {
