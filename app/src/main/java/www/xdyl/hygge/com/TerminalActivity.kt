@@ -102,7 +102,8 @@ class TerminalActivity : AppCompatActivity() {
                 append("cd \"${workingDir.absolutePath}\" && ")
                 if (isPythonInstalled()) {
                     append("export PATH=\"${pythonBinDir.absolutePath}:\$PATH\"; ")
-                    append("export PYTHONHOME=\"${pythonRoot.absolutePath}\"; ")
+                    // 包内标准库直接铺在 lib/ 下（含 encodings），site-packages 也一并加入
+                    append("export PYTHONPATH=\"${pythonRoot.absolutePath}/lib:${pythonRoot.absolutePath}/lib/site-packages:\$PYTHONPATH\"; ")
                     // python3 依赖的 .so 都在包内 bin 目录，注入库搜索路径
                     append("export LD_LIBRARY_PATH=\"${pythonRoot.absolutePath}/bin:\$LD_LIBRARY_PATH\"; ")
                 }
