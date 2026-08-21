@@ -127,7 +127,8 @@ class TerminalActivity : AppCompatActivity() {
             appendLine("下载完成, 正在解压...")
 
             pythonRoot.deleteRecursively(); pythonRoot.mkdirs()
-            val p = Runtime.getRuntime().exec(arrayOf("/system/bin/sh", "-c", "tar -xzf \"${tarFile.absolutePath}\" -C \"${pythonRoot.absolutePath}\""))
+            // -o 不还原文件所有者（包内是 Termux uid，应用无 chown 权限）
+            val p = Runtime.getRuntime().exec(arrayOf("/system/bin/sh", "-c", "tar -xozf \"${tarFile.absolutePath}\" -C \"${pythonRoot.absolutePath}\""))
             val err = p.errorStream.bufferedReader().readText(); p.waitFor()
             if (p.exitValue() != 0) { appendLine("解压失败: $err"); return }
             appendLine("解压完成, 正在定位 python3...")
