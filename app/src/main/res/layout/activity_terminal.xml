@@ -61,12 +61,22 @@
         android:padding="8dp"
         android:background="#1E1E1E">
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="$"
+            android:textColor="#33FF33"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
+            android:typeface="monospace"
+            android:layout_marginEnd="4dp"/>
+
         <EditText
             android:id="@+id/etTerminalInput"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="$ 输入命令..."
+            android:hint="输入命令..."
             android:textColor="#33FF33"
             android:textColorHint="#555555"
             android:textSize="14sp"
