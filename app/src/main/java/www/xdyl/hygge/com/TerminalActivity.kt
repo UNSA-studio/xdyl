@@ -144,10 +144,13 @@ class TerminalActivity : AppCompatActivity() {
                 File(pythonBinDir, name).apply { writeText(wrapper); setExecutable(true, false) }
             }
 
-            // 强制修复权限：目录755、可执行文件755、共享库755
+            // 强制修复权限：目录755、wrapper脚本755、可执行文件755、共享库755
             val fixPerms = Runtime.getRuntime().exec(
                 arrayOf("/system/bin/sh", "-c",
-                    "chmod 755 \"${pythonBinDir.absolutePath}\" \"${pythonExe.absolutePath}\" && " +
+                    "chmod 755 \"${pythonBinDir.absolutePath}\" " +
+                    "\"${pythonBinDir.absolutePath}/python3\" " +
+                    "\"${pythonBinDir.absolutePath}/python\" " +
+                    "\"${pythonExe.absolutePath}\" && " +
                     "chmod -R 755 \"${pythonRoot.absolutePath}/bin\" && " +
                     "find \"${pythonRoot.absolutePath}\" -name '*.so' -exec chmod 755 {} \\; 2>/dev/null")
             )
