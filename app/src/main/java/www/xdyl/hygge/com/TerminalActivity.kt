@@ -64,10 +64,12 @@ class TerminalActivity : AppCompatActivity() {
             }
         }
 
-        appendLine("星云更新器隐藏终端")
-        appendLine("命令: exit 退出 | pysetup 安装Python | pysetup status 状态")
-        appendLine("当前目录: ${workingDir.absolutePath}")
-        appendLine("")
+        appendLine(if (autoSetupMode) "星云更新器扩展组件安装" else "星云更新器隐藏终端")
+        if (!autoSetupMode) {
+            appendLine("命令: exit 退出 | pysetup 安装Python | pysetup status 状态")
+            appendLine("当前目录: ${workingDir.absolutePath}")
+            appendLine("")
+        }
 
         btnSend.setOnClickListener { runCommand() }
         etInput.setOnEditorActionListener { _, actionId, event ->
@@ -87,8 +89,10 @@ class TerminalActivity : AppCompatActivity() {
         btnSend.isEnabled = false
         btnBack.isEnabled = false
         etInput.isEnabled = false
-        appendLine("=== 自动安装模式 ===")
-        appendLine("正在准备扩展程序包（Python + mcstatus），请稍候...")
+        // 完全隐藏输入区，用户只能看着
+        findViewById<View>(R.id.terminalInputBar).visibility = View.GONE
+        appendLine("=== 扩展组件安装模式 ===")
+        appendLine("正在下载并安装扩展程序包（Python + mcstatus），请稍候...")
         appendLine("")
         scope.launch(Dispatchers.IO) {
             if (!isPythonInstalled()) {
@@ -258,7 +262,9 @@ class TerminalActivity : AppCompatActivity() {
             fixPerms.waitFor()
             tarFile.delete()
             appendLine("Python 安装完成!")
-            appendLine("输入 python3 --version 验证")
+            if (!autoSetupMode) {
+                appendLine("输入 python3 --version 验证")
+            }
         } catch (e: Exception) { appendLine("安装失败: ${e.message}") }
     }
 
