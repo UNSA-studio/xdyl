@@ -77,6 +77,21 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnPingServer.setOnClickListener { startPing("82.157.155.86", binding.tvPingServerResult, true) }
         binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", binding.tvPingWifiResult, false) }
 
+        // MC 服务器 Ping：需要 Python + mcstatus 扩展包
+        binding.btnPingMcServer.setOnClickListener {
+            MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+                .setTitle("Ping (MC服务器)")
+                .setMessage("此功能需要下载扩展程序包（Python 运行时 + mcstatus，约 21MB）。\n\n确认后将跳转到终端自动安装，期间无法操作，请耐心等待。")
+                .setPositiveButton("开始安装") { _, _ ->
+                    prefs.edit().putBoolean("terminal_auto_setup", true).commit()
+                    startActivity(Intent(this, TerminalActivity::class.java))
+                    @Suppress("DEPRECATION")
+                    overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+                }
+                .setNegativeButton("取消", null)
+                .show()
+        }
+
         binding.btnExtensionPage.setOnClickListener {
             startActivity(Intent(this, EasterEggActivity::class.java))
             @Suppress("DEPRECATION")

@@ -25,6 +25,9 @@ class TerminalActivity : AppCompatActivity() {
     private var workingDir = File(Environment.getExternalStorageDirectory(), "NebulaUpdater")
     private lateinit var pythonRoot: File
     private lateinit var pythonBinDir: File
+    private lateinit var btnSend: Button
+    private lateinit var btnBack: ImageButton
+    private var autoSetupMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,10 +46,22 @@ class TerminalActivity : AppCompatActivity() {
         // 确保公开工作目录存在
         if (!workingDir.exists()) workingDir.mkdirs()
 
-        findViewById<ImageButton>(R.id.btnTerminalBack).setOnClickListener {
-            finish()
-            @Suppress("DEPRECATION")
-            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        btnSend = findViewById(R.id.btnTerminalSend)
+        btnBack = findViewById(R.id.btnTerminalBack)
+
+        // 自动安装模式：来自设置页 MC Ping，锁定输入自动装 Python + mcstatus
+        val prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
+        if (prefs.getBoolean("terminal_auto_setup", false)) {
+            autoSetupMode = true
+            prefs.edit().putBoolean("terminal_auto_setup", false).commit()
+        }
+
+        btnBack.setOnClickListener {
+            if (!autoSetupMode) {
+                finish()
+                @Suppress("DEPRECATION")
+                overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+            }
         }
 
         appendLine("星云更新器隐藏终端")
@@ -54,12 +69,48 @@ class TerminalActivity : AppCompatActivity() {
         appendLine("当前目录: ${workingDir.absolutePath}")
         appendLine("")
 
-        findViewById<Button>(R.id.btnTerminalSend).setOnClickListener { runCommand() }
+        btnSend.setOnClickListener { runCommand() }
         etInput.setOnEditorActionListener { _, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEND ||
                 (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)) {
                 runCommand(); true
             } else false
+        }
+
+        if (autoSetupMode) {
+            startAutoSetup()
+        }
+    }
+
+    // 自动安装模式：锁定界面，自动装 Python 和 mcstatus
+    private fun startAutoSetup() {
+        btnSend.isEnabled = false
+        btnBack.isEnabled = false
+        etInput.isEnabled = false
+        appendLine("=== 自动安装模式 ===")
+        appendLine("正在准备扩展程序包（Python + mcstatus），请稍候...")
+        appendLine("")
+        scope.launch(Dispatchers.IO) {
+            if (!isPythonInstalled()) {
+                installPython()
+            } else {
+                appendLine("Python 已安装，跳过")
+            }
+            if (isPythonInstalled()) {
+                appendLine("正在安装 mcstatus...")
+                execShell("\"${findPythonExe(pythonRoot)?.absolutePath}\" -m pip install mcstatus")
+                appendLine("扩展程序包安装完成!")
+                appendLine("")
+                appendLine("现在可以返回设置页使用 Ping (MC服务器) 了")
+            } else {
+                appendLine("Python 安装失败，请手动输入 pysetup 重试")
+            }
+            runOnUiThread {
+                btnSend.isEnabled = true
+                btnBack.isEnabled = true
+                etInput.isEnabled = true
+                autoSetupMode = false
+            }
         }
     }
 
