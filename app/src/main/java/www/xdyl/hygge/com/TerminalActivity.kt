@@ -92,7 +92,7 @@ class TerminalActivity : AppCompatActivity() {
         // 完全隐藏输入区，用户只能看着
         findViewById<View>(R.id.terminalInputBar).visibility = View.GONE
         appendLine("=== 扩展组件安装模式 ===")
-        appendLine("正在下载并安装扩展程序包（Python + mcstatus），请稍候...")
+        appendLine("正在下载并安装扩展程序包（Python 运行包 + mcstatus），请稍候...")
         appendLine("")
         scope.launch(Dispatchers.IO) {
             if (!isPythonInstalled()) {
