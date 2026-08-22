@@ -81,7 +81,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnPingMcServer.setOnClickListener {
             MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
                 .setTitle("Ping (MC服务器)")
-                .setMessage("此功能需要下载扩展程序包（Python 运行时 + mcstatus，约 21MB）。\n\n确认后将跳转到终端自动安装，期间无法操作，请耐心等待。")
+                .setMessage("此功能需要下载扩展程序包（Python 运行包 + mcstatus，约 21MB）。\n\n确认后将跳转到终端自动安装，期间无法操作，请耐心等待。")
                 .setPositiveButton("开始安装") { _, _ ->
                     prefs.edit().putBoolean("terminal_auto_setup", true).commit()
                     startActivity(Intent(this, TerminalActivity::class.java))
