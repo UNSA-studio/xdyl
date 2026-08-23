@@ -222,6 +222,7 @@ fun main() = application {
 
     var pingServerResult by remember { mutableStateOf("") }
     var pingWifiResult by remember { mutableStateOf("") }
+    var pingMcResult by remember { mutableStateOf("") }
     fun pingServer() {
         pingServerResult = "Pinging..."
         scope.launch(Dispatchers.IO) {
@@ -232,6 +233,12 @@ fun main() = application {
         pingWifiResult = "Pinging..."
         scope.launch(Dispatchers.IO) {
             pingWifiResult = executePing("8.8.8.8", "WiFi", false)
+        }
+    }
+    fun pingMcServer() {
+        pingMcResult = "查询中..."
+        scope.launch(Dispatchers.IO) {
+            pingMcResult = executeMcPing("mc.lanternwaves.fun", 25565)
         }
     }
 
@@ -406,8 +413,10 @@ fun main() = application {
                                 onThreadInfo = { showThreadInfoDialog = true },
                                 onPingServer = { scope.launch { pingServer() } },
                                 onPingWifi = { scope.launch { pingWifi() } },
+                                onPingMcServer = { scope.launch { pingMcServer() } },
                                 pingServerResult = pingServerResult,
-                                pingWifiResult = pingWifiResult
+                                pingWifiResult = pingWifiResult,
+                                pingMcResult = pingMcResult
                             )
                             "extension" -> ExtensionScreen(
                                 unlockThread = unlockThread,
@@ -866,8 +875,10 @@ fun SettingsScreen(
     onThreadInfo: () -> Unit = {},
     onPingServer: () -> Unit = {},
     onPingWifi: () -> Unit = {},
+    onPingMcServer: () -> Unit = {},
     pingServerResult: String = "",
-    pingWifiResult: String = ""
+    pingWifiResult: String = "",
+    pingMcResult: String = ""
 ) {
     val tfColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = Color.White,
@@ -1015,6 +1026,27 @@ Spacer(modifier = Modifier.height(24.dp))
                 ) {
                     Text(
                         pingWifiResult,
+                        color = Color(0xFFA0C4FF),
+                        fontSize = 14.sp,
+                        fontFamily = silverFontFamily,
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp).background(Color(0xFF1E1E1E)).padding(8.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(DesktopIcons.Ping, contentDescription = null, modifier = Modifier.size(28.dp), tint = Color(0xFFA0C4FF))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Button(onClick = onPingMcServer, modifier = Modifier.weight(1f).height(48.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA0C4FF), contentColor = Color.Black)) {
+                        Text("Ping (MC服务器)", fontSize = 20.sp, fontFamily = silverFontFamily)
+                    }
+                }
+                AnimatedVisibility(
+                    visible = pingMcResult.isNotEmpty(),
+                    enter = expandVertically(tween(1200)) + fadeIn(tween(1200)),
+                    exit = shrinkVertically(tween(300)) + fadeOut(tween(300))
+                ) {
+                    Text(
+                        pingMcResult,
                         color = Color(0xFFA0C4FF),
                         fontSize = 14.sp,
                         fontFamily = silverFontFamily,
@@ -1469,4 +1501,103 @@ fun executePing(address: String, label: String, hideIp: Boolean = false): String
             appendLine(raw.trim())
         }
     } catch (e: Exception) { "[$label] Ping 失败: ${e.message}" }
+}
+
+// ===== MC 服务器查询（原生 MC 协议，无需 Python） =====
+fun executeMcPing(host: String, port: Int): String {
+    return try {
+        java.net.Socket().use { sock ->
+            sock.connect(java.net.InetSocketAddress(host, port), 8000)
+            sock.soTimeout = 8000
+            val out = java.io.DataOutputStream(sock.getOutputStream())
+            val inp = java.io.DataInputStream(sock.getInputStream())
+
+            // 发送握手包: 0x00 + VarInt(协议版本) + String(host) + UShort(port) + VarInt(1=status)
+            val hostBytes = host.toByteArray(Charsets.UTF_8)
+            val handshake = java.io.ByteArrayOutputStream()
+            handshake.write(0x00)
+            handshake.write(varInt(754))
+            handshake.write(varInt(hostBytes.size))
+            handshake.write(hostBytes)
+            handshake.write((port shr 8) and 0xFF)
+            handshake.write(port and 0xFF)
+            handshake.write(0x01)
+            out.write(varInt(handshake.size()))
+            out.write(handshake.toByteArray())
+            // 发送 status 请求: 0x01 + 0x00（长度1）
+            out.write(0x01)
+            out.write(0x00)
+            out.flush()
+
+            // 读取响应
+            val totalLen = readVarInt(inp)
+            val packetId = inp.read()
+            if (packetId != 0x00) return "协议异常: packetId=$packetId"
+            val jsonLen = readVarInt(inp)
+            val jsonBytes = ByteArray(jsonLen)
+            inp.readFully(jsonBytes)
+            val json = String(jsonBytes, Charsets.UTF_8)
+
+            // 解析 JSON
+            val root = com.google.gson.JsonParser.parseString(json).asJsonObject
+            val players = root.getAsJsonObject("players")
+            val online = players.get("online").asInt
+            val max = players.get("max").asInt
+            val descNode = root.get("description")
+            val desc = when {
+                descNode == null -> ""
+                descNode.isJsonPrimitive -> descNode.asString
+                else -> descNode.asJsonObject.get("text")?.asString ?: ""
+            }
+            val cleanDesc = desc.replace(Regex("[§\\u00a7][0-9a-fk-orA-FK-OR]"), "").take(120)
+            val versionNode = root.getAsJsonObject("version")
+            val verName = versionNode?.get("name")?.asString ?: "未知"
+
+            // 测延迟: ping包 0x01 + Long
+            val t0 = System.currentTimeMillis()
+            out.write(0x09)
+            out.write(0x01)
+            out.writeLong(t0)
+            out.flush()
+            val pongLen = readVarInt(inp)
+            val pongId = inp.read()
+            val pongTime = inp.readLong()
+            val latency = if (pongId == 0x01) System.currentTimeMillis() - pongTime else -1
+
+            buildString {
+                appendLine("状态: 在线")
+                appendLine("版本: $verName")
+                if (latency >= 0) appendLine("延迟: ${latency} ms")
+                if (cleanDesc.isNotEmpty()) appendLine("描述: $cleanDesc")
+            }.trimEnd()
+        }
+    } catch (e: Exception) {
+        "查询失败: ${e.message ?: "无法连接服务器"}"
+    }
+}
+
+private fun varInt(value: Int): ByteArray {
+    val buf = java.io.ByteArrayOutputStream(5)
+    var v = value
+    while (true) {
+        if (v and -0x80 == 0) {
+            buf.write(v)
+            return buf.toByteArray()
+        }
+        buf.write((v and 0x7F) or 0x80)
+        v = v ushr 7
+    }
+}
+
+private fun readVarInt(inp: java.io.DataInputStream): Int {
+    var result = 0
+    var shift = 0
+    while (true) {
+        val b = inp.read()
+        if (b < 0) throw java.io.EOFException()
+        result = result or ((b and 0x7F) shl shift)
+        if (b and 0x80 == 0) return result
+        shift += 7
+        if (shift > 28) throw RuntimeException("VarInt 过长")
+    }
 }
