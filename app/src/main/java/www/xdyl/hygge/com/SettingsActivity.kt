@@ -13,6 +13,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.*
 import www.xdyl.hygge.com.databinding.ActivitySettingsBinding
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 
 class SettingsActivity : AppCompatActivity() {
@@ -79,17 +80,21 @@ class SettingsActivity : AppCompatActivity() {
 
         // MC 服务器 Ping：需要 Python + mcstatus 扩展包
         binding.btnPingMcServer.setOnClickListener {
-            MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
-                .setTitle("Ping (MC服务器)")
-                .setMessage("此功能需要下载扩展程序包（Python 运行包 + mcstatus，约 21MB）。\n\n确认后将跳转到终端自动安装，期间无法操作，请耐心等待。")
-                .setPositiveButton("开始安装") { _, _ ->
-                    prefs.edit().putBoolean("terminal_auto_setup", true).commit()
-                    startActivity(Intent(this, TerminalActivity::class.java))
-                    @Suppress("DEPRECATION")
-                    overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
-                }
-                .setNegativeButton("取消", null)
-                .show()
+            if (TerminalActivity.isPythonReady(this)) {
+                pingMcServer()
+            } else {
+                MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+                    .setTitle("Ping (MC服务器)")
+                    .setMessage("此功能需要下载扩展程序包（Python 运行包 + mcstatus，约 21MB）。\n\n确认后将跳转到终端自动安装，期间无法操作，请耐心等待。")
+                    .setPositiveButton("开始安装") { _, _ ->
+                        prefs.edit().putBoolean("terminal_auto_setup", true).commit()
+                        startActivity(Intent(this, TerminalActivity::class.java))
+                        @Suppress("DEPRECATION")
+                        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+                    }
+                    .setNegativeButton("取消", null)
+                    .show()
+            }
         }
 
         binding.btnExtensionPage.setOnClickListener {
@@ -172,6 +177,65 @@ class SettingsActivity : AppCompatActivity() {
             }
             animator.start()
         }
+    }
+
+    // MC 服务器 Ping：通过 Python + mcstatus 查询
+    private fun pingMcServer() {
+        val tv = binding.tvPingMcResult
+        tv.layoutParams.height = 0
+        tv.visibility = View.VISIBLE
+        tv.text = "查询中..."
+        expandView(tv)
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { executeMcPing() }
+            tv.text = result
+            expandView(tv)
+        }
+    }
+
+    private fun executeMcPing(): String {
+        return try {
+            val exe = TerminalActivity.pythonExePath(this) ?: return "错误: Python 未安装"
+            val root = File(filesDir, "python_root")
+            val script = """
+import sys
+try:
+    from mcstatus import JavaServer
+    s = JavaServer.lookup('mc.lanternwaves.fun:25565')
+    st = s.status()
+    print('状态: 在线')
+    print('在线玩家: %d/%d' % (st.players.online, st.players.max))
+    try:
+        print('延迟: %d ms' % round(s.ping()))
+    except Exception:
+        pass
+    desc = str(st.description)
+    import re
+    desc = re.sub(r'[§\u00a7][0-9a-fk-or]', '', desc)
+    print('描述: %s' % desc[:120])
+except ImportError:
+    print('错误: mcstatus 未安装')
+except Exception as e:
+    print('查询失败: %s' % e)
+""".trimIndent()
+            val scriptFile = File(cacheDir, "mc_ping.py")
+            scriptFile.writeText(script)
+            val env = arrayOf(
+                "PATH=${exe.substringBeforeLast('/')}:/sbin:/system/bin",
+                "PYTHONPATH=${root.absolutePath}/lib:${root.absolutePath}/lib/site-packages:${root.absolutePath}/lib/lib-dynload",
+                "PYTHONHOME=${root.absolutePath}",
+                "LD_LIBRARY_PATH=${root.absolutePath}/bin"
+            )
+            val p = Runtime.getRuntime().exec(
+                arrayOf("/system/bin/sh", "-c", "\"$exe\" \"${scriptFile.absolutePath}\""),
+                env
+            )
+            val out = p.inputStream.bufferedReader().readText()
+            val err = p.errorStream.bufferedReader().readText()
+            p.waitFor()
+            scriptFile.delete()
+            if (out.isNotBlank()) out.trimEnd() else "查询失败: ${err.trimEnd().ifBlank { "未知错误" }}"
+        } catch (e: Exception) { "查询异常: ${e.message}" }
     }
 
     private fun executePing(address: String, hideIp: Boolean): String {
