@@ -17,6 +17,17 @@ import android.os.Environment
 import android.os.Looper
 
 class TerminalActivity : AppCompatActivity() {
+
+    companion object {
+        /** 供外部（设置页）检测扩展包是否就绪 */
+        fun pythonExePath(context: android.content.Context): String? {
+            val root = File(context.filesDir, "python_root")
+            return listOf(File(root, "bin/python3"), File(root, "bin/python"))
+                .firstOrNull { it.exists() && it.canExecute() }?.absolutePath
+        }
+        fun isPythonReady(context: android.content.Context): Boolean = pythonExePath(context) != null
+    }
+
     private lateinit var tvOutput: TextView
     private lateinit var etInput: EditText
     private lateinit var scrollView: ScrollView
