@@ -204,7 +204,6 @@ try:
     s = JavaServer.lookup('mc.lanternwaves.fun:25565')
     st = s.status()
     print('状态: 在线')
-    print('在线玩家: %d/%d' % (st.players.online, st.players.max))
     try:
         print('延迟: %d ms' % round(s.ping()))
     except Exception:
