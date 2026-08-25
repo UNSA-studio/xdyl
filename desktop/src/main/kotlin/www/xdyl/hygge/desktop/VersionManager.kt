@@ -96,7 +96,7 @@ class VersionManager(private val prefs: Preferences) {
         }
     }
 
-    suspend fun downloadNewCsv(version: String) {
+    suspend fun downloadNewCsv(version: String): Boolean {
         withContext(Dispatchers.IO) {
             var lastEx: Exception? = null
             for (attempt in 1..5) {
@@ -123,7 +123,7 @@ class VersionManager(private val prefs: Preferences) {
                         file.writeText(csv)
                         saveLocalVersion(version)
                         LogManager.log("[CSV] 已保存到: ${file.absolutePath} (版本 $version)")
-                        return@withContext
+                        return@withContext true
                     } else {
                         lastEx = Exception("HTTP ${response.code}")
                         LogManager.log("[CSV] 下载失败 (${attempt}/5): HTTP ${response.code}")
@@ -136,6 +136,7 @@ class VersionManager(private val prefs: Preferences) {
             }
             LogManager.log("[CSV] 下载最终失败: ${lastEx?.message}")
         }
+        return false
     }
 
     private fun compareVersions(v1: String, v2: String): Int {

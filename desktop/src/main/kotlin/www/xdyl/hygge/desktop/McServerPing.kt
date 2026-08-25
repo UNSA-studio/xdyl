@@ -5,6 +5,9 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.util.Hashtable
+import java.util.regex.Pattern
+import javax.naming.directory.InitialDirContext
 
 /**
  * Minecraft Java 版服务器状态查询（原生协议实现）。
@@ -37,9 +40,36 @@ object McServerPing {
         }
     }
 
+    /**
+     * 解析 "host:port" / "host" / SRV 域名，返回 (host, port)。
+     * 无端口且存在 _minecraft._tcp SRV 记录时自动跟随。
+     */
+    fun resolveHost(input: String): Pair<String, Int> {
+        val host = input.substringBefore(":").trim().removeSuffix(".")
+        var port = input.substringAfter(":", "").toIntOrNull() ?: 25565
+        if (input.substringAfter(":", "").toIntOrNull() == null && port == 25565 && !host.matches(Regex("\\d+\\.\\d+\\.\\d+\\.\\d+"))) {
+            // 未显式指定端口 → 尝试 SRV 记录解析（mc.lanternwaves.fun 这类域名）
+            try {
+                val env = Hashtable<String, String>().apply { put("sun.net.spi.nameservice.provider.1", "dns") }
+                val ctx = InitialDirContext(env)
+                val attrs = ctx.getAttributes("_minecraft._tcp.$host", arrayOf("SRV"))
+                val srv = attrs.get("SRV")?.get()
+                if (srv != null) {
+                    val m = Pattern.compile("(\\d+)\\s+(\\d+)\\s+(\\d+)\\s+(.+?)\\.?$").matcher(srv.toString())
+                    if (m.find()) {
+                        port = m.group(3).toInt()
+                        return Pair(m.group(4).trim(), port)
+                    }
+                }
+            } catch (_: Exception) { /* 无 SRV 记录或 DNS 失败，回退默认端口 */ }
+        }
+        return Pair(host, port)
+    }
+
     /** 返回 Triple(JSON文本, 延迟ms, null) 或 Triple(null, 0, 错误信息) */
-    fun ping(host: String, port: Int = 25565): Triple<String?, Long, String?> {
+    fun ping(input: String): Triple<String?, Long, String?> {
         try {
+            val (host, port) = resolveHost(input)
             val start = System.currentTimeMillis()
             Socket().use { socket ->
                 socket.connect(InetSocketAddress(host, port), 5000)
@@ -94,22 +124,5 @@ object McServerPing {
                 .replace("\\n", "\n")
                 .take(120)
         } catch (_: Exception) { "" }
-    }
-
-    /** 从 JSON 提取在线人数 */
-    fun extractPlayers(json: String): Pair<Int, Int>? {
-        return try {
-            val m = Regex("\"players\"\\s*:\\s*\\{[^}]*\"online\"\\s*:\\s*(\\d+)[^}]*\"max\"\\s*:\\s*(\\d+)").find(json)
-                ?: Regex("\"players\"\\s*:\\s*\\{[^}]*\"max\"\\s*:\\s*(\\d+)[^}]*\"online\"\\s*:\\s*(\\d+)").find(json)
-            m?.let {
-                if (it.groupValues.size > 2 && it.groupValues[2].toIntOrNull() != null && it.groupValues[1].contains(Regex("^\\d+$"))) {
-                    val g = it.groupValues
-                    if (g[1].toInt() <= g[2].toInt()) Pair(g[1].toInt(), g[2].toInt())
-                    else Pair(g[2].toInt(), g[1].toInt())
-                } else {
-                    null
-                }
-            }
-        } catch (_: Exception) { null }
     }
 }

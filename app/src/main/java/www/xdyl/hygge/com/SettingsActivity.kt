@@ -201,6 +201,13 @@ class SettingsActivity : AppCompatActivity() {
 import sys
 try:
     from mcstatus import JavaServer
+    # Android 没有 /etc/resolv.conf，必须手动配置 DNS 解析器
+    import dns.resolver
+    import dns.query
+    _r = dns.resolver.Resolver(configure=False)
+    _r.nameservers = ['223.5.5.5', '8.8.8.8', '1.1.1.1']
+    dns.resolver.DefaultResolver = _r
+    dns.query._resolver = _r
     s = JavaServer.lookup('mc.lanternwaves.fun:25565')
     st = s.status()
     print('状态: 在线')
@@ -242,7 +249,11 @@ except Exception as e:
             val process = Runtime.getRuntime().exec(arrayOf("ping", "-c", "4", address))
             val reader = BufferedReader(InputStreamReader(process.inputStream))
             val output = reader.readText()
-            process.waitFor()
+            // 最多等 15 秒，防止 ping 挂起导致无限等待
+            if (!process.waitFor(15, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroyForcibly()
+                return "Ping error: 超时"
+            }
             val loss = Regex("(\\d+)% packet loss").find(output)?.groupValues?.get(1) ?: "N/A"
             val rtt = Regex("min/avg/max/mdev = (\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)").find(output)
             val analysis = buildString {

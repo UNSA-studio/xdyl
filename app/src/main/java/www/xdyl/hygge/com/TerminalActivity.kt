@@ -72,6 +72,18 @@ class TerminalActivity : AppCompatActivity() {
                 finish()
                 @Suppress("DEPRECATION")
                 overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+            } else {
+                // 自动安装中：确认后允许中途退出，避免下载卡住时用户被困住
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+                    .setTitle("退出安装?")
+                    .setMessage("扩展组件仍在后台安装中，现在退出不会中断安装，\n完成后回到设置页点击 Ping (MC服务器) 即可使用。")
+                    .setPositiveButton("退出") { _, _ ->
+                        finish()
+                        @Suppress("DEPRECATION")
+                        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+                    }
+                    .setNegativeButton("继续等待", null)
+                    .show()
             }
         }
 
