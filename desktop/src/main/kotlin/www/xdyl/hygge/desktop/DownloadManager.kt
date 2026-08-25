@@ -20,7 +20,8 @@ class DownloadManager(
         .build()
 
     suspend fun download(destFile: File, onProgress: (Int) -> Unit) = withContext(Dispatchers.IO) {
-        if (!useRange || threadCount <= 1) {
+        // totalSize 未知时禁止分块下载，防止除零
+        if (!useRange || threadCount <= 1 || totalSize <= 0) {
             // 简单模式：直接 GET，不使用 Range
             val request = Request.Builder().url(url).build()
             val response = client.newCall(request).execute()
@@ -35,8 +36,10 @@ class DownloadManager(
                     while (input.read(buffer).also { bytesRead = it } != -1) {
                         fos.write(buffer, 0, bytesRead)
                         downloaded += bytesRead
-                        val pct = (downloaded * 100 / totalSize).toInt()
-                        withContext(Dispatchers.Main) { onProgress(pct) }
+                        if (totalSize > 0) {
+                            val pct = (downloaded * 100 / totalSize).toInt()
+                            withContext(Dispatchers.Main) { onProgress(pct) }
+                        }
                     }
                 }
             }
@@ -90,10 +93,12 @@ class DownloadManager(
                 }
                 offset += bytesRead
                 val total = downloadedBytes.addAndGet(bytesRead.toLong())
-                val pct = (total * 100 / totalSize).toInt()
-                if (pct > progress.get()) {
-                    progress.set(pct)
-                    withContext(Dispatchers.Main) { onProgress(pct) }
+                if (totalSize > 0) {
+                    val pct = (total * 100 / totalSize).toInt()
+                    if (pct > progress.get()) {
+                        progress.set(pct)
+                        withContext(Dispatchers.Main) { onProgress(pct) }
+                    }
                 }
             }
         }

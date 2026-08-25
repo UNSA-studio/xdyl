@@ -238,7 +238,7 @@ fun main() = application {
     fun pingMcServer() {
         pingMcResult = "查询中..."
         scope.launch(Dispatchers.IO) {
-            val (json, latency, error) = McServerPing.ping("mc.lanternwaves.fun", 25565)
+            val (json, latency, error) = McServerPing.ping("mc.lanternwaves.fun:25565")
             pingMcResult = if (json != null) {
                 buildString {
                     appendLine("[MC] mc.lanternwaves.fun:25565")
@@ -309,6 +309,8 @@ fun main() = application {
                                                 LogManager.log("服务器文件: ${serverFiles.size} 个")
                                                 val csvMods = if (useLocalCsv && localCsvPath.isNotEmpty()) {
                                                     LogManager.log("使用本地CSV: $localCsvPath")
+                                                    val hotVer = VersionManager(prefs).getLocalVersion()
+                                                    if (hotVer != "0.0") LogManager.log("警告: 本地CSV模式下云端热更新(${hotVer})不会生效!")
                                                     parseCsvFromFile(File(localCsvPath))
                                                 } else {
                                                     parseDesktopCsvMods()
@@ -696,8 +698,17 @@ fun main() = application {
                                 TextButton(onClick = {
                                     showCsvUpdateDialog = false
                                     scope.launch {
-                                        VersionManager(prefs).downloadNewCsv(diff.version)
-                                        LogManager.log("[CSV] 用户确认更新完成")
+                                        val ok = VersionManager(prefs).downloadNewCsv(diff.version)
+                                        if (ok) {
+                                            LogManager.log("[CSV] 更新完成，下次更新时生效")
+                                            logBuilder.appendLine("[CSV] 已更新到版本 ${diff.version}")
+                                            logText = logBuilder.toString()
+                                            if (!downloading) statusText = "CSV已更新"
+                                        } else {
+                                            LogManager.log("[CSV] 更新失败")
+                                            folderErrorMsg = "CSV 更新失败\n\n请检查网络连接后重试，\n详细原因请查看导出日志。"
+                                            showFolderErrorDialog = true
+                                        }
                                     }
                                 }) { Text("更新", fontFamily = silverFontFamily) }
                             },
@@ -1497,7 +1508,11 @@ fun executePing(address: String, label: String, hideIp: Boolean = false): String
     return try {
         val process = Runtime.getRuntime().exec(arrayOf("ping", "-n", "4", address))
         val output = process.inputStream.bufferedReader(Charset.forName("GBK")).readText()
-        process.waitFor()
+        // 最多等 15 秒，防止 ping 挂起导致无限等待
+        if (!process.waitFor(15, java.util.concurrent.TimeUnit.SECONDS)) {
+            process.destroyForcibly()
+            return "[$label] Ping 失败: 超时"
+        }
         val loss = Regex("(\\d+)%").find(output)?.groupValues?.get(1) ?: "?"
         val avg = Regex("Average = (\\d+)ms").find(output)?.groupValues?.get(1)
         val min = Regex("Minimum = (\\d+)ms").find(output)?.groupValues?.get(1)
