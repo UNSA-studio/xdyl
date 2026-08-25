@@ -106,7 +106,9 @@ object McServerPing {
                     val g = it.groupValues
                     if (g[1].toInt() <= g[2].toInt()) Pair(g[1].toInt(), g[2].toInt())
                     else Pair(g[2].toInt(), g[1].toInt())
-                } else null
+                } else {
+                    null
+                }
             }
         } catch (_: Exception) { null }
     }
