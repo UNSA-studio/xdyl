@@ -237,23 +237,39 @@ fun main() = application {
         }
     }
     fun pingMcServer() {
-        if (PyExtManager.isReady()) {
-            pingMcResult = "查询中..."
-            scope.launch(Dispatchers.IO) {
-                pingMcResult = PyExtManager.queryPing()
-            }
-        } else {
+        if (!PyExtManager.isReady()) {
             // 未安装扩展包 → 弹窗引导安装（与 Android 端流程一致）
             showMcSetupDialog = true
+            return
+        }
+        pingMcResult = "查询中..."
+        scope.launch(Dispatchers.IO) {
+            val r = PyExtManager.queryPing()
+            if (r.contains("mcstatus 未安装")) {
+                // 纯净扩展包不含组件：检测到缺失时自动补装
+                pingMcResult = "检测到缺少 mcstatus，正在自动安装..."
+                val err = PyExtManager.installMcstatus()
+                pingMcResult = if (err == null) "mcstatus 安装完成!\n再次点击 Ping (MC服务器) 即可查询"
+                else "mcstatus 安装失败: $err"
+            } else {
+                pingMcResult = r
+            }
         }
     }
     fun startMcSetup() {
         pingMcResult = "准备安装扩展程序包..."
         scope.launch {
-            val err = PyExtManager.install { msg -> pingMcResult = msg }
+            var err = PyExtManager.install { msg -> pingMcResult = msg }
             if (err == null) {
                 logBuilder.appendLine("[EXT] 扩展程序包安装完成")
                 logText = logBuilder.toString()
+                // 纯净包不含组件，现场安装 mcstatus
+                pingMcResult = "扩展程序包就绪，正在安装 mcstatus..."
+                withContext(Dispatchers.IO) {
+                    err = PyExtManager.installMcstatus()
+                }
+            }
+            if (err == null) {
                 pingMcResult = "扩展程序包安装完成!\n再次点击 Ping (MC服务器) 即可查询"
             } else {
                 pingMcResult = "安装失败: $err"
