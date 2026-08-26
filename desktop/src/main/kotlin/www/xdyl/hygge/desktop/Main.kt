@@ -745,7 +745,7 @@ fun main() = application {
                         AlertDialog(
                             onDismissRequest = { showMcSetupDialog = false },
                             title = { Text("Ping (MC服务器)", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
-                            text = { Text("此功能需要下载扩展程序包（Python 运行包 + mcstatus，约 20MB）。\n\n确认后将自动下载安装到 ~/.xdyl/python_root，期间请耐心等待。", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp) },
+                            text = { Text("此功能需要下载扩展程序包（Python 运行包 + mcstatus，约 15MB）。\n\n确认后将自动下载安装到 ~/.xdyl/python_root，期间请耐心等待。", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp) },
                             confirmButton = {
                                 TextButton(onClick = {
                                     showMcSetupDialog = false

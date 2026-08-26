@@ -16,7 +16,7 @@ import java.util.zip.ZipInputStream
  */
 object PyExtManager {
 
-    const val DEFAULT_URL = "https://unsa-fdws.cc.cd/api/download/python_windows.zip"
+    const val DEFAULT_URL = "https://pan.vma.cc/pan/d/b5a092911a4933d8cc8f151c5873a3d5?ext=gz"
 
     fun pythonRoot(): File = File(System.getProperty("user.home"), ".xdyl/python_root")
 
