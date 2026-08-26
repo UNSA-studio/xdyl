@@ -5,9 +5,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
-import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
-import java.util.zip.ZipInputStream
 
 /**
  * Windows 端扩展包管理器（与 Android 端 terminal 自动安装流程对齐）。
@@ -67,19 +65,21 @@ object PyExtManager {
             val root = pythonRoot()
             if (root.exists()) root.deleteRecursively()
             root.mkdirs()
-            ZipInputStream(tmp.inputStream().buffered()).use { zis ->
-                var entry = zis.nextEntry
-                while (entry != null) {
-                    if (!entry.isDirectory) {
-                        val out = File(root, stripTopLevel(entry.name))
-                        out.parentFile?.mkdirs()
-                        FileOutputStream(out).use { zis.copyTo(it) }
-                        out.setExecutable(true, false)
-                    }
-                    entry = zis.nextEntry
-                }
+            // Windows 10+ 自带 bsdtar，自动识别 zip / tar.gz 等格式，无需区分扩展包类型
+            val proc = ProcessBuilder("tar", "-xf", tmp.absolutePath, "-C", root.absolutePath)
+                .redirectErrorStream(false)
+            val p = proc.start()
+            val errOut = p.errorStream.bufferedReader(Charsets.UTF_8).readText()
+            if (!p.waitFor(120, TimeUnit.SECONDS)) {
+                p.destroyForcibly()
+                tmp.delete()
+                return@withContext "解压超时"
             }
             tmp.delete()
+            if (p.exitValue() != 0) {
+                return@withContext "解压失败: ${errOut.trim().take(200).ifBlank { "未知错误" }}"
+            }
+            flattenSingleDir(root)
             if (!isReady()) return@withContext "解压后未找到 python.exe"
             LogManager.log("[EXT] 扩展程序包已安装到: ${root.absolutePath}")
             null
@@ -110,11 +110,19 @@ object PyExtManager {
         e.message ?: e.javaClass.simpleName
     }
 
-    /** 兼容 zip 内带顶层目录或不带两种打包方式 */
-    private fun stripTopLevel(name: String): String {
-        val n = name.replace('\\', '/')
-        val idx = n.indexOf('/')
-        return if (idx > 0) n.substring(idx + 1) else n
+    /** 解压后若只有一个顶层目录，则把内容整体上提到根（兼容带/不带顶层目录的包） */
+    private fun flattenSingleDir(root: File) {
+        val entries = root.listFiles() ?: return
+        val single = entries.singleOrNull { it.isDirectory } ?: return
+        if (single.name.equals("python_root", true)) return
+        val tmpName = File(root, "__flatten_tmp")
+        if (!single.renameTo(tmpName)) return
+        tmpName.listFiles()?.forEach { f ->
+            if (!f.renameTo(File(root, f.name))) {
+                f.copyRecursively(File(root, f.name), overwrite = true)
+            }
+        }
+        tmpName.deleteRecursively()
     }
 
     /** 与 Android 端输出格式完全一致的查询脚本（Windows 有系统 DNS，无需手动 Resolver） */
