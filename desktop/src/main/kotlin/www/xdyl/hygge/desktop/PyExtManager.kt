@@ -89,6 +89,27 @@ object PyExtManager {
         }
     }
 
+    /** 安装 mcstatus（纯净扩展包不含任何组件，首次使用时现场补装） */
+    fun installMcstatus(): String? = try {
+        val exe = pythonExe() ?: return "Python 未安装"
+        LogManager.log("[EXT] 正在安装 mcstatus...")
+        val pb = ProcessBuilder(exe.absolutePath, "-m", "pip", "install", "mcstatus")
+        pb.environment()["PYTHONIOENCODING"] = "utf-8"
+        val p = pb.start()
+        p.inputStream.bufferedReader(Charsets.UTF_8).readText()
+        val err = p.errorStream.bufferedReader(Charsets.UTF_8).readText()
+        if (!p.waitFor(120, TimeUnit.SECONDS)) {
+            p.destroyForcibly()
+            return "pip 安装超时"
+        }
+        if (p.exitValue() == 0) {
+            LogManager.log("[EXT] mcstatus 安装完成")
+            null
+        } else err.trimEnd().lineSequence().lastOrNull()?.take(200) ?: "未知错误"
+    } catch (e: Exception) {
+        e.message ?: e.javaClass.simpleName
+    }
+
     /** 兼容 zip 内带顶层目录或不带两种打包方式 */
     private fun stripTopLevel(name: String): String {
         val n = name.replace('\\', '/')
