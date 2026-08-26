@@ -88,6 +88,7 @@ fun main() = application {
     var showFileBrowserDialog by remember { mutableStateOf(false) }
     var showCsvUpdateDialog by remember { mutableStateOf(false) }
     var csvUpdateInfo by remember { mutableStateOf<VersionDiff?>(null) }
+    var showMcSetupDialog by remember { mutableStateOf(false) }
     var folderErrorMsg by remember { mutableStateOf("") }
     var showResourcePackDialog by remember { mutableStateOf(false) }
     var slideDirection by remember { mutableStateOf(1) }
@@ -236,19 +237,26 @@ fun main() = application {
         }
     }
     fun pingMcServer() {
-        pingMcResult = "查询中..."
-        scope.launch(Dispatchers.IO) {
-            val (json, latency, error) = McServerPing.ping("mc.lanternwaves.fun:25565")
-            pingMcResult = if (json != null) {
-                buildString {
-                    appendLine("[MC] mc.lanternwaves.fun:25565")
-                    appendLine("状态: 在线")
-                    appendLine("延迟: ${latency}ms")
-                    val desc = McServerPing.extractDescription(json)
-                    if (desc.isNotEmpty()) appendLine("描述: $desc")
-                }.trimEnd()
+        if (PyExtManager.isReady()) {
+            pingMcResult = "查询中..."
+            scope.launch(Dispatchers.IO) {
+                pingMcResult = PyExtManager.queryPing()
+            }
+        } else {
+            // 未安装扩展包 → 弹窗引导安装（与 Android 端流程一致）
+            showMcSetupDialog = true
+        }
+    }
+    fun startMcSetup() {
+        pingMcResult = "准备安装扩展程序包..."
+        scope.launch {
+            val err = PyExtManager.install { msg -> pingMcResult = msg }
+            if (err == null) {
+                logBuilder.appendLine("[EXT] 扩展程序包安装完成")
+                logText = logBuilder.toString()
+                pingMcResult = "扩展程序包安装完成!\n再次点击 Ping (MC服务器) 即可查询"
             } else {
-                "[MC] mc.lanternwaves.fun:25565\n查询失败: $error"
+                pingMcResult = "安装失败: $err"
             }
         }
     }
@@ -714,6 +722,22 @@ fun main() = application {
                             },
                             dismissButton = {
                                 TextButton(onClick = { showCsvUpdateDialog = false }) { Text("稍后", fontFamily = silverFontFamily) }
+                            }
+                        )
+                    }
+                    if (showMcSetupDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showMcSetupDialog = false },
+                            title = { Text("Ping (MC服务器)", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
+                            text = { Text("此功能需要下载扩展程序包（Python 运行包 + mcstatus，约 20MB）。\n\n确认后将自动下载安装到 ~/.xdyl/python_root，期间请耐心等待。", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp) },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showMcSetupDialog = false
+                                    startMcSetup()
+                                }) { Text("开始安装", fontFamily = silverFontFamily) }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showMcSetupDialog = false }) { Text("取消", fontFamily = silverFontFamily) }
                             }
                         )
                     }
