@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,6 +30,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.platform.Font
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
@@ -504,10 +506,17 @@ fun main() = application {
                             }
                         }
                     }
-                    AnimatedVisibility(visible=showAboutDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
+AnimatedVisibility(visible=showAboutDialog, enter=slideInVertically{it}+fadeIn(tween(300)), exit=slideOutVertically{it}+fadeOut(tween(300))) {
                         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.5f)).clickable { showAboutDialog = false }, contentAlignment = Alignment.Center) {
                             Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)), modifier = Modifier.widthIn(max = 400.dp).padding(16.dp)) {
-                                Column(modifier = Modifier.padding(20.dp)) {
+                                Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Image(
+                                        painter = painterResource("drawable/icon.png"),
+                                        contentDescription = "应用图标",
+                                        modifier = Modifier.size(72.dp),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                    Spacer(Modifier.height(10.dp))
                                     Text("关于软件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
                                     Spacer(Modifier.height(12.dp))
                                     Text("星云更新器", fontFamily = silverFontFamily, color = Color.White, fontSize = 16.sp)
@@ -702,7 +711,7 @@ fun main() = application {
                     if (showCsvUpdateDialog && csvUpdateInfo != null) {
                         val diff = csvUpdateInfo!!
                         AlertDialog(
-                            onDismissRequest = { showCsvUpdateDialog = false },
+                            onDismissRequest = { /* 重要弹窗：点击外部不关闭 */ },
                             title = { Text("CSV 需要更新 (${diff.version})", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
                             text = {
                                 Column {
@@ -759,7 +768,7 @@ fun main() = application {
                     }
                     if (showResourcePackDialog) {
                         AlertDialog(
-                            onDismissRequest = { showResourcePackDialog = false },
+                            onDismissRequest = { /* 重要弹窗：点击外部不关闭 */ },
                             title = { Text("安装服务器材质包", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF)) },
                             text = { Text("是否要安装 Server 材质包？\n这是必要的，如不装进服将下载材质包，\n在这里安装可以加快速度。", fontFamily = silverFontFamily, color = Color.White) },
                             confirmButton = {

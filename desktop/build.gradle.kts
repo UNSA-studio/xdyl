@@ -31,3 +31,27 @@ compose.desktop {
         }
     }
 }
+
+// ============================================================
+// 双版本发布：
+//   packageMsi          → 完整版 MSI（jpackage 捆绑 JRE，开箱即用，体积大）
+//   packageThinZip      → 轻量版 ZIP（不含 JRE，仅几 MB，需用户自装 Java 17+）
+// ============================================================
+
+val thinDistDir = layout.buildDirectory.dir("compose/binaries/main-thin")
+
+val prepareThinJar = tasks.register<Copy>("prepareThinJar") {
+    dependsOn("createDistributable")
+    from(layout.buildDirectory.dir("compose/binaries/main/app/NebulaUpdater"))
+    into(thinDistDir.map { it.dir("NebulaUpdater") })
+}
+
+val packageThinZip = tasks.register<Zip>("packageThinZip") {
+    group = "compose desktop"
+    description = "轻量版：应用本体 zip，不捆绑 Java 运行时"
+    dependsOn(prepareThinJar)
+    archiveBaseName.set("NebulaUpdater-thin")
+    archiveExtension.set("zip")
+    from(thinDistDir.map { it.dir("NebulaUpdater") })
+    destinationDirectory.set(layout.buildDirectory.dir("compose/binaries/main-thin"))
+}

@@ -68,9 +68,9 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
       shell: bash
-    - name: Build Windows MSI
+    - name: Build Windows MSI (full) + Thin ZIP
       run: |
-        ./gradlew :desktop:packageMsi --stacktrace 2>&1 | tee build.log
+        ./gradlew :desktop:packageMsi :desktop:packageThinZip --stacktrace 2>&1 | tee build.log
         exit ${PIPESTATUS[0]}
       shell: bash
     - name: Print compile errors (on failure)
@@ -87,8 +87,15 @@ jobs:
       with:
         name: windows-build-log
         path: build.log
-    - name: Upload Windows MSI
+    - name: Upload Windows MSI (full)
+      if: success()
       uses: actions/upload-artifact@v5
       with:
         name: xdyl-windows-msi
         path: desktop/build/compose/binaries/main/msi/*.msi
+    - name: Upload Windows Thin ZIP
+      if: success()
+      uses: actions/upload-artifact@v5
+      with:
+        name: xdyl-windows-thin-zip
+        path: desktop/build/compose/binaries/main-thin/*.zip
