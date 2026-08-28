@@ -9,3 +9,4 @@ build/
 
 # Local configuration
 local.properties
+.gradle/
