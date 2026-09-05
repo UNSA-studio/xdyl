@@ -20,11 +20,8 @@ package com.tungsten.fclcore.download.neoforge;
 import static com.tungsten.fclcore.util.Logging.LOG;
 import static com.tungsten.fclcore.util.gson.JsonUtils.fromNonNullJson;
 
-import com.tungsten.fcl.FCLApp;
-import com.tungsten.fcl.R;
 import com.tungsten.fclcore.download.ArtifactMalformedException;
 import com.tungsten.fclcore.download.DefaultDependencyManager;
-import com.tungsten.fclcore.download.InstallerProcessRunner;
 import com.tungsten.fclcore.download.LibraryAnalyzer;
 import com.tungsten.fclcore.download.forge.ForgeNewInstallProfile;
 import com.tungsten.fclcore.download.game.GameLibrariesTask;
@@ -180,24 +177,7 @@ public class NeoForgeOldInstallTask extends Task<Version> {
     }
 
     private void runJVMProcess(ForgeNewInstallProfile.Processor processor, List<String> command, int java) throws Exception {
-        LOG.info("Executing external processor " + processor.getJar().toString() + ", command line: " + new CommandBuilder().addAll(command));
-        updateMessage(FCLApp.getAppContext().getString(R.string.installer_running_processor, String.valueOf(java)));
-        int exitCode = InstallerProcessRunner.run(
-                FCLApp.getAppContext(),
-                command.toArray(new String[0]),
-                java,
-                this::appendInstallerLog);
-        if (exitCode != 0) {
-            if (java == 8) {
-                runJVMProcess(processor, command, 17);
-            } else if (java == 17) {
-                runJVMProcess(processor, command, 11);
-            } else if (java == 11) {
-                runJVMProcess(processor, command, 21);
-            } else {
-                throw new IOException("Game processor exited abnormally with code " + exitCode);
-            }
-        }
+        throw new UnsupportedOperationException("外部 game processor 在星云更新器中不可用（vendored 裁剪）");
     }
 
     private static final int MAX_INSTALL_LOG_LINES = 200;
