@@ -38,7 +38,7 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.26.0")
     implementation("commons-io:commons-io:2.15.1")
     implementation("com.github.junrar:junrar:7.5.5")
-    implementation("com.github.albfernandez:juniversalchardet:2.4.0")
+    implementation("org.glavo:chardet:2.5.0")
     implementation("org.jenkins-ci:constant-pool-scanner:1.2")
     implementation("org.jsoup:jsoup:1.17.2")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
