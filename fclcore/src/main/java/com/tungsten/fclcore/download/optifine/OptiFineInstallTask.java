@@ -19,10 +19,7 @@ package com.tungsten.fclcore.download.optifine;
 
 import static com.tungsten.fclcore.util.Lang.getOrDefault;
 
-import com.tungsten.fcl.FCLApp;
-import com.tungsten.fcl.R;
 import com.tungsten.fclcore.download.DefaultDependencyManager;
-import com.tungsten.fclcore.download.InstallerProcessRunner;
 import com.tungsten.fclcore.download.LibraryAnalyzer;
 import com.tungsten.fclcore.download.UnsupportedInstallationException;
 import com.tungsten.fclcore.download.VersionMismatchException;
@@ -229,23 +226,9 @@ public final class OptiFineInstallTask extends Task<Version> {
     }
 
     private void runJVMProcess(String[] command, int java) throws Exception {
-        updateMessage(FCLApp.getAppContext().getString(R.string.installer_running_processor, String.valueOf(java)));
-        int exitCode = InstallerProcessRunner.run(
-                FCLApp.getAppContext(),
-                command,
-                java,
-                this::appendInstallerLog);
-        if (exitCode != 0) {
-            if (java == 8) {
-                runJVMProcess(command, 17);
-            } else if (java == 17) {
-                runJVMProcess(command, 11);
-            } else if (java == 11) {
-                runJVMProcess(command, 21);
-            } else {
-                throw new IOException("OptiFine patcher failed, command: " + new CommandBuilder().addAll(Arrays.asList(command)));
-            }
-        }
+        // Nebula vendored: 子进程安装器依赖 FCL 完整启动链（ProcessService），已移除。
+        // 我们只整合包含 OptiFine 的整合包场景，不单独安装 OptiFine。
+        throw new UnsupportedOperationException("OptiFine 子进程安装在星云更新器中不可用（vendored 裁剪）");
     }
 
     private static final int MAX_INSTALL_LOG_LINES = 200;
