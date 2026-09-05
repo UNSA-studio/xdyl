@@ -128,7 +128,7 @@ data class ForgeNewModMetadata(
             return LocalModFile(
                 modManager, modManager.getLocalMod(mod.modId, type), modFile, mod.displayName,
                 LocalModFile.Description(mod.description), mod.authors,
-                if (jarVersion != null) mod.version.replace("\${file.jarVersion}", jarVersion) else mod.version,
+                if (jarVersion != null) mod.version.replace("\${file.jarVersion}", jarVersion!!) else mod.version,
                 "",
                 mod.displayURL,
                 metadata.logoFile
