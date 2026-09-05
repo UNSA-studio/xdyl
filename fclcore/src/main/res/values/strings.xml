@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- fclcore vendored 字符串 shim（GPL-3.0, from FCL-Team/FoldCraftLauncher）。
+     仅提供 fclcore 代码内引用的进度文案与常量，中文文案与星云更新器风格统一。 -->
+<resources>
+    <string name="app_version">2.0 (Nebula vendored)</string>
+    <string name="curse_api_key"></string>
+    <string name="version_list_refreshing">正在刷新版本列表</string>
+    <string name="installer_running_processor">安装器处理中（%1$s）</string>
+    <string name="installer_recent_logs">最近的安装日志</string>
+    <string name="installer_exit_code_invalid">安装器退出码异常</string>
+    <string name="installer_process_failed_to_start">安装器进程启动失败</string>
+    <string name="installer_process_no_exit_code">安装器未返回退出码</string>
+    <string name="installer_process_no_response">安装器无响应</string>
+    <string name="installer_process_retrying">正在重试安装器进程</string>
+    <string name="installer_process_start_error">安装器进程启动错误</string>
+    <string name="notification_title">Nebula updater</string>
+</resources>

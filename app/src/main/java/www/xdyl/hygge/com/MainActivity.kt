@@ -74,6 +74,91 @@ class MainActivity : AppCompatActivity() {
     data class ModInfo(val fileName: String, val size: Long, val md5: String, val sha256: String)
     data class Quote(val chinese: String, val english: String, val author: String, val authorEn: String, val source: String, val sourceEn: String)
 
+    // ========== 整合包安装 ==========
+    private fun showModpackInstallDialog() {
+        val info = ModpackInstaller.getInstalledInfo(this)
+        val installedVer = info["version"]
+        val packVer = info["pack_version"]
+        val msg = if (installedVer != null) {
+            "将下载服务器整合包并安装为独立版本。\n\n当前已安装：$installedVer${if (!packVer.isNullOrEmpty()) " (v$packVer)" else ""}\n重新安装会覆盖同目录文件。\n\n安装完成后 tacz 枪包会随整合包自动就位。"
+        } else {
+            "将下载服务器整合包并安装为独立版本。\n\n首次安装约需数分钟（取决于网络），\n安装完成后 tacz 枪包会随整合包自动就位。"
+        }
+        MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+            .setTitle("整合包安装")
+            .setMessage(msg)
+            .setPositiveButton("开始安装") { _, _ -> startModpackInstall() }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun startModpackInstall() {
+        if (isProcessing) return
+        val launcherRoot = prefs.getString("launcher_root", null)
+            ?: Environment.getExternalStorageDirectory().absolutePath
+        val gameRoot = findMinecraftDir(File(launcherRoot)) ?: File(launcherRoot, ".minecraft")
+        if (!gameRoot.exists()) { gameRoot.mkdirs() }
+
+        isProcessing = true
+        binding.btnStartDownload.isEnabled = false
+        binding.progressBar.visibility = View.VISIBLE
+        binding.progressBar.progress = 0
+        appendLog("[MODPACK] 开始整合包安装流程")
+
+        scope.launch {
+            try {
+                val zipFile = File(getExternalFilesDir(null), ModpackInstaller.MODPACK_FILE)
+                appendLog("[MODPACK] 下载整合包: ${ModpackInstaller.MODPACK_URL}")
+                withContext(Dispatchers.IO) {
+                    val size = fetchContentLength(ModpackInstaller.MODPACK_URL)
+                    DownloadManager(ModpackInstaller.MODPACK_URL, size, 8, size > 0)
+                        .download(zipFile) { pct ->
+                            runOnUiThread {
+                                binding.progressBar.progress = pct / 2
+                                binding.tvStatus.text = "下载整合包 $pct%"
+                            }
+                        }
+                }
+                appendLog("[MODPACK] 下载完成 (${zipFile.length() / 1048576} MB)，开始安装")
+
+                val result = ModpackInstaller(this@MainActivity).install(
+                    zipFile, gameRoot
+                ) { pct, msg ->
+                    runOnUiThread {
+                        binding.progressBar.progress = pct
+                        binding.tvStatus.text = msg
+                        if (pct % 10 == 0) appendLog("[MODPACK] $msg")
+                    }
+                }
+                appendLog("[MODPACK] ${result.message}")
+                withContext(Dispatchers.Main) {
+                    binding.tvStatus.text = result.message
+                    MaterialAlertDialogBuilder(this@MainActivity, R.style.DialogAnimation)
+                        .setTitle(if (result.ok) "安装完成" else "安装失败")
+                        .setMessage(result.message)
+                        .setPositiveButton("好的", null)
+                        .show()
+                }
+                zipFile.delete()
+            } catch (e: Exception) {
+                LogManager.log("[MODPACK] 流程异常: ${e.message}")
+                appendLog("[MODPACK] 安装流程异常: ${e.message}")
+                showError(Constants.ERROR10)
+            } finally {
+                isProcessing = false
+                binding.btnStartDownload.isEnabled = true
+                binding.progressBar.visibility = View.GONE
+            }
+        }
+    }
+
+    private suspend fun fetchContentLength(url: String): Long = withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder().url(url).head().build()
+            client.newCall(req).execute().use { it.header("Content-Length")?.toLongOrNull() ?: -1L }
+        } catch (_: Exception) { -1L }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         LogManager.log("MainActivity 创建")
@@ -138,6 +223,10 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
+        binding.btnInstallModpack.setOnClickListener {
+            it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
+            showModpackInstallDialog()
+        }
         binding.btnSelectDir.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
             showFileBrowser()

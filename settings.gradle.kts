@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 rootProject.name = "xdyl"
 include(":app")
 include(":desktop")
+include(":fclcore")
