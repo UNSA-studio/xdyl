@@ -31,10 +31,12 @@ jobs:
     - name: Print compile errors (on failure)
       if: failure()
       run: |
-        echo "========== 编译错误摘要 =========="
-        grep -E '^e: |error: |Exception is:|Caused by:|> Task .* FAILED|FAILURE: Build failed' build.log | head -60 || echo "未匹配到标准错误行"
-        echo "========== 日志末尾 100 行 =========="
-        tail -100 build.log
+        {
+          echo "========== 编译错误摘要 =========="
+          grep -E '^e: |error: |Exception is:|Caused by:|> Task .* FAILED|FAILURE: Build failed' build.log | head -60 || echo "未匹配到标准错误行"
+          echo "========== 日志末尾 100 行 =========="
+          tail -100 build.log
+        } | tee -a "$GITHUB_STEP_SUMMARY"
     - name: Upload build log (on failure)
       if: failure()
       uses: actions/upload-artifact@v5
@@ -77,10 +79,12 @@ jobs:
       if: failure()
       shell: bash
       run: |
-        echo "========== 编译错误摘要 =========="
-        grep -E '^e: |error: |Exception is:|Caused by:|> Task .* FAILED|FAILURE: Build failed' build.log | head -60 || echo "未匹配到标准错误行"
-        echo "========== 日志末尾 100 行 =========="
-        tail -100 build.log
+        {
+          echo "========== 编译错误摘要 =========="
+          grep -E '^e: |error: |Exception is:|Caused by:|> Task .* FAILED|FAILURE: Build failed' build.log | head -60 || echo "未匹配到标准错误行"
+          echo "========== 日志末尾 100 行 =========="
+          tail -100 build.log
+        } | tee -a "$GITHUB_STEP_SUMMARY"
     - name: Upload build log (on failure)
       if: failure()
       uses: actions/upload-artifact@v5
