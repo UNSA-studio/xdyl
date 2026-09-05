@@ -47,9 +47,9 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- 选择目录和下载按钮 -->
+    <!-- 整合包安装按钮 -->
     <androidx.cardview.widget.CardView
-        android:id="@+id/cardSelect"
+        android:id="@+id/cardModpack"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="100dp"
@@ -59,6 +59,28 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnInstallModpack"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="📦 一键安装整合包（含枪包）"
+            android:textColor="@color/primary_light_blue"
+            app:cornerRadius="24dp"
+            android:stateListAnimator="@null" />
+    </androidx.cardview.widget.CardView>
+    <!-- 选择目录和下载按钮 -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardSelect"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="#2A2A2A"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cardModpack">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSelectDir"
