@@ -43,5 +43,6 @@ dependencies {
     implementation("org.glavo:chardet:2.5.0")
     implementation("org.jenkins-ci:constant-pool-scanner:1.2")
     implementation("org.jsoup:jsoup:1.17.2")
+    implementation("org.tomlj:tomlj:1.1.1")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
 }
