@@ -86,9 +86,8 @@ class ApiClient(private val session: SessionStore) {
         url
     }
 
-    /** 轮询 QQ 授权结果：成功返回 true（token 已写入 session），未授权返回 false */
-    suspend fun pollQQLogin(sessionId: String): Boolean = withContext(Dispatchers.IO) {
-        // 手动走 HTTP（code=202 是"等待扫码"的正常中间态，不能走抛异常的 execute）
+    /** 轮询 QQ 授权结果。返回：null=继续等待；true=成功；抛 ApiException=服务端明确失败 */
+    suspend fun pollQQLogin(sessionId: String): Boolean? = withContext(Dispatchers.IO) {
         val req = Request.Builder()
             .url("$BASE/check-qq-login?session_id=$sessionId")
             .get()
@@ -97,26 +96,32 @@ class ApiClient(private val session: SessionStore) {
             client.newCall(req).execute().use { resp ->
                 val text = resp.body?.string() ?: ""
                 LogManager.log("[QQ] poll http=${resp.code} body=${text.take(200)}")
-                val root = try { JSONObject(text) } catch (e: Exception) { return@use false }
+                val root = try { JSONObject(text) } catch (e: Exception) { return@use null }
                 val code = root.optInt("code", resp.code)
-                if (code == 202) return@use false // 等待扫码，继续轮询
-                if (code != 200) return@use false
-                val data = root.optJSONObject("data") ?: root
-                // 兼容多种字段位置：data.access_token / data.token / 顶层
-                val access = data.optString("access_token", data.optString("token", root.optString("access_token", "")))
-                if (access.isBlank()) {
-                    LogManager.log("[QQ] 200 但无token字段: $text")
-                    return@use false
+                when {
+                    code == 202 -> null // 等待扫码
+                    code == 200 -> {
+                        val data = root.optJSONObject("data") ?: root
+                        val access = data.optString("access_token", data.optString("token", root.optString("access_token", "")))
+                        if (access.isBlank()) {
+                            LogManager.log("[QQ] 200 但无token字段: $text")
+                            null
+                        } else {
+                            val refresh = data.optString("refresh_token", root.optString("refresh_token", ""))
+                            val nickname = data.optString("nickname", data.optString("username", root.optString("nickname", "QQ用户")))
+                            session.saveSession(access, refresh, nickname)
+                            LogManager.log("[QQ] 登录成功 user=$nickname")
+                            true
+                        }
+                    }
+                    else -> throw ApiException(code, root.optString("message").ifBlank { "QQ 登录失败 ($code)" })
                 }
-                val refresh = data.optString("refresh_token", root.optString("refresh_token", ""))
-                val nickname = data.optString("nickname", data.optString("username", root.optString("nickname", "QQ用户")))
-                session.saveSession(access, refresh, nickname)
-                LogManager.log("[QQ] 登录成功 user=$nickname")
-                true
             }
+        } catch (e: ApiException) {
+            throw e
         } catch (e: Exception) {
             LogManager.log("[QQ] poll异常: ${e.message}")
-            false
+            null
         }
     }
 

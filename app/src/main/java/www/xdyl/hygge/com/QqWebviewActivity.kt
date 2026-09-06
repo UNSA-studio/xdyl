@@ -81,18 +81,6 @@ class QqWebviewActivity : AppCompatActivity() {
                     else -> true // 其他自定义scheme一律拦截
                 }
             }
-
-            override fun onReceivedSslError(view: WebView, handler: android.webkit.SslErrorHandler, error: android.net.http.SslError) {
-                val host = view.url?.let { android.net.Uri.parse(it).host } ?: ""
-                // oauth.lanternwaves.fun 的证书是给 login 子域签的（域名不匹配），
-                // 但它是我们自己的服务器，callback 必须走通 → 仅对此域名放行
-                if (host == "oauth.lanternwaves.fun") {
-                    LogManager.log("[QQ-WebView] SSL豁免: $host")
-                    handler.proceed()
-                } else {
-                    super.onReceivedSslError(view, handler, error)
-                }
-            }
         }
         binding.webview.loadUrl(url)
 
@@ -103,8 +91,17 @@ class QqWebviewActivity : AppCompatActivity() {
         pollJob = lifecycleScope.launch {
             for (i in 0 until 45) { // 45 × 2s = 90s
                 delay(2000)
-                val ok = withContext(Dispatchers.IO) { runCatching { api.pollQQLogin(sessionId) }.getOrDefault(false) }
-                if (ok) {
+                val outcome = try {
+                    withContext(Dispatchers.IO) { api.pollQQLogin(sessionId) }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        binding.tvQqTitle.text = "❌ " + (e.message ?: "登录失败")
+                    }
+                    delay(1500)
+                    finishWith(RESULT_FAILED)
+                    return@launch
+                }
+                if (outcome == true) {
                     withContext(Dispatchers.Main) {
                         binding.tvQqTitle.text = "✅ 登录成功，正在返回…"
                         finishWith(RESULT_LOGGED_IN)
