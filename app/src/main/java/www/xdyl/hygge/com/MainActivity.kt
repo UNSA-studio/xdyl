@@ -483,7 +483,7 @@ class MainActivity : AppCompatActivity() {
                         binding.tvStatus.text = p.message
                     }
                 }
-                result.messages.forEach { appendLog("[SYNC] $it") }
+                result.messages.forEach { msg -> appendLog("[SYNC] " + msg) }
                 appendLog("[AUTO] 同步完成: 新下 ${result.downloaded}, 已最新 ${result.skipped}, 失败 ${result.failed}, 清理 ${result.cleaned}")
 
                 withContext(Dispatchers.Main) {

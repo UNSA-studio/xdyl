@@ -12,8 +12,8 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
  * 增量同步引擎（吃 mods.json）：
  *
- * - new_mod/*.jar → 版本目录/mods/（本地sha256相同则跳过）
- * - tacz/*.zip    → 版本目录/tacz/
+ * - new_mod 目录下的 .jar → 版本目录/mods/（本地sha256相同则跳过）
+ * - tacz 目录下的 .zip → 版本目录/tacz/
  * - removed       → 对应位置删除（仅限更新器部署过的文件名）
  *
  * 并发下载沿用原 DownloadManager 的多线程 Range 下载 + 重试。

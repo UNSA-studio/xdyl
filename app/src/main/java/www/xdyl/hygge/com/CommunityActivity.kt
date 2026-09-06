@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import www.xdyl.hygge.com.databinding.ActivityCommunityBinding
 
 /**
@@ -61,7 +62,7 @@ class CommunityActivity : AppCompatActivity() {
                     Tab.ANNOUNCEMENTS -> {
                         val root = api.get("/announcements", requiresAuth = false)
                         val items = api.extractList(root)
-                        val list = (0 until items.length()).map { items.getJSONObject(it) }
+                        val list: List<JSONObject> = (0 until items.length()).map { idx -> items.getJSONObject(idx) }
                         render(list) { obj ->
                             val title = api.firstString(obj, "title") ?: "公告"
                             val content = api.firstString(obj, "content") ?: ""
@@ -72,7 +73,7 @@ class CommunityActivity : AppCompatActivity() {
                     Tab.FORUM -> {
                         val root = api.get("/forum/posts?page=1", requiresAuth = false)
                         val items = api.extractList(root)
-                        val list = (0 until items.length()).map { items.getJSONObject(it) }
+                        val list: List<JSONObject> = (0 until items.length()).map { idx -> items.getJSONObject(idx) }
                         render(list) { obj ->
                             val title = api.firstString(obj, "title") ?: "(无标题)"
                             val author = api.firstString(obj, "nickname", "username") ?: ""
@@ -85,7 +86,7 @@ class CommunityActivity : AppCompatActivity() {
                     Tab.RANK -> {
                         val root = api.get("/rank/coins", requiresAuth = false)
                         val items = api.extractList(root)
-                        val list = (0 until items.length()).map { items.getJSONObject(it) }
+                        val list: List<JSONObject> = (0 until items.length()).map { idx -> items.getJSONObject(idx) }
                         render(list) { obj ->
                             val rank = obj.optInt("rank", 0)
                             val name = api.firstString(obj, "nickname", "player_name", "username") ?: ""
@@ -96,7 +97,7 @@ class CommunityActivity : AppCompatActivity() {
                     Tab.PLAYTIME -> {
                         val root = api.get("/rank/playtime", requiresAuth = false)
                         val items = api.extractList(root)
-                        val list = (0 until items.length()).map { items.getJSONObject(it) }
+                        val list: List<JSONObject> = (0 until items.length()).map { idx -> items.getJSONObject(idx) }
                         render(list) { obj ->
                             val rank = obj.optInt("rank", 0)
                             val name = api.firstString(obj, "player_name", "nickname") ?: ""
