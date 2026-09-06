@@ -61,10 +61,24 @@ class QqWebviewActivity : AppCompatActivity() {
         binding.webview.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val u = request.url
+                val scheme = u.scheme?.lowercase() ?: ""
                 LogManager.log("[QQ-WebView] navigate: $u")
-                // 授权完成后 QQ 会 302 到 redirect_uri（callback.html→qq-callback）。
-                // 我们让 WebView 照常加载，由轮询确认结果。
-                return false
+                return when {
+                    // QQ 快速登录协议：交给系统/QQ app 处理
+                    scheme == "wtloginmqq" || scheme == "mqq" || scheme == "mqqopensdkapi" -> {
+                        try {
+                            startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, u))
+                        } catch (e: Exception) {
+                            // 没装QQ：留在WebView用账号密码登录
+                            LogManager.log("[QQ-WebView] 无QQ app，使用网页登录")
+                            Toast.makeText(this@QqWebviewActivity, "未检测到QQ，请用账号密码登录", Toast.LENGTH_SHORT).show()
+                        }
+                        true
+                    }
+                    // http/https 照常由 WebView 加载
+                    scheme == "http" || scheme == "https" -> false
+                    else -> true // 其他自定义scheme一律拦截
+                }
             }
         }
         binding.webview.loadUrl(url)
