@@ -81,6 +81,18 @@ class QqWebviewActivity : AppCompatActivity() {
                     else -> true // 其他自定义scheme一律拦截
                 }
             }
+
+            override fun onReceivedSslError(view: WebView, handler: android.webkit.SslErrorHandler, error: android.net.http.SslError) {
+                val host = view.url?.let { android.net.Uri.parse(it).host } ?: ""
+                // oauth.lanternwaves.fun 的证书是给 login 子域签的（域名不匹配），
+                // 但它是我们自己的服务器，callback 必须走通 → 仅对此域名放行
+                if (host == "oauth.lanternwaves.fun") {
+                    LogManager.log("[QQ-WebView] SSL豁免: $host")
+                    handler.proceed()
+                } else {
+                    super.onReceivedSslError(view, handler, error)
+                }
+            }
         }
         binding.webview.loadUrl(url)
 
