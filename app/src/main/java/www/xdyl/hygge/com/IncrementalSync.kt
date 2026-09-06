@@ -71,7 +71,7 @@ class IncrementalSync(
 
         onProgress(ModpackInstaller.Progress(0, "增量同步：需下载 $total，已最新 $skipped"))
         val deferreds = toDownload.map { t ->
-            kotlinx.coroutines.async {
+            async {
                 sem.acquire()
                 try {
                     val tmp = File(t.dest.parentFile, "${t.dest.name}.part")
