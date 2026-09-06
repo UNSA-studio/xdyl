@@ -44,12 +44,6 @@
             android:exported="false"
             android:label="终端"
             android:theme="@style/Theme.Xdyl" />
-
-        <activity
-            android:name="www.xdyl.hygge.com.CommunityActivity"
-            android:exported="true"
-            android:label="社区"
-            android:theme="@style/Theme.Xdyl" />
         <!-- 隐藏终端解锁接收器：adb shell am broadcast -a www.xdyl.hygge.com.ENABLE_TERMINAL -->
         <receiver
             android:name="www.xdyl.hygge.com.TerminalUnlockReceiver"

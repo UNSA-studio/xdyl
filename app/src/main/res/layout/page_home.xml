@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_dark"
+    android:padding="16dp">
+
+    <!-- 标题区域 -->
+    <LinearLayout
+        android:id="@+id/titleContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:id="@+id/tvTitleLine1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nebula updater-NU"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="@color/primary_light_blue"
+            android:letterSpacing="0.05" />
+
+        <TextView
+            android:id="@+id/tvTitleLine2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="星云更新器-Android端"
+            android:textSize="16sp"
+            android:textColor="@color/primary_light_blue"
+            android:alpha="0.8" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/btnSettings"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_settings"
+        android:contentDescription="设置"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:tint="@color/primary_light_blue"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 整合包安装按钮 -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardModpack"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="#2A2A2A"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnInstallModpack"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="📦 一键安装整合包（含枪包）"
+            android:textColor="@color/primary_light_blue"
+            app:cornerRadius="24dp"
+            android:stateListAnimator="@null" />
+    </androidx.cardview.widget.CardView>
+    <!-- 选择目录和下载按钮 -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardSelect"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="#2A2A2A"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cardModpack">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSelectDir"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="@string/btn_select_dir"
+            android:textColor="@color/primary_light_blue"
+            app:strokeColor="@color/primary_light_blue"
+            app:cornerRadius="24dp"
+            android:stateListAnimator="@null" />
+    </androidx.cardview.widget.CardView>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardDownload"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="#2A2A2A"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cardSelect">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStartDownload"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="@string/btn_start_auto"
+            android:enabled="false"
+            android:textColor="@android:color/black"
+            app:backgroundTint="@color/primary_light_blue"
+            app:cornerRadius="24dp"
+            android:stateListAnimator="@null" />
+    </androidx.cardview.widget.CardView>
+
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/progressBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:indeterminate="false"
+        app:indicatorColor="@color/primary_light_blue"
+        app:trackColor="#33FFFFFF"
+        app:trackThickness="6dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cardDownload" />
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/secondary_light_blue"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/progressBar" />
+
+    <!-- 日志区域（权重1，会填充剩余空间直到名言面板） -->
+    <ScrollView
+        android:id="@+id/logScroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        android:background="#1E1E1E"
+        android:padding="8dp"
+        app:layout_constraintBottom_toTopOf="@id/cardQuote"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvStatus">
+
+        <TextView
+            android:id="@+id/tvLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#AAFFFFFF"
+            android:textSize="12sp"
+            android:typeface="monospace"
+            android:gravity="bottom"
+            android:padding="4dp" />
+    </ScrollView>
+
+    <!-- 每日名言面板 -->
+    <LinearLayout
+        android:id="@+id/cardQuote"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/quote_card_bg"
+        android:padding="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="8dp">
+
+            <TextView
+                android:id="@+id/tvQuoteTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="今日名言 - WH"
+                android:textColor="@color/primary_light_blue"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvQuoteChinese"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:lineSpacingExtra="2dp"
+                android:singleLine="false"
+                android:ellipsize="none"
+                android:maxLines="10"
+                android:fontFamily="sans-serif"
+                android:breakStrategy="simple"
+                android:hyphenationFrequency="none"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:id="@+id/tvQuoteEnglish"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#CCFFFFFF"
+                android:textSize="14sp"
+                android:lineSpacingExtra="2dp"
+                android:singleLine="false"
+                android:ellipsize="none"
+                android:maxLines="10"
+                android:fontFamily="sans-serif"
+                android:breakStrategy="simple"
+                android:hyphenationFrequency="none"
+                android:layout_marginLeft="16dp"
+                android:layout_marginTop="4dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:id="@+id/tvQuoteAuthor"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="-作者 / 出处"
+                    android:textColor="#B0FFFFFF"
+                    android:textSize="13sp"
+                    android:singleLine="false"
+                    android:ellipsize="none"
+                    android:maxLines="10"
+                    android:fontFamily="sans-serif"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
+                    android:layout_marginLeft="8dp" />
+
+                <TextView
+                    android:id="@+id/tvQuoteAuthorEn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="-Author / Source"
+                    android:textColor="#B0FFFFFF"
+                    android:textSize="13sp"
+                    android:singleLine="false"
+                    android:ellipsize="none"
+                    android:maxLines="10"
+                    android:fontFamily="sans-serif"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
+                    android:layout_marginLeft="8dp"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+    </LinearLayout>
+
+    <!-- 绿色覆盖层 -->
+    <View
+        android:id="@+id/greenOverlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#00FF00"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+</androidx.constraintlayout.widget.ConstraintLayout>
