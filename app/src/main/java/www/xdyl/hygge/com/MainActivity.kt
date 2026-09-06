@@ -44,6 +44,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var shopBinding: HomeHolders.Shop
     private lateinit var profileBinding: HomeHolders.Profile
     private var communityLoaded = false
+    private var pendingAutoFlow = false
     private var shopLoaded = false
     private lateinit var session: SessionStore
     private lateinit var api: ApiClient
@@ -155,14 +156,6 @@ class MainActivity : AppCompatActivity() {
             // 旧独立安装入口已被一键全自动取代
             startAutoFlow()
         }
-        homeBinding.btnSelectDir.setOnClickListener {
-            it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
-            showFileBrowser()
-        }
-        homeBinding.btnStartDownload.setOnClickListener {
-            it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
-            startAutoFlow()
-        }
         // 社区入口已移至底部导航（CommunityActivity 保留供外部深链使用）
         homeBinding.btnSettings.setOnClickListener {
             it.animate().rotationBy(180f).setDuration(300).start()
@@ -216,7 +209,7 @@ class MainActivity : AppCompatActivity() {
                 val found = findMinecraftModsDir(dir)
                 if (found != null) {
                     targetModsDir = found
-                    homeBinding.btnStartDownload.isEnabled = true
+                    homeBinding.btnInstallModpack.isEnabled = true
                     LogManager.log("成功恢复 mods 目录: ${found.absolutePath}")
                     return
                 } else { LogManager.log("未能在 $lastPath 下找到 mods 目录") }
@@ -328,6 +321,7 @@ class MainActivity : AppCompatActivity() {
         fun setFiles(newFiles: List<File>) { files = newFiles; notifyDataSetChanged() }
     }
 
+
     private fun showFileBrowser() {
         currentBrowseDir = File(prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath) ?: Environment.getExternalStorageDirectory().absolutePath)
         val view = layoutInflater.inflate(R.layout.dialog_file_browser, null)
@@ -387,9 +381,14 @@ class MainActivity : AppCompatActivity() {
             // 保存根目录即可；targetModsDir 保留用于兼容显示，指向 .minecraft
             prefs.edit().putString("launcher_root", folder.absolutePath).apply()
             targetModsDir = mc
-            homeBinding.btnStartDownload.isEnabled = true
+            homeBinding.btnInstallModpack.isEnabled = true
             Toast.makeText(this, "游戏目录已选择（版本将随整合包自动创建）", Toast.LENGTH_SHORT).show()
+            if (pendingAutoFlow) {
+                pendingAutoFlow = false
+                startAutoFlow()
+            }
         } else {
+            pendingAutoFlow = false
             showError(Constants.ERROR01)
         }
         fileBrowserDialog?.dismiss()
@@ -733,12 +732,14 @@ class MainActivity : AppCompatActivity() {
         val launcherRoot = prefs.getString("launcher_root", null)
         val gameRoot = launcherRoot?.let { findMinecraftDir(File(it)) }
         if (gameRoot == null || !gameRoot.exists()) {
-            showError(Constants.ERROR01)
+            // 自动化：没有游戏目录 → 弹出目录选择，选完自动继续
+            pendingAutoFlow = true
+            showFileBrowser()
             return
         }
 
         isProcessing = true
-        homeBinding.btnStartDownload.isEnabled = false
+        homeBinding.btnInstallModpack.isEnabled = false
         homeBinding.progressBar.visibility = View.VISIBLE
         homeBinding.progressBar.progress = 0
         appendLog("[AUTO] 一键流程启动")
@@ -872,7 +873,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } finally {
                 isProcessing = false
-                withContext(Dispatchers.Main) { homeBinding.btnStartDownload.isEnabled = true }
+                withContext(Dispatchers.Main) { homeBinding.btnInstallModpack.isEnabled = true }
             }
         }
     }

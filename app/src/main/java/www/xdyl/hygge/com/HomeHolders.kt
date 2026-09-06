@@ -20,8 +20,6 @@ object HomeHolders {
         val tvTitleLine2: TextView = root.findViewById(R.id.tvTitleLine2)
         val btnSettings: ImageButton = root.findViewById(R.id.btnSettings)
         val btnInstallModpack: MaterialButton = root.findViewById(R.id.btnInstallModpack)
-        val btnSelectDir: MaterialButton = root.findViewById(R.id.btnSelectDir)
-        val btnStartDownload: MaterialButton = root.findViewById(R.id.btnStartDownload)
         val progressBar: LinearProgressIndicator = root.findViewById(R.id.progressBar)
         val tvStatus: TextView = root.findViewById(R.id.tvStatus)
         val logScroll: android.widget.ScrollView = root.findViewById(R.id.logScroll)
