@@ -14,6 +14,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AnimationUtils
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -38,10 +39,10 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private lateinit var homeBinding: PageHomeBinding
-    private lateinit var communityBinding: PageCommunityBinding
-    private lateinit var shopBinding: PageShopBinding
-    private lateinit var profileBinding: PageProfileBinding
+    private lateinit var homeBinding: HomeHolders.Home
+    private lateinit var communityBinding: HomeHolders.Community
+    private lateinit var shopBinding: HomeHolders.Shop
+    private lateinit var profileBinding: HomeHolders.Profile
     private var communityLoaded = false
     private var shopLoaded = false
     private lateinit var session: SessionStore
@@ -88,10 +89,10 @@ class MainActivity : AppCompatActivity() {
         api = ApiClient(session)
 
         // 内页 binding：include 的各页
-        homeBinding = PageHomeBinding.bind(binding.viewFlipper.getChildAt(0))
-        communityBinding = PageCommunityBinding.bind(binding.viewFlipper.getChildAt(1))
-        shopBinding = PageShopBinding.bind(binding.viewFlipper.getChildAt(2))
-        profileBinding = PageProfileBinding.bind(binding.viewFlipper.getChildAt(3))
+        homeBinding = HomeHolders.Home(binding.viewFlipper.getChildAt(0))
+        communityBinding = HomeHolders.Community(binding.viewFlipper.getChildAt(1))
+        shopBinding = HomeHolders.Shop(binding.viewFlipper.getChildAt(2))
+        profileBinding = HomeHolders.Profile(binding.viewFlipper.getChildAt(3))
 
         // 「我的」页按钮
         profileBinding.btnLogin.setOnClickListener { showLoginDialog() }
@@ -422,8 +423,8 @@ class MainActivity : AppCompatActivity() {
     private fun bindCommunityTabs() {
         fun tab(view: TextView, key: String) {
             view.setOnClickListener {
-                listOf(communityBinding.tabAnnounce, communityBinding.tabForum, communityBinding.tabRank, communityBinding.tabPlaytime)
-                    .forEach { it.alpha = if (it == view) 1f else 0.5f }
+                val tabs: List<TextView> = listOf(communityBinding.tabAnnounce, communityBinding.tabForum, communityBinding.tabRank, communityBinding.tabPlaytime)
+                tabs.forEach { tb -> tb.alpha = if (tb == view) 1f else 0.5f }
                 loadCommunityTab(key)
             }
         }
