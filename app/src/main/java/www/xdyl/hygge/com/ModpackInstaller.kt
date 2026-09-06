@@ -33,7 +33,7 @@ class ModpackInstaller(private val context: Context) {
     /** 读取 mcbbs 规范 manifest（mcbbs.packmeta 或 manifest.json），失败返回 null */
     private fun readMcbbsManifest(zipFile: File, fallbackName: String): Modpack? {
         return try {
-            ZipFile.builder(zipFile).get().use { zf ->
+            ZipFile.builder().setFile(zipFile).get().use { zf ->
                 McbbsModpackProvider.INSTANCE.readManifest(
                     zf, zipFile.toPath(), StandardCharsets.UTF_8
                 )
@@ -47,7 +47,7 @@ class ModpackInstaller(private val context: Context) {
     /** 提取包版本号（mcbbs manifest 的 version 字段） */
     private fun extractPackVersion(zipFile: File): String {
         return try {
-            ZipFile.builder(zipFile).get().use { zf ->
+            ZipFile.builder().setFile(zipFile).get().use { zf ->
                 val entry: ZipArchiveEntry? = zf.getEntry("mcbbs.packmeta") ?: zf.getEntry("manifest.json")
                 if (entry != null) {
                     val json = zf.getInputStream(entry).bufferedReader().readText()
@@ -157,7 +157,7 @@ class ModpackInstaller(private val context: Context) {
 
             // 探测是否有 overrides 目录
             var hasOverrides = false
-            ZipFile.builder(zipFile).get().use { zf ->
+            ZipFile.builder().setFile(zipFile).get().use { zf ->
                 hasOverrides = zf.getEntry("overrides/") != null || zf.getEntry("overrides") != null
             }
 
