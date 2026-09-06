@@ -532,9 +532,8 @@ class MainActivity : AppCompatActivity() {
     private fun loadShopItems() {
         if (!session.isLoggedIn) {
             shopBinding.shopEmpty.visibility = View.VISIBLE
-            shopBinding.shopEmpty.text = "🛍 商城需要登录后浏览
+            shopBinding.shopEmpty.text = "🛍 商城需要登录后浏览\n\n点击「我的」页登录（支持 QQ 快捷登录）"
 
-点击「我的」页登录（支持 QQ 快捷登录）"
             shopBinding.shopRecycler.adapter = null
             return
         }
