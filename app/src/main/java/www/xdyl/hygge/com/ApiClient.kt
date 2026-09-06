@@ -88,25 +88,36 @@ class ApiClient(private val session: SessionStore) {
 
     /** 轮询 QQ 授权结果：成功返回 true（token 已写入 session），未授权返回 false */
     suspend fun pollQQLogin(sessionId: String): Boolean = withContext(Dispatchers.IO) {
-        val root = try {
-            execute("GET", "/check-qq-login?session_id=$sessionId", null, requiresAuth = false, allowRefresh = false)
-        } catch (e: ApiException) {
-            // "扫码会话不存在或已过期"等 → 视为未完成
-            return@withContext false
+        // 手动走 HTTP（code=202 是"等待扫码"的正常中间态，不能走抛异常的 execute）
+        val req = Request.Builder()
+            .url("$BASE/check-qq-login?session_id=$sessionId")
+            .get()
+            .build()
+        try {
+            client.newCall(req).execute().use { resp ->
+                val text = resp.body?.string() ?: ""
+                LogManager.log("[QQ] poll http=${resp.code} body=${text.take(200)}")
+                val root = try { JSONObject(text) } catch (e: Exception) { return@use false }
+                val code = root.optInt("code", resp.code)
+                if (code == 202) return@use false // 等待扫码，继续轮询
+                if (code != 200) return@use false
+                val data = root.optJSONObject("data") ?: root
+                // 兼容多种字段位置：data.access_token / data.token / 顶层
+                val access = data.optString("access_token", data.optString("token", root.optString("access_token", "")))
+                if (access.isBlank()) {
+                    LogManager.log("[QQ] 200 但无token字段: $text")
+                    return@use false
+                }
+                val refresh = data.optString("refresh_token", root.optString("refresh_token", ""))
+                val nickname = data.optString("nickname", data.optString("username", root.optString("nickname", "QQ用户")))
+                session.saveSession(access, refresh, nickname)
+                LogManager.log("[QQ] 登录成功 user=$nickname")
+                true
+            }
+        } catch (e: Exception) {
+            LogManager.log("[QQ] poll异常: ${e.message}")
+            false
         }
-        val data = root.optJSONObject("data") ?: root
-        val status = data.optString("status", "")
-        val access = data.optString("access_token", "")
-        if (status == "success" || access.isNotBlank()) {
-            val refresh = data.optString("refresh_token", "")
-            val nickname = data.optString("nickname", data.optString("username", "QQ用户"))
-            session.saveSession(
-                if (access.isNotBlank()) access else session.accessToken,
-                if (refresh.isNotBlank()) refresh else session.refreshToken,
-                nickname
-            )
-            true
-        } else false
     }
 
     // ==================== 通用请求 ====================
