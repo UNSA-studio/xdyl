@@ -2,6 +2,8 @@ package www.xdyl.hygge.com
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URLEncoder
@@ -37,6 +39,7 @@ class IncrementalSync(
         threadCount: Int = 8,
         onProgress: (ModpackInstaller.Progress) -> Unit
     ): SyncResult = withContext(Dispatchers.IO) {
+        coroutineScope {
         val messages = java.util.Collections.synchronizedList(mutableListOf<String>())
         val modsDir = File(versionDir, "mods").apply { mkdirs() }
         val taczDir = File(versionDir, "tacz").apply { mkdirs() }
@@ -135,5 +138,6 @@ class IncrementalSync(
         if (cleaned > 0) messages.add("清理下架文件 $cleaned 个")
 
         SyncResult(toDownload.size - failed, skipped, failed, cleaned, messages)
+        }
     }
 }
