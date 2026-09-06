@@ -197,6 +197,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val qqLoginLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        when (result.resultCode) {
+            QqWebviewActivity.RESULT_LOGGED_IN -> {
+                refreshProfileUI()
+                profileBinding.tvProfileStatus.text = "QQ 登录成功"
+                shopLoaded = false
+                Toast.makeText(this, "欢迎，" + session.username, Toast.LENGTH_SHORT).show()
+            }
+            QqWebviewActivity.RESULT_FAILED -> {
+                profileBinding.tvProfileStatus.text = "QQ 登录未完成"
+                Toast.makeText(this, "QQ 登录未完成或已超时", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
         if (permissions.values.all { it }) { LogManager.log("用户授予了存储权限"); restoreLastDirectory() }
         else { LogManager.log("用户拒绝了存储权限"); Toast.makeText(this, "存储权限被拒绝，部分功能不可用", Toast.LENGTH_LONG).show() }
@@ -676,7 +693,7 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    /** QQ 登录：打开授权页 → 轮询结果（最多90秒） */
+    /** QQ 登录：内置 WebView 打开授权页，完成后自动返回 */
     private fun beginQQLogin() {
         LogManager.log("[QQ] beginQQLogin 开始")
         val sessionId = java.util.UUID.randomUUID().toString()
@@ -685,31 +702,10 @@ class MainActivity : AppCompatActivity() {
             try {
                 val url = api.startQQLogin(sessionId)
                 withContext(Dispatchers.Main) {
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        startActivity(intent)
-                    } catch (e: Exception) {
-                        Toast.makeText(this@MainActivity, "无法打开浏览器，请安装浏览器后重试", Toast.LENGTH_LONG).show()
-                        return@withContext
-                    }
-                }
-                // 轮询 45 次 × 2秒 = 90 秒
-                for (i in 0 until 45) {
-                    kotlinx.coroutines.delay(2000)
-                    val ok = api.pollQQLogin(sessionId)
-                    if (ok) {
-                        withContext(Dispatchers.Main) {
-                            refreshProfileUI()
-                            profileBinding.tvProfileStatus.text = "QQ 登录成功"
-                            shopLoaded = false
-                            Toast.makeText(this@MainActivity, "欢迎，" + session.username, Toast.LENGTH_SHORT).show()
-                        }
-                        return@launch
-                    }
-                }
-                withContext(Dispatchers.Main) {
-                    profileBinding.tvProfileStatus.text = "QQ 授权已超时，请重试"
+                    val intent = android.content.Intent(this@MainActivity, QqWebviewActivity::class.java)
+                        .putExtra(QqWebviewActivity.EXTRA_URL, url)
+                        .putExtra(QqWebviewActivity.EXTRA_SESSION, sessionId)
+                    qqLoginLauncher.launch(intent)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {

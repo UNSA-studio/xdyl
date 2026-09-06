@@ -40,6 +40,11 @@
             android:label="成就"
             android:theme="@style/Theme.Xdyl" />
         <activity
+            android:name="www.xdyl.hygge.com.QqWebviewActivity"
+            android:exported="false"
+            android:label="QQ 授权"
+            android:theme="@style/Theme.Xdyl" />
+        <activity
             android:name="www.xdyl.hygge.com.TerminalActivity"
             android:exported="false"
             android:label="终端"
