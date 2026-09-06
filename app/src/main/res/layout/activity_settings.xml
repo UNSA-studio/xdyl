@@ -70,7 +70,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginStart="12dp"
-                    android:hint="Minecraft 版本文件夹名"
+                    android:hint="版本文件夹（由整合包自动管理）"
                     android:textColorHint="#AAFFFFFF"
                     app:hintTextColor="@color/primary_light_blue"
                     app:boxBackgroundColor="@android:color/transparent">

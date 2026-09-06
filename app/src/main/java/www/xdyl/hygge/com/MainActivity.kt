@@ -32,13 +32,9 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.PrintWriter
 import java.io.StringWriter
-import java.net.URLEncoder
-import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.Semaphore
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.regex.Pattern
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -71,93 +67,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object { var instance: MainActivity? = null }
 
-    data class ModInfo(val fileName: String, val size: Long, val md5: String, val sha256: String)
     data class Quote(val chinese: String, val english: String, val author: String, val authorEn: String, val source: String, val sourceEn: String)
-
-    // ========== 整合包安装 ==========
-    private fun showModpackInstallDialog() {
-        val info = ModpackInstaller.getInstalledInfo(this)
-        val installedVer = info["version"]
-        val packVer = info["pack_version"]
-        val msg = if (installedVer != null) {
-            "将下载服务器整合包并安装为独立版本。\n\n当前已安装：$installedVer${if (!packVer.isNullOrEmpty()) " (v$packVer)" else ""}\n重新安装会覆盖同目录文件。\n\n安装完成后 tacz 枪包会随整合包自动就位。"
-        } else {
-            "将下载服务器整合包并安装为独立版本。\n\n首次安装约需数分钟（取决于网络），\n安装完成后 tacz 枪包会随整合包自动就位。"
-        }
-        MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
-            .setTitle("整合包安装")
-            .setMessage(msg)
-            .setPositiveButton("开始安装") { _, _ -> startModpackInstall() }
-            .setNegativeButton("取消", null)
-            .show()
-    }
-
-    private fun startModpackInstall() {
-        if (isProcessing) return
-        val launcherRoot = prefs.getString("launcher_root", null)
-            ?: Environment.getExternalStorageDirectory().absolutePath
-        val gameRoot = findMinecraftDir(File(launcherRoot)) ?: File(launcherRoot, ".minecraft")
-        if (!gameRoot.exists()) { gameRoot.mkdirs() }
-
-        isProcessing = true
-        binding.btnStartDownload.isEnabled = false
-        binding.progressBar.visibility = View.VISIBLE
-        binding.progressBar.progress = 0
-        appendLog("[MODPACK] 开始整合包安装流程")
-
-        scope.launch {
-            try {
-                val zipFile = File(getExternalFilesDir(null), ModpackInstaller.MODPACK_FILE)
-                appendLog("[MODPACK] 下载整合包: ${ModpackInstaller.MODPACK_URL}")
-                withContext(Dispatchers.IO) {
-                    val size = fetchContentLength(ModpackInstaller.MODPACK_URL)
-                    DownloadManager(ModpackInstaller.MODPACK_URL, size, 8, size > 0)
-                        .download(zipFile) { pct ->
-                            runOnUiThread {
-                                binding.progressBar.progress = pct / 2
-                                binding.tvStatus.text = "下载整合包 $pct%"
-                            }
-                        }
-                }
-                appendLog("[MODPACK] 下载完成 (${zipFile.length() / 1048576} MB)，开始安装")
-
-                val result = ModpackInstaller(this@MainActivity).install(
-                    zipFile, gameRoot
-                ) { pct, msg ->
-                    runOnUiThread {
-                        binding.progressBar.progress = pct
-                        binding.tvStatus.text = msg
-                        if (pct % 10 == 0) appendLog("[MODPACK] $msg")
-                    }
-                }
-                appendLog("[MODPACK] ${result.message}")
-                withContext(Dispatchers.Main) {
-                    binding.tvStatus.text = result.message
-                    MaterialAlertDialogBuilder(this@MainActivity, R.style.DialogAnimation)
-                        .setTitle(if (result.ok) "安装完成" else "安装失败")
-                        .setMessage(result.message)
-                        .setPositiveButton("好的", null)
-                        .show()
-                }
-                zipFile.delete()
-            } catch (e: Exception) {
-                LogManager.log("[MODPACK] 流程异常: ${e.message}")
-                appendLog("[MODPACK] 安装流程异常: ${e.message}")
-                showError(Constants.ERROR10)
-            } finally {
-                isProcessing = false
-                binding.btnStartDownload.isEnabled = true
-                binding.progressBar.visibility = View.GONE
-            }
-        }
-    }
-
-    private suspend fun fetchContentLength(url: String): Long = withContext(Dispatchers.IO) {
-        try {
-            val req = Request.Builder().url(url).head().build()
-            client.newCall(req).execute().use { it.header("Content-Length")?.toLongOrNull() ?: -1L }
-        } catch (_: Exception) { -1L }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -181,51 +91,13 @@ class MainActivity : AppCompatActivity() {
         requestStoragePermissions()
         loadDailyQuote()
 
-        // 云端 CSV 版本检查
-        val versionManager = VersionManager(this)
-        scope.launch {
-            LogManager.log("[CSV] Checking cloud version...")
-            versionManager.checkAndUpdate(
-                onUpdateAvailable = { diff ->
-                    LogManager.log("[CSV] New version detected: ${diff.version}, added=${diff.added.size}, removed=${diff.removed.size}, updated=${diff.updated.size}")
-                    MaterialAlertDialogBuilder(this@MainActivity, R.style.DialogAnimation)
-                        .setTitle("CSV 需要更新 (${diff.version})")
-                        .setMessage(
-                            buildString {
-                                appendLine("【新增】")
-                                diff.added.forEach { appendLine("  • ${it.name}") }
-                                appendLine()
-                                appendLine("【移除】")
-                                diff.removed.forEach { appendLine("  • ${it.name}") }
-                                appendLine()
-                                appendLine("【更新】")
-                                diff.updated.forEach {
-                                    appendLine("  • ${it.name} (${it.oldVersion} → ${it.newVersion})")
-                                }
-                            }.trim()
-                        )
-                        .setPositiveButton("更新") { _, _ ->
-                            scope.launch {
-                                LogManager.log("[CSV] User accepted, downloading...")
-                                versionManager.downloadNewCsv(diff.version)
-                                LogManager.log("[CSV] Download complete")
-                                Toast.makeText(this@MainActivity, "CSV 更新完成，重启生效", Toast.LENGTH_LONG).show()
-                                loadCsv()
-                            }
-                        }
-                        .setCancelable(false)
-                        .show()
-                },
-                onComplete = {
-                    LogManager.log("[CSV] No update needed (local=${versionManager.getLocalVersion()})")
-                    loadCsv()
-                }
-            )
-        }
+        // 云端检查改为静默记录（不再弹CSV弹窗——CSV时代已终结）
+        scope.launch { LogManager.log("[AUTO] 就绪，等待用户触发一键流程") }
 
         binding.btnInstallModpack.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
-            showModpackInstallDialog()
+            // 旧独立安装入口已被一键全自动取代
+            startAutoFlow()
         }
         binding.btnSelectDir.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
@@ -233,19 +105,11 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnStartDownload.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
-            if (prefs.getBoolean("neoforge_check_enabled", true)) {
-                verifyNeoforgeVersion { verified ->
-                    if (verified) startUpdateProcess()
-                    else {
-                        MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
-                            .setTitle("NeoForge 版本过低")
-                            .setMessage("需要更新 NeoForge 驱动至 21.1.235 或更高版本。")
-                            .setPositiveButton("确定", null).show()
-                    }
-                }
-            } else {
-                startUpdateProcess()
-            }
+            startAutoFlow()
+        }
+        binding.btnCommunity.setOnClickListener {
+            it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
+            startActivity(Intent(this, CommunityActivity::class.java))
         }
         binding.btnSettings.setOnClickListener {
             it.animate().rotationBy(180f).setDuration(300).start()
@@ -464,19 +328,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleSelectedFolder(folder: File) {
-        val modsDir = findMinecraftModsDir(folder)
-        if (modsDir != null) { targetModsDir = modsDir; binding.btnStartDownload.isEnabled = true; Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show() }
-        else showError(Constants.ERROR01)
+        // 整合包时代：只需确认根目录下存在 .minecraft（版本目录由整合包自动创建）
+        val mc = findMinecraftDir(folder)
+        if (mc != null) {
+            // 保存根目录即可；targetModsDir 保留用于兼容显示，指向 .minecraft
+            prefs.edit().putString("launcher_root", folder.absolutePath).apply()
+            targetModsDir = mc
+            binding.btnStartDownload.isEnabled = true
+            Toast.makeText(this, "游戏目录已选择（版本将随整合包自动创建）", Toast.LENGTH_SHORT).show()
+        } else {
+            showError(Constants.ERROR01)
+        }
         fileBrowserDialog?.dismiss()
     }
 
     private fun findMinecraftModsDir(launcherRoot: File): File? {
-        val mc = File(launcherRoot, ".minecraft"); val mcAlt = File(launcherRoot, "minecraft")
-        val minecraftDir = when { mc.exists() -> mc; mcAlt.exists() -> mcAlt; else -> return null }
-        val versionsDir = File(minecraftDir, "versions"); if (!versionsDir.exists()) return null
-        val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
-        val targetDir = File(versionsDir, targetVersion); if (!targetDir.exists()) return null
-        val modsDir = File(targetDir, "mods"); if (!modsDir.exists()) modsDir.mkdirs(); return modsDir
+        // 兼容旧恢复逻辑：只要找得到 .minecraft 即可，mods 目录由一键流程管理
+        return findMinecraftDir(launcherRoot)
     }
 
     private fun showError(errorCode: String) {
@@ -484,188 +352,165 @@ class MainActivity : AppCompatActivity() {
         MaterialAlertDialogBuilder(this, R.style.DialogAnimation).setTitle("意外错误!").setMessage("错误码: $errorCode\n请查看是否是您的问题,如不是,请联系开发者").setPositiveButton("确定", null).show()
     }
 
-    // ========== NeoForge 检查 ==========
-    private fun verifyNeoforgeVersion(callback: (Boolean) -> Unit) {
-        scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                try {
-                    val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
-                    val launcherRoot = prefs.getString("launcher_root", Environment.getExternalStorageDirectory().absolutePath) ?: Environment.getExternalStorageDirectory().absolutePath
-                    val mc = findMinecraftDir(File(launcherRoot)) ?: return@withContext false
-                    val versionDir = File(File(mc, "versions"), targetVersion)
-                    if (!versionDir.exists()) return@withContext false
-                    val jsonFile = File(versionDir, "$targetVersion.json"); if (!jsonFile.exists()) return@withContext false
-                    val jsonContent = jsonFile.readText()
-                    val match = Regex("\"--fml\\.neoForgeVersion\",\\s*\"(\\d+\\.\\d+\\.\\d+)\"").find(jsonContent) ?: return@withContext false
-                    compareVersion(match.groupValues[1], "21.1.235") >= 0
-                } catch (e: Exception) { LogManager.log("NeoForge 检查异常: ${e.message}"); false }
-            }
-            callback(result)
-        }
-    }
     private fun findMinecraftDir(start: File): File? {
         val mc = File(start, ".minecraft"); if (mc.exists()) return mc
         val mcAlt = File(start, "minecraft"); return if (mcAlt.exists()) mcAlt else null
     }
-    private fun compareVersion(v1: String, v2: String): Int {
-        val p1 = v1.split(".").map { it.toIntOrNull() ?: 0 }; val p2 = v2.split(".").map { it.toIntOrNull() ?: 0 }
-        for (i in 0 until maxOf(p1.size, p2.size)) { val a = p1.getOrElse(i) { 0 }; val b = p2.getOrElse(i) { 0 }; if (a != b) return a - b }
-        return 0
-    }
 
-    // ========== 下载与日志 ==========
-    private suspend fun fetchServerFileList(): List<String> = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder().url(Constants.BASE_URL).build()
-            val response = client.newCall(request).execute()
-            val code = response.code
-            LogManager.log("服务器响应码: $code")
-            if (response.code != 200) {
-                val errorBody = response.body?.string() ?: "无"
-                LogManager.log("服务器返回错误: $code, 内容: $errorBody")
-                return@withContext emptyList()
-            }
-            val body = response.body?.string() ?: ""
-            val matcher = Pattern.compile("<a href=\"([^\"]+)\">").matcher(body)
-            val files = mutableListOf<String>()
-            while (matcher.find()) matcher.group(1)?.let { if (it.endsWith(".jar")) files.add(java.net.URLDecoder.decode(it, "UTF-8")) }
-            LogManager.log("从服务器获取到 ${files.size} 个文件")
-            files
-        } catch (e: Exception) {
-            LogManager.log("获取服务器文件列表失败: ${e.javaClass.simpleName} - ${e.message}")
-            emptyList()
-        }
-    }
+    // ==================== 一键全自动流程（mods.json 驱动） ====================
 
-    private fun getCsvContent(): String {
-        // 优先使用用户指定的本地 CSV
-        if (prefs.getBoolean("use_local_csv", false)) {
-            val path = prefs.getString("local_csv_path", null)
-            if (path != null) {
-                val file = File(path)
-                if (file.exists()) return file.readText()
-            }
-        }
-        // 随后检查云端下载的 CSV，如果有且完整性 OK 就继续使用
-        return loadCsvContent(this)
-    }
-
-    private suspend fun downloadWithRetry(url: String, size: Long, destFile: File, maxRetries: Int = 5) {
-        var lastEx: Exception? = null
-        // 分块规则：≤1MB 固定 2 块，>1MB 每多 0.5MB 加 1 块（最少 2 块）
-        val chunks = if (size > 0) maxOf(2, (size / 524288).toInt()) else 2
-        val useChunked = chunks > 1
-        for (attempt in 1..maxRetries) {
-            try {
-                DownloadManager(url, size, chunks, useChunked).download(destFile) { }
-                appendLog("[OK] ${destFile.name}"); return
-            } catch (e: Exception) { lastEx = e; appendLog("[RETRY $attempt] ${destFile.name}"); delay((1000L * attempt).coerceAtMost(5000)) }
-        }
-        appendLog("[FAILED] ${destFile.name}"); throw lastEx!!
-    }
-
-    private fun startUpdateProcess() {
+    /**
+     * 全自动：拉 mods.json → 需要时装整合包（fclcore）→ 增量同步 new_mod/tacz → removed 清理。
+     * 用户只需选过一次启动器根目录（.minecraft 所在处），其余全自动。
+     */
+    private fun startAutoFlow() {
         if (isProcessing) return
-        if (targetModsDir == null) {
-            LogManager.log("startUpdateProcess: targetModsDir 为 null，尝试恢复...")
-            val lastPath = prefs.getString("launcher_root", null)
-            LogManager.log("保存的启动器路径: $lastPath")
-            if (lastPath != null) {
-                val dir = File(lastPath)
-                if (dir.exists() && dir.isDirectory) {
-                    targetModsDir = findMinecraftModsDir(dir)
-                    if (targetModsDir != null) {
-                        LogManager.log("恢复成功: ${targetModsDir!!.absolutePath}")
-                        binding.btnStartDownload.isEnabled = true
-                    } else {
-                        LogManager.log("恢复失败: 在 $lastPath 下未找到 mods 目录")
-                    }
-                } else {
-                    LogManager.log("恢复失败: 路径无效 $lastPath")
-                }
-            }
-            if (targetModsDir == null) {
-                showError(Constants.ERROR01)
-                return
-            }
+        val launcherRoot = prefs.getString("launcher_root", null)
+        val gameRoot = launcherRoot?.let { findMinecraftDir(File(it)) }
+        if (gameRoot == null || !gameRoot.exists()) {
+            showError(Constants.ERROR01)
+            return
         }
 
-        val modsDir = targetModsDir!!
-        isProcessing = true; binding.btnStartDownload.isEnabled = false
-        binding.progressBar.visibility = View.VISIBLE; binding.progressBar.progress = 0
-        binding.tvLog.text = "Checking mods..."; LogManager.log("开始更新，目标目录: ${modsDir.absolutePath}")
+        isProcessing = true
+        binding.btnStartDownload.isEnabled = false
+        binding.progressBar.visibility = View.VISIBLE
+        binding.progressBar.progress = 0
+        appendLog("[AUTO] 一键流程启动")
 
-        val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
-        LogManager.log("实际并发下载数: $threadCount")
         scope.launch {
             try {
-                val serverFiles = fetchServerFileList()
-                if (serverFiles.isEmpty()) {
-                    LogManager.log("服务器文件列表为空，无法继续")
-                    showError(Constants.ERROR01)
-                    return@launch
-                }
-                val csvMods = getCsvContent().lines().drop(1).filter { it.isNotBlank() }.map {
-                    val p = it.split(","); ModInfo(p[0].trim('"').removePrefix("./"), p[2].toLong(), p[3].trim('"'), p[4].trim('"'))
-                }
-                val csvSet = csvMods.map { it.fileName }.toSet(); val allServerMods = serverFiles.filter { csvSet.contains(it) }
-                val toDownload = filterOutUnchangedMods(modsDir, csvMods.filter { it.fileName in allServerMods })
-                if (toDownload.isEmpty()) { appendLog("All mods are up-to-date!"); binding.progressBar.visibility = View.GONE; isProcessing = false; binding.btnStartDownload.isEnabled = true; return@launch }
+                // 1. 拉清单
+                withContext(Dispatchers.Main) { binding.tvStatus.text = "获取清单..." }
+                val manifest = ManifestService().fetch()
+                appendLog("[AUTO] pack_version=${manifest.packVersion}, 文件=${manifest.files.size}, 下架=${manifest.removed.size}")
 
-                binding.tvLog.text = "Downloading ${toDownload.size} mods..."
-                val sem = Semaphore(threadCount); val failed = AtomicInteger(0); var completed = 0; val total = toDownload.size
-                withContext(Dispatchers.IO) {
-                    toDownload.map { mod -> launch { sem.acquire()
-                        try {
-                            val file = File(modsDir, mod.fileName)
-                            val encodedName = URLEncoder.encode(mod.fileName, "UTF-8").replace("+", "%20")
-                            downloadWithRetry(Constants.BASE_URL + encodedName, mod.size, file)
-                            if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256)) throw RuntimeException("校验失败")
-                            completed++; withContext(Dispatchers.Main) { binding.progressBar.progress = (completed * 100) / total; binding.tvStatus.text = "$completed/$total" }
-                        } catch (e: Exception) { LogManager.log("下载失败 ${mod.fileName}: ${e.message}"); failed.incrementAndGet() } finally { sem.release() }
-                    } }.joinAll()
-                }
+                // 2. 检查整合包是否需要（重）装：pack_version 变化或版本目录缺失
+                val installed = ModpackInstaller.getInstalledInfo(this@MainActivity)
+                val installedVer = installed["version"]
+                val installedPack = installed["pack_version"]
+                val needInstall = manifest.latestModpack?.let { pack ->
+                    installedVer == null || installedPack != manifest.packVersion
+                } ?: false
 
-                if (prefs.getBoolean("clean_orphan_files", true)) {
-                    withContext(Dispatchers.IO) {
-                        val whiteList = prefs.getStringSet("mod_whitelist", emptySet()) ?: emptySet()
-                        val modFiles = modsDir.listFiles()?.filter { it.extension == "jar" } ?: emptyList(); var deleted = 0
-                        for (f in modFiles) if (f.name !in csvSet && f.name !in whiteList) { if (f.delete()) { deleted++; LogManager.log("已删除孤儿文件: ${f.name}") } }
-                        if (deleted > 0) appendLog("Cleaned $deleted files")
+                var versionDir: File
+                if (needInstall && manifest.latestModpack != null) {
+                    val pack = manifest.latestModpack!!
+                    appendLog("[AUTO] 需要安装整合包: ${pack.name} (${pack.size / 1048576}MB)")
+                    withContext(Dispatchers.Main) { binding.tvStatus.text = "下载整合包..." }
+
+                    val versionId = "NAST-" + manifest.packVersion.replace(Regex("[^A-Za-z0-9.\\-]"), "")
+                    val zipFile = File(getExternalFilesDir(null), "modpack_${manifest.packVersion}.zip")
+
+                    // 下载（本地已存在且哈希一致则跳过）
+                    var needDownload = true
+                    if (zipFile.exists() && zipFile.length() == pack.size) {
+                        val installer0 = ModpackInstaller(this@MainActivity)
+                        if (installer0.sha256(zipFile).equals(pack.sha256, true)) needDownload = false
                     }
-                }
-
-                if (failed.get() > 0) showError(Constants.ERROR05)
-                else {
-                    appendLog("Update completed!")
-                    val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
-                    val resourcePackFile = File(modsDir, "../$targetVersion/resourcepacks/generated.zip")
-                    if (!resourcePackFile.exists()) {
-                        withContext(Dispatchers.Main) {
-                            MaterialAlertDialogBuilder(this@MainActivity, R.style.DialogAnimation)
-                                .setTitle("安装服务器材质包")
-                                .setMessage("是否要安装 Server 材质包？\n注意！这是必要，如不装，进服将下载材质包，在这里安装可以加快速度。")
-                                .setPositiveButton("好的") { _, _ -> scope.launch { installResourcePack() } }
-                                .setNegativeButton("取消", null)
-                                .show()
+                    if (needDownload) {
+                        withContext(Dispatchers.IO) {
+                            val client = OkHttpClient.Builder()
+                                .connectTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
+                                .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+                                .build()
+                            val req = Request.Builder().url(pack.url).build()
+                            client.newCall(req).execute().use { resp ->
+                                if (!resp.isSuccessful) throw RuntimeException("整合包下载 HTTP ${resp.code}")
+                                val input = resp.body!!.byteStream()
+                                val total = resp.body!!.contentLength()
+                                var done = 0L
+                                zipFile.outputStream().use { fos ->
+                                    val buf = ByteArray(131072)
+                                    var n: Int
+                                    var lastPct = -1
+                                    while (input.read(buf).also { n = it } != -1) {
+                                        fos.write(buf, 0, n)
+                                        done += n
+                                        if (total > 0) {
+                                            val pct = (done * 100 / total).toInt()
+                                            if (pct != lastPct) {
+                                                lastPct = pct
+                                                withContext(Dispatchers.Main) {
+                                                    binding.progressBar.progress = pct / 4
+                                                    binding.tvStatus.text = "下载整合包 $pct%"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
+                    appendLog("[AUTO] 整合包下载完成 (${zipFile.length() / 1048576}MB)")
+
+                    // sha256 校验
+                    withContext(Dispatchers.Main) { binding.tvStatus.text = "校验整合包..." }
+                    val installer = ModpackInstaller(this@MainActivity)
+                    val hash = installer.sha256(zipFile)
+                    if (!hash.equals(pack.sha256, true)) {
+                        zipFile.delete()
+                        throw RuntimeException("整合包 sha256 校验失败，已删除损坏文件，请重试")
+                    }
+                    appendLog("[AUTO] sha256 校验通过")
+
+                    // 安装
+                    versionDir = installer.install(zipFile, gameRoot, versionId) { p ->
+                        runOnUiThread {
+                            binding.progressBar.progress = p.percent
+                            binding.tvStatus.text = p.message
+                            if (p.percent % 20 == 0) appendLog("[AUTO] ${p.message}")
+                        }
+                    }
+                    ModpackInstaller.saveInstalled(this@MainActivity, versionId, manifest.packVersion, gameRoot, versionDir)
+                    zipFile.delete()
+                    appendLog("[AUTO] 整合包安装完成: $versionDir")
+                } else {
+                    val dir = installed["version_dir"]
+                    if (dir.isNullOrEmpty() || !File(dir).exists()) {
+                        throw RuntimeException("未安装整合包且清单中无整合包可装")
+                    }
+                    versionDir = File(dir)
+                    appendLog("[AUTO] 整合包已是最新 (${installedPack})，跳过安装")
                 }
-            } catch (e: Exception) { LogManager.log("更新异常: ${e.message}"); showError(Constants.ERROR03) }
-            finally { isProcessing = false; binding.btnStartDownload.isEnabled = true }
+
+                // 3. 增量同步
+                withContext(Dispatchers.Main) { binding.tvStatus.text = "增量同步..." }
+                val sync = IncrementalSync(this@MainActivity, ModpackInstaller(this@MainActivity))
+                val result = sync.sync(manifest, versionDir, threadCount = 8) { p ->
+                    runOnUiThread {
+                        binding.progressBar.progress = p.percent
+                        binding.tvStatus.text = p.message
+                    }
+                }
+                result.messages.forEach { appendLog("[SYNC] $it") }
+                appendLog("[AUTO] 同步完成: 新下 ${result.downloaded}, 已最新 ${result.skipped}, 失败 ${result.failed}, 清理 ${result.cleaned}")
+
+                withContext(Dispatchers.Main) {
+                    binding.progressBar.progress = 100
+                    binding.tvStatus.text = if (result.failed > 0)
+                        "完成（${result.failed} 个失败，详见日志）"
+                    else
+                        "全部完成 ✔"
+                    Toast.makeText(
+                        this@MainActivity,
+                        if (result.failed > 0) "更新完成，但有 ${result.failed} 个文件失败" else "全部完成，可以启动游戏了",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } catch (e: Exception) {
+                LogManager.log("[AUTO] 异常: ${e.message}")
+                appendLog("[AUTO] 失败: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    binding.tvStatus.text = "失败: ${e.message}"
+                    Toast.makeText(this@MainActivity, "失败: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            } finally {
+                isProcessing = false
+                withContext(Dispatchers.Main) { binding.btnStartDownload.isEnabled = true }
+            }
         }
     }
-
-    private suspend fun installResourcePack() { /* 你的原函数内容，此处省略（实际命令中会完整保留） */ }
-
-    private suspend fun filterOutUnchangedMods(modsDir: File, csvMods: List<ModInfo>) = withContext(Dispatchers.IO) {
-        csvMods.filterNot { mod -> val local = File(modsDir, mod.fileName); local.exists() && local.length() == mod.size && calculateMD5(local) == mod.md5 }
-    }
-
-    private fun calculateMD5(file: File) = try {
-        val digest = MessageDigest.getInstance("MD5"); file.inputStream().use { fis -> val buf = ByteArray(8192); var len: Int
-            while (fis.read(buf).also { len = it } != -1) digest.update(buf, 0, len) }; digest.digest().joinToString("") { "%02x".format(it) }
-    } catch (e: Exception) { null }
 
     fun appendLog(msg: String) { runOnUiThread { binding.tvLog.text = "${binding.tvLog.text}\n$msg"; binding.logScroll.post { binding.logScroll.fullScroll(View.FOCUS_DOWN) } } }
 
@@ -686,11 +531,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun loadCsv() {
-        val csv = loadCsvContent(this)
-        LogManager.log("CSV loaded, length: ${csv.length}")
     }
 
     override fun onDestroy() { instance = null; job.cancel(); super.onDestroy() }
