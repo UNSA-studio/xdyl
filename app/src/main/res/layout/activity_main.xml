@@ -15,8 +15,8 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <include
-            android:id="@+id/pageHome"
-            layout="@layout/page_home" />
+            layout="@layout/page_home"
+            android:id="@+id/pageHome" />
 
         <include
             android:id="@+id/pageCommunity"
