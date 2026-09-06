@@ -37,6 +37,7 @@ dependencies {
 
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation("androidx.annotation:annotation:1.7.1")
     implementation("org.apache.commons:commons-compress:1.26.0")
     implementation("commons-io:commons-io:2.15.1")
     implementation("com.github.junrar:junrar:7.5.5")
