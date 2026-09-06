@@ -5,6 +5,7 @@ import android.animation.AnimatorListenerAdapter
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -147,6 +148,7 @@ class MainActivity : AppCompatActivity() {
 
         requestStoragePermissions()
         loadDailyQuote()
+        refreshPackStatus()
 
         // 云端检查改为静默记录（不再弹CSV弹窗——CSV时代已终结）
         scope.launch { LogManager.log("[AUTO] 就绪，等待用户触发一键流程") }
@@ -530,7 +532,10 @@ class MainActivity : AppCompatActivity() {
     private fun loadShopItems() {
         if (!session.isLoggedIn) {
             shopBinding.shopEmpty.visibility = View.VISIBLE
-            shopBinding.shopEmpty.text = "请先在「我的」页登录"
+            shopBinding.shopEmpty.text = "🛍 商城需要登录后浏览
+
+点击「我的」页登录（支持 QQ 快捷登录）"
+            shopBinding.shopRecycler.adapter = null
             return
         }
         shopBinding.shopProgress.visibility = View.VISIBLE
@@ -580,6 +585,18 @@ class MainActivity : AppCompatActivity() {
 
     // ==================== 我的（登录/资料） ====================
 
+    /** 刷新主页整合包状态卡 */
+    private fun refreshPackStatus() {
+        val info = ModpackInstaller.getInstalledInfo(this)
+        val v = info["version"]
+        val pv = info["pack_version"]
+        homeBinding.tvPackStatus.text = if (v != null) {
+            "✔ 已安装 $v" + (if (!pv.isNullOrEmpty()) "（整合包 v$pv）" else "")
+        } else {
+            "未安装——点击下方按钮一键全自动"
+        }
+    }
+
     private fun refreshProfileUI() {
         if (session.isLoggedIn) {
             profileBinding.tvNickname.text = session.username
@@ -607,23 +624,43 @@ class MainActivity : AppCompatActivity() {
         etPass.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
         input.addView(etUser)
         input.addView(etPass)
-        MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+        val btnQQ = com.google.android.material.button.MaterialButton(this)
+        btnQQ.text = "使用 QQ 登录"
+        btnQQ.setTextColor(0xFFA0C4FF.toInt())
+        btnQQ.setBackgroundColor(0xFF2A2A2A.toInt())
+        val lp = android.widget.LinearLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        lp.topMargin = 24
+        btnQQ.layoutParams = lp
+        input.addView(btnQQ)
+
+        val dialog = MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
             .setTitle("登录星灯云浪")
             .setView(input)
-            .setPositiveButton("登录") { _, _ ->
+            .setPositiveButton("登录", null)
+            .setNegativeButton("取消", null)
+            .create()
+
+        btnQQ.setOnClickListener { dialog.dismiss(); beginQQLogin() }
+
+        dialog.setOnShowListener {
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val account = etUser.text?.toString()?.trim() ?: ""
                 val password = etPass.text?.toString() ?: ""
                 if (account.isEmpty() || password.isEmpty()) {
                     Toast.makeText(this, "请填写账号和密码", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
+                    return@setOnClickListener
                 }
+                profileBinding.tvProfileStatus.text = "登录中..."
                 scope.launch {
                     try {
-                        profileBinding.tvProfileStatus.text = "登录中..."
                         api.login(account, password)
                         refreshProfileUI()
                         profileBinding.tvProfileStatus.text = "登录成功"
                         shopLoaded = false
+                        dialog.dismiss()
                         Toast.makeText(this@MainActivity, "欢迎，" + session.username, Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
                         profileBinding.tvProfileStatus.text = "登录失败：" + e.message
@@ -631,8 +668,51 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-            .setNegativeButton("取消", null)
-            .show()
+        }
+        dialog.show()
+    }
+
+    /** QQ 登录：打开授权页 → 轮询结果（最多90秒） */
+    private fun beginQQLogin() {
+        val sessionId = java.util.UUID.randomUUID().toString()
+        profileBinding.tvProfileStatus.text = "正在打开 QQ 授权..."
+        scope.launch {
+            try {
+                val url = api.startQQLogin(sessionId)
+                withContext(Dispatchers.Main) {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(this@MainActivity, "无法打开浏览器，请安装浏览器后重试", Toast.LENGTH_LONG).show()
+                        return@withContext
+                    }
+                }
+                // 轮询 45 次 × 2秒 = 90 秒
+                for (i in 0 until 45) {
+                    kotlinx.coroutines.delay(2000)
+                    val ok = api.pollQQLogin(sessionId)
+                    if (ok) {
+                        withContext(Dispatchers.Main) {
+                            refreshProfileUI()
+                            profileBinding.tvProfileStatus.text = "QQ 登录成功"
+                            shopLoaded = false
+                            Toast.makeText(this@MainActivity, "欢迎，" + session.username, Toast.LENGTH_SHORT).show()
+                        }
+                        return@launch
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    profileBinding.tvProfileStatus.text = "QQ 授权已超时，请重试"
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    profileBinding.tvProfileStatus.text = "QQ 登录失败：" + e.message
+                    Toast.makeText(this@MainActivity, "QQ 登录失败：" + e.message, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     private fun showNotifications() {
@@ -831,6 +911,7 @@ class MainActivity : AppCompatActivity() {
                     ModpackInstaller.saveInstalled(this@MainActivity, versionId, manifest.packVersion, gameRoot, versionDir)
                     zipFile.delete()
                     appendLog("[AUTO] 整合包安装完成: $versionDir")
+                    refreshPackStatus()
                 } else {
                     val dir = installed["version_dir"]
                     if (dir.isNullOrEmpty() || !File(dir).exists()) {

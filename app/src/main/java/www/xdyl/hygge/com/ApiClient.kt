@@ -73,6 +73,42 @@ class ApiClient(private val session: SessionStore) {
         }
     }
 
+    // ==================== QQ 登录 ====================
+
+    /** 发起 QQ 登录：返回授权页 URL（必须是 graph.qq.com 的 https 链接） */
+    suspend fun startQQLogin(sessionId: String): String = withContext(Dispatchers.IO) {
+        val root = execute("GET", "/qq-login?session_id=$sessionId", null, requiresAuth = false, allowRefresh = false)
+        val data = root.optJSONObject("data")
+        val url = data?.optString("login_url") ?: root.optString("login_url")
+        if (url.isBlank() || !url.startsWith("https://graph.qq.com")) {
+            throw ApiException(400, "QQ 授权地址异常")
+        }
+        url
+    }
+
+    /** 轮询 QQ 授权结果：成功返回 true（token 已写入 session），未授权返回 false */
+    suspend fun pollQQLogin(sessionId: String): Boolean = withContext(Dispatchers.IO) {
+        val root = try {
+            execute("GET", "/check-qq-login?session_id=$sessionId", null, requiresAuth = false, allowRefresh = false)
+        } catch (e: ApiException) {
+            // "扫码会话不存在或已过期"等 → 视为未完成
+            return@withContext false
+        }
+        val data = root.optJSONObject("data") ?: root
+        val status = data.optString("status", "")
+        val access = data.optString("access_token", "")
+        if (status == "success" || access.isNotBlank()) {
+            val refresh = data.optString("refresh_token", "")
+            val nickname = data.optString("nickname", data.optString("username", "QQ用户"))
+            session.saveSession(
+                if (access.isNotBlank()) access else session.accessToken,
+                if (refresh.isNotBlank()) refresh else session.refreshToken,
+                nickname
+            )
+            true
+        } else false
+    }
+
     // ==================== 通用请求 ====================
 
     /** GET 并返回 envelope 根对象（调用方自行取 data） */

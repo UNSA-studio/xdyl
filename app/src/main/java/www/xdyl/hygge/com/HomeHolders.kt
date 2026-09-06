@@ -19,6 +19,7 @@ object HomeHolders {
         val tvTitleLine1: TextView = root.findViewById(R.id.tvTitleLine1)
         val tvTitleLine2: TextView = root.findViewById(R.id.tvTitleLine2)
         val btnSettings: ImageButton = root.findViewById(R.id.btnSettings)
+        val tvPackStatus: TextView = root.findViewById(R.id.tvPackStatus)
         val btnInstallModpack: MaterialButton = root.findViewById(R.id.btnInstallModpack)
         val progressBar: LinearProgressIndicator = root.findViewById(R.id.progressBar)
         val tvStatus: TextView = root.findViewById(R.id.tvStatus)
