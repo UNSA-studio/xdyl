@@ -61,6 +61,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("com.google.code.gson:gson:2.10.1")   // 新增
+    implementation("org.apache.commons:commons-compress:1.26.0") // ModpackInstaller 解析 mcbbs manifest 用
     implementation("dev.mobile:dadb:2.0.0")            // ADB 客户端库
     // fclcore: 整合包安装核心（GPL-3.0，vendored from FCL-Team/FoldCraftLauncher）
     implementation(project(":fclcore"))
