@@ -6,7 +6,7 @@ package com.tungsten.fclcore.game;
 
 import com.tungsten.fclcore.event.Event;
 
-public class RefreshedVersionsEvent extends Event<DefaultGameRepository> {
+public class RefreshedVersionsEvent extends Event {
     public RefreshedVersionsEvent(DefaultGameRepository source) {
         super(source);
     }
