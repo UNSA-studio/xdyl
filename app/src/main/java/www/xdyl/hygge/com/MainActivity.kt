@@ -642,7 +642,12 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("取消", null)
             .create()
 
-        btnQQ.setOnClickListener { dialog.dismiss(); beginQQLogin() }
+        btnQQ.setOnClickListener {
+            Toast.makeText(this@MainActivity, "QQ登录启动...", Toast.LENGTH_SHORT).show()
+            LogManager.log("[QQ] 用户点击QQ登录按钮")
+            dialog.dismiss()
+            beginQQLogin()
+        }
 
         dialog.setOnShowListener {
             dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
@@ -673,6 +678,7 @@ class MainActivity : AppCompatActivity() {
 
     /** QQ 登录：打开授权页 → 轮询结果（最多90秒） */
     private fun beginQQLogin() {
+        LogManager.log("[QQ] beginQQLogin 开始")
         val sessionId = java.util.UUID.randomUUID().toString()
         profileBinding.tvProfileStatus.text = "正在打开 QQ 授权..."
         scope.launch {
