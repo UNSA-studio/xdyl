@@ -947,7 +947,9 @@ class MainActivity : AppCompatActivity() {
                     ).show()
                 }
             } catch (e: Exception) {
-                LogManager.log("[AUTO] 异常: ${e.message}")
+                LogManager.log("[AUTO] 异常: ${e.javaClass.name}: ${e.message}")
+                e.stackTrace.take(15).forEach { LogManager.log("[AUTO]   at $it") }
+                e.cause?.let { c -> LogManager.log("[AUTO] caused by: ${c.javaClass.name}: ${c.message}") }
                 appendLog("[AUTO] 失败: ${e.message}")
                 withContext(Dispatchers.Main) {
                     homeBinding.tvStatus.text = "失败: ${e.message}"
