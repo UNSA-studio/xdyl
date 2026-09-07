@@ -25,7 +25,7 @@
         android:textSize="14sp"
         android:background="#332A00"
         android:visibility="gone"
-        android:text="⚠ Android 11 及以上系统限制访问此目录，内容可能为空或不可读" />
+        android:text="Android 11 及以上系统限制访问此目录，内容可能为空或不可读" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"

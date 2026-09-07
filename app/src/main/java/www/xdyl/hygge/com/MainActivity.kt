@@ -472,18 +472,18 @@ class MainActivity : AppCompatActivity() {
                     when (key) {
                         "FORUM" -> Triple(
                             api.firstString(obj, "title") ?: "(无标题)",
-                            "👤 " + (api.firstString(obj, "nickname", "username") ?: "") + " · " + (api.firstString(obj, "created_at") ?: "") + " · ❤ " + obj.optInt("likes", 0),
+                            (api.firstString(obj, "nickname", "username") ?: "") + " · " + (api.firstString(obj, "created_at") ?: "") + " · 赞 " + obj.optInt("likes", 0),
                             api.firstString(obj, "content") ?: ""
                         )
                         "RANK" -> Triple(
                             "#" + obj.optInt("rank", 0) + "  " + (api.firstString(obj, "nickname", "player_name", "username") ?: ""),
-                            "🪙 " + obj.optInt("coins", 0) + " 喵币", ""
+                            obj.optInt("coins", 0).toString() + " 喵币", ""
                         )
                         "PLAYTIME" -> {
                             val seconds = obj.optLong("seconds", 0)
                             Triple(
                                 "#" + obj.optInt("rank", 0) + "  " + (api.firstString(obj, "player_name", "nickname") ?: ""),
-                                "⏱ " + (seconds / 3600) + "小时" + ((seconds % 3600) / 60) + "分", ""
+                                (seconds / 3600).toString() + "小时" + ((seconds % 3600) / 60) + "分", ""
                             )
                         }
                         else -> Triple(
@@ -549,7 +549,7 @@ class MainActivity : AppCompatActivity() {
     private fun loadShopItems() {
         if (!session.isLoggedIn) {
             shopBinding.shopEmpty.visibility = View.VISIBLE
-            shopBinding.shopEmpty.text = "🛍 商城需要登录后浏览\n\n点击「我的」页登录（支持 QQ 快捷登录）"
+            shopBinding.shopEmpty.text = "商城需要登录后浏览\n\n点击「我的」页登录（支持 QQ 快捷登录）"
 
             shopBinding.shopRecycler.adapter = null
             return
@@ -607,7 +607,7 @@ class MainActivity : AppCompatActivity() {
         val v = info["version"]
         val pv = info["pack_version"]
         homeBinding.tvPackStatus.text = if (v != null) {
-            "✔ 已安装 $v" + (if (!pv.isNullOrEmpty()) "（整合包 v$pv）" else "")
+            "已安装 $v" + (if (!pv.isNullOrEmpty()) "（整合包 v$pv）" else "")
         } else {
             "未安装——点击下方按钮一键全自动"
         }
@@ -939,7 +939,7 @@ class MainActivity : AppCompatActivity() {
                     homeBinding.tvStatus.text = if (result.failed > 0)
                         "完成（${result.failed} 个失败，详见日志）"
                     else
-                        "全部完成 ✔"
+                        "全部完成"
                     Toast.makeText(
                         this@MainActivity,
                         if (result.failed > 0) "更新完成，但有 ${result.failed} 个文件失败" else "全部完成，可以启动游戏了",
