@@ -23,7 +23,7 @@ android {
         // 无法执行下载解压的 Python ELF（Termux 同款做法）
         targetSdk = 28
         versionCode = 2
-        versionName = "2.0-modpack"
+        versionName = "1.1"
     }
 
     buildTypes {
