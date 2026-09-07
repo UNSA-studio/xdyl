@@ -520,7 +520,7 @@ AnimatedVisibility(visible=showAboutDialog, enter=slideInVertically{it}+fadeIn(t
                                     Text("关于软件", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 18.sp)
                                     Spacer(Modifier.height(12.dp))
                                     Text("星云更新器", fontFamily = silverFontFamily, color = Color.White, fontSize = 16.sp)
-                                    Text("Windows Desktop v1.0.0", fontFamily = silverFontFamily, color = Color.Gray, fontSize = 14.sp)
+                                    Text("Windows Desktop v1.1", fontFamily = silverFontFamily, color = Color.Gray, fontSize = 14.sp)
                                     Spacer(Modifier.height(8.dp))
                                     Text("Author: UNSA-studio", fontFamily = silverFontFamily, color = Color.White, fontSize = 14.sp)
                                     Text("GitHub: github.com/UNSA-studio/xdyl", fontFamily = silverFontFamily, color = Color(0xFFA0C4FF), fontSize = 12.sp)
