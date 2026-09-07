@@ -70,7 +70,7 @@
                 android:id="@+id/tvPackStatusTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="📦 整合包状态"
+                android:text="整合包状态"
                 android:textColor="@color/primary_light_blue"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -103,7 +103,7 @@
             style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:text="🚀 一键全自动更新"
+            android:text="一键全自动更新"
             android:textColor="@color/primary_light_blue"
             app:cornerRadius="24dp"
             android:stateListAnimator="@null" />

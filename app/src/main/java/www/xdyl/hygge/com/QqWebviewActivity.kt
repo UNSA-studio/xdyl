@@ -95,7 +95,7 @@ class QqWebviewActivity : AppCompatActivity() {
                     withContext(Dispatchers.IO) { api.pollQQLogin(sessionId) }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        binding.tvQqTitle.text = "❌ " + (e.message ?: "登录失败")
+                        binding.tvQqTitle.text = (e.message ?: "登录失败")
                     }
                     delay(1500)
                     finishWith(RESULT_FAILED)
@@ -103,7 +103,7 @@ class QqWebviewActivity : AppCompatActivity() {
                 }
                 if (outcome == true) {
                     withContext(Dispatchers.Main) {
-                        binding.tvQqTitle.text = "✅ 登录成功，正在返回…"
+                        binding.tvQqTitle.text = "登录成功，正在返回…"
                         finishWith(RESULT_LOGGED_IN)
                     }
                     return@launch
