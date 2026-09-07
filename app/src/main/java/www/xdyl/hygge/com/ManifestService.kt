@@ -43,8 +43,16 @@ class ManifestService {
         val modpacks get() = files.filter { it.group == "modpack" }
         val newMods get() = files.filter { it.group == "new_mod" }
         val taczPacks get() = files.filter { it.group == "tacz" }
-        /** 最新主整合包（按 time 排序取第一个） */
-        val latestModpack: ManifestFile? get() = modpacks.maxByOrNull { it.time }
+        /**
+         * 手机端要装的主整合包：文件名以 NAST 开头的 MCBBS 格式包。
+         * serverfix*.zip 是给电脑用户解压的 PCL2 便携版（PCL2.exe + mrpack），跳过。
+         */
+        val latestModpack: ManifestFile? get() =
+            modpacks.filter { it.name.startsWith("NAST", ignoreCase = true) }
+                .maxByOrNull { it.time }
+                ?: modpacks.filterNot { it.name.startsWith("serverfix", ignoreCase = true) }
+                    .maxByOrNull { it.time }
+                    ?: modpacks.maxByOrNull { it.time }
     }
 
     private val client = OkHttpClient.Builder()
