@@ -843,6 +843,9 @@ class MainActivity : AppCompatActivity() {
                 var versionDir: File
                 if (needInstall && manifest.latestModpack != null) {
                     val pack = manifest.latestModpack!!
+                    if (pack.name.startsWith("serverfix", ignoreCase = true)) {
+                        throw RuntimeException("清单中只有 serverfix 便携包（供电脑解压），手机端无法安装。请让服主上传 NAST 整合包")
+                    }
                     appendLog("[AUTO] 需要安装整合包: ${pack.name} (${pack.size / 1048576}MB)")
                     withContext(Dispatchers.Main) { homeBinding.tvStatus.text = "下载整合包..." }
 
