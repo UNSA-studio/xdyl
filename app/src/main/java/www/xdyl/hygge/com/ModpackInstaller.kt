@@ -80,6 +80,7 @@ class ModpackInstaller(private val context: Context) {
         com.tungsten.fclauncher.utils.FCLPath.loadPaths(context.applicationContext)
 
         val repository = DefaultGameRepository(gameRoot)
+        repository.refreshVersions() // 填充 versions 映射（否则 hasVersion 内部 NPE）
         val config = repository.getModpackConfiguration(versionId)
         if (repository.hasVersion(versionId) && config == null) {
             throw Exception("版本 $versionId 已存在但不是整合包安装，请手动处理")
