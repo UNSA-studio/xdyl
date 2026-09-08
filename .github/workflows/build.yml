@@ -48,7 +48,18 @@ jobs:
         if: ${{ github.repository_owner != 'FCL-Team' || github.event_name == 'pull_request' }}
         run: |
           chmod +x gradlew
-          ./gradlew assemblefordebug -Darch=${{ matrix.arch }} --no-daemon
+          ./gradlew assemblefordebug -Darch=${{ matrix.arch }} --no-daemon 2>&1 | tee build.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Print errors
+        if: failure()
+        run: |
+          {
+            echo "========== 错误摘要 =========="
+            grep -E '^e: |error: |FAILURE:|Caused by:' build.log | head -50 || true
+            echo "========== 末尾 60 行 =========="
+            tail -60 build.log
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload apk
         uses: actions/upload-artifact@v6
