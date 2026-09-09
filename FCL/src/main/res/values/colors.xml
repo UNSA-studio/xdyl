@@ -10,4 +10,5 @@
     <color name="primary_text">#0E0E0E</color>
     <!-- 原 FCLLibrary 模块颜色（模块已并入 FCL） -->
     <color name="dialog_background">#F4F4F4</color>
+    <color name="nebula_icon_bg">#FFA0C4FF</color>
 </resources>
