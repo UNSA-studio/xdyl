@@ -33,14 +33,14 @@
     <string name="splash_runtime_patching">Optimizing runtime…</string>
     <string name="missing_runtime_arch_files">The currently installed launcher is missing the runtime files required for your device\'s architecture(%s). Please download the installation package for the corresponding architecture(%s) or the universal installation package(%s).</string>
 
-    <string name="account">Account</string>
-    <string name="version">Version</string>
+    <string name="account">账户管理</string>
+    <string name="version">版本列表</string>
     <string name="launch_mode">Launch mode</string>
-    <string name="manage">Manage</string>
-    <string name="download">Download</string>
+    <string name="manage">管理版本</string>
+    <string name="download">下载资源</string>
     <string name="controller">Controller</string>
-    <string name="multiplayer">Multiplayer</string>
-    <string name="setting">Setting</string>
+    <string name="multiplayer">多人联机</string>
+    <string name="setting">设置</string>
 
     <string name="about">About</string>
     <string name="settings_plugin">Plugins</string>
