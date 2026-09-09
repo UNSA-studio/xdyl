@@ -1280,4 +1280,5 @@
     <string name="animation_idle_variant_1">待机变体 1</string>
     <string name="animation_idle_variant_2">待机变体 2</string>
     <string name="animation_idle_variant_3">待机变体 3</string>
+    <string name="nebula">星云更新器</string>
 </resources>

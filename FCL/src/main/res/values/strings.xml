@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name" translatable="false">Fold Craft Launcher</string>
+    <string name="app_name" translatable="false">Nebula Updater</string>
     <string name="app_name_import">Install Modpack</string>
 
     <string name="splash_agreement">FCL requires storage permission to manage and read game files. FCL is fully open-source on GitHub, so please rest assured about your data security. The permission is solely for the game to operate properly and poses no security risks.</string>
@@ -59,7 +59,7 @@
     <string name="plugin_miolibpatcher_asm">ASM backdoor</string>
     <string name="plugin_miolibpatcher_asm_desc">Removes the ASM 5.0.4 API check to support older mods like AE1 (affects all ASM 5.0.4 mods, use with caution)</string>
     <string name="plugin_env_config">Configure</string>
-    <string name="about_launcher" translatable="false">Fold Craft Launcher</string>
+    <string name="about_launcher" translatable="false">Nebula Updater</string>
     <string name="about_developer" translatable="false">FCL-Team</string>
     <string name="about_sponsor">Sponsor</string>
     <string name="about_source">Open Source</string>
@@ -1418,4 +1418,5 @@
     <string name="animation_idle_variant_1">Idle variant 1</string>
     <string name="animation_idle_variant_2">Idle variant 2</string>
     <string name="animation_idle_variant_3">Idle variant 3</string>
+    <string name="nebula">Nebula Updater</string>
 </resources>

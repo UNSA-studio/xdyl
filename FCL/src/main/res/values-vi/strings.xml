@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Fold Craft Launcher</string>
+    <string name="app_name" translatable="false">Nebula Updater</string>
     <string name="app_name_import">Cài đặt Modpack</string>
     <string name="splash_agreement">FCL yêu cầu quyền lưu trữ để quản lý và đọc các tệp trò chơi. FCL hoàn toàn mã nguồn mở trên GitHub, vì vậy bạn hãy yên tâm về an toàn dữ liệu của mình. Quyền này chỉ nhằm mục đích để trò chơi hoạt động bình thường và không gây ra rủi ro về bảo mật.</string>
     <string name="splash_permission_msg">Không có quyền lưu trữ, vui lòng cấp quyền cho Fold Craft Launcher.</string>
@@ -54,7 +54,7 @@
     <string name="plugin_miolibpatcher_asm">Cửa hậu ASM</string>
     <string name="plugin_miolibpatcher_asm_desc">Loại bỏ kiểm tra ASM 5.0.4 để tương thích với các mod cũ như AE1 (ảnh hưởng tất cả mod ASM 5.0.4, hãy bật thận trọng)</string>
     <string name="plugin_env_config">Cấu hình</string>
-    <string name="about_launcher" translatable="false">Fold Craft Launcher</string>
+    <string name="about_launcher" translatable="false">Nebula Updater</string>
     <string name="about_developer" translatable="false">FCL-Team</string>
     <string name="about_sponsor">Nhà tài trợ</string>
     <string name="about_source">Mã nguồn mở</string>
