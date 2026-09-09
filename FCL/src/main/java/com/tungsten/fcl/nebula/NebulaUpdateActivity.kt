@@ -224,8 +224,8 @@ class NebulaUpdateActivity : Activity() {
                 setStatus(if (result.failed > 0) "完成（${result.failed} 个失败，详见日志）" else "全部完成")
                 refreshPackStatus()
             } catch (e: Exception) {
-                LogManager.log("[Nebula] 异常: ${e.javaClass.name}: ${e.message}")
-                e.stackTrace.take(12).forEach { LogManager.log("[Nebula]   at $it") }
+                android.util.Log.e("Nebula", "exc: ${e.message}", e)
+                e.stackTrace.take(12).forEach { android.util.Log.e("Nebula", "  at $it") }
                 appendLog("[AUTO] 失败: ${e.message}")
                 setStatus("失败: ${e.message}")
             } finally {

@@ -254,6 +254,7 @@ dependencies {
     implementation(libs.xz)
     implementation(libs.opennbt)
     implementation(libs.gson)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation(libs.tomlj)
     implementation(libs.constant.pool.scanner)
     implementation(libs.jsoup)

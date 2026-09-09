@@ -68,7 +68,7 @@ class ApiClient(private val session: SessionStore) {
                 true
             }
         } catch (e: Exception) {
-            LogManager.log("[API] refresh失败: ${e.message}")
+            com.tungsten.fclcore.util.Logging.LOG.info("[API] refresh失败: ${e.message}")
             false
         }
     }
@@ -95,7 +95,7 @@ class ApiClient(private val session: SessionStore) {
         try {
             client.newCall(req).execute().use { resp ->
                 val text = resp.body?.string() ?: ""
-                LogManager.log("[QQ] poll http=${resp.code} body=${text.take(200)}")
+                com.tungsten.fclcore.util.Logging.LOG.info("[QQ] poll http=${resp.code} body=${text.take(200)}")
                 val root = try { JSONObject(text) } catch (e: Exception) { return@use null }
                 val code = root.optInt("code", resp.code)
                 when {
@@ -104,13 +104,13 @@ class ApiClient(private val session: SessionStore) {
                         val data = root.optJSONObject("data") ?: root
                         val access = data.optString("access_token", data.optString("token", root.optString("access_token", "")))
                         if (access.isBlank()) {
-                            LogManager.log("[QQ] 200 但无token字段: $text")
+                            com.tungsten.fclcore.util.Logging.LOG.info("[QQ] 200 但无token字段: $text")
                             null
                         } else {
                             val refresh = data.optString("refresh_token", root.optString("refresh_token", ""))
                             val nickname = data.optString("nickname", data.optString("username", root.optString("nickname", "QQ用户")))
                             session.saveSession(access, refresh, nickname)
-                            LogManager.log("[QQ] 登录成功 user=$nickname")
+                            com.tungsten.fclcore.util.Logging.LOG.info("[QQ] 登录成功 user=$nickname")
                             true
                         }
                     }
@@ -120,7 +120,7 @@ class ApiClient(private val session: SessionStore) {
         } catch (e: ApiException) {
             throw e
         } catch (e: Exception) {
-            LogManager.log("[QQ] poll异常: ${e.message}")
+            com.tungsten.fclcore.util.Logging.LOG.info("[QQ] poll异常: ${e.message}")
             null
         }
     }
