@@ -61,6 +61,13 @@ jobs:
             tail -60 build.log
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: fcl-build-log-${{ matrix.arch }}
+          path: build.log
+
       - name: Upload apk
         uses: actions/upload-artifact@v6
         with:
