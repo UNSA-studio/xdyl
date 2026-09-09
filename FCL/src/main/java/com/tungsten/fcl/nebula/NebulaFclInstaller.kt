@@ -20,7 +20,6 @@ class NebulaFclInstaller {
         versionId: String,
         onProgress: (Int, String) -> Unit
     ): File {
-        FCLApp.init(FCLApp.getAppContext())
         FCLPath.loadPaths(FCLApp.getAppContext())
 
         val repository = DefaultGameRepository(gameRoot)
