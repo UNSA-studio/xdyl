@@ -1,0 +1,909 @@
+{
+  "category": {
+    "id": "CE",
+    "name": "人际纽带与共情",
+    "name_en": "Connection & Empathy"
+  },
+  "quotes": [
+    {
+      "id": "CE001",
+      "chinese": "没有人是一座孤岛。",
+      "english": "No man is an island entire of itself.",
+      "author": "约翰·多恩",
+      "author_en": "John Donne",
+      "source": "《沉思录》",
+      "source_en": "Meditations"
+    },
+    {
+      "id": "CE002",
+      "chinese": "你们愿意人怎样待你们，你们也要怎样待人。",
+      "english": "Do unto others as you would have them do unto you.",
+      "author": "耶稣基督",
+      "author_en": "Jesus Christ",
+      "source": "《圣经·马太福音》",
+      "source_en": "The Bible, Matthew"
+    },
+    {
+      "id": "CE003",
+      "chinese": "朋友是那个知道你的一切，却依然爱你的人。",
+      "english": "A friend is someone who knows all about you and still loves you.",
+      "author": "埃尔伯特·哈伯德",
+      "author_en": "Elbert Hubbard",
+      "source": "《哈伯德语录》",
+      "source_en": "Elbert Hubbard Quotes"
+    },
+    {
+      "id": "CE004",
+      "chinese": "友谊诞生于一个人对另一个人说：'什么！你也是？我还以为只有我一个人。'",
+      "english": "Friendship is born at that moment when one person says to another, 'What! You too? I thought I was the only one.'",
+      "author": "C·S·刘易斯",
+      "author_en": "C.S. Lewis",
+      "source": "《四种爱》",
+      "source_en": "The Four Loves"
+    },
+    {
+      "id": "CE005",
+      "chinese": "别走在我前面，我不一定能跟随；别走在我后面，我不一定能引领；请走在我身边，做我的朋友。",
+      "english": "Don't walk behind me; I may not lead. Don't walk in front of me; I may not follow. Just walk beside me and be my friend.",
+      "author": "阿尔贝·加缪",
+      "author_en": "Albert Camus",
+      "source": "《加缪语录》",
+      "source_en": "Albert Camus Quotes"
+    },
+    {
+      "id": "CE006",
+      "chinese": "好朋友、好书和一颗沉睡的良心——这就是理想的生活。",
+      "english": "Good friends, good books, and a sleepy conscience: this is the ideal life.",
+      "author": "马克·吐温",
+      "author_en": "Mark Twain",
+      "source": "《马克·吐温语录》",
+      "source_en": "Mark Twain Quotes"
+    },
+    {
+      "id": "CE007",
+      "chinese": "真正的朋友是当全世界都离开时，他却走进来的人。",
+      "english": "A real friend is one who walks in when the rest of the world walks out.",
+      "author": "沃尔特·温切尔",
+      "author_en": "Walter Winchell",
+      "source": "《温切尔语录》",
+      "source_en": "Walter Winchell Quotes"
+    },
+    {
+      "id": "CE008",
+      "chinese": "朋友是那个了解你、理解你、接纳你，并温柔地允许你成长的人。",
+      "english": "A friend is one that knows you as you are, understands where you have been, accepts what you have become, and still, gently allows you to grow.",
+      "author": "威廉·莎士比亚",
+      "author_en": "William Shakespeare",
+      "source": "《莎士比亚全集》",
+      "source_en": "Complete Works of Shakespeare"
+    },
+    {
+      "id": "CE009",
+      "chinese": "友谊是不必要的，就像哲学、艺术……它没有生存价值；但它恰恰是赋予生存价值的东西之一。",
+      "english": "Friendship is unnecessary, like philosophy, like art... It has no survival value; rather it is one of those things which give value to survival.",
+      "author": "C·S·刘易斯",
+      "author_en": "C.S. Lewis",
+      "source": "《四种爱》",
+      "source_en": "The Four Loves"
+    },
+    {
+      "id": "CE010",
+      "chinese": "友谊是唯一能把世界凝聚在一起的水泥。",
+      "english": "Friendship is the only cement that will ever hold the world together.",
+      "author": "伍德罗·威尔逊",
+      "author_en": "Woodrow Wilson",
+      "source": "《威尔逊语录》",
+      "source_en": "Woodrow Wilson Quotes"
+    },
+    {
+      "id": "CE011",
+      "chinese": "一朵玫瑰可以成为我的花园……一个朋友，我的世界。",
+      "english": "A single rose can be my garden… a single friend, my world.",
+      "author": "利奥·巴斯卡利亚",
+      "author_en": "Leo Buscaglia",
+      "source": "《巴斯卡利亚语录》",
+      "source_en": "Leo Buscaglia Quotes"
+    },
+    {
+      "id": "CE012",
+      "chinese": "没有什么是我不愿意为真正的朋友去做的。我不会半心半意地爱人，这不是我的本性。",
+      "english": "There is nothing I would not do for those who are really my friends. I have no notion of loving people by halves, it is not my nature.",
+      "author": "简·奥斯汀",
+      "author_en": "Jane Austen",
+      "source": "《诺桑觉寺》",
+      "source_en": "Northanger Abbey"
+    },
+    {
+      "id": "CE013",
+      "chinese": "对敌人勇敢需要很大的勇气，但对朋友勇敢同样需要。",
+      "english": "It takes a great deal of bravery to stand up to our enemies, but just as much to stand up to our friends.",
+      "author": "J·K·罗琳",
+      "author_en": "J.K. Rowling",
+      "source": "《哈利·波特与魔法石》",
+      "source_en": "Harry Potter and the Philosopher's Stone"
+    },
+    {
+      "id": "CE014",
+      "chinese": "获得一个朋友唯一的方法就是做一个朋友。",
+      "english": "The only way to have a friend is to be one.",
+      "author": "爱默生",
+      "author_en": "Ralph Waldo Emerson",
+      "source": "《随笔集》",
+      "source_en": "Essays"
+    },
+    {
+      "id": "CE015",
+      "chinese": "同情心是宇宙中最强大的力量。",
+      "english": "Compassion is the most powerful force in the universe.",
+      "author": "达赖喇嘛",
+      "author_en": "Dalai Lama",
+      "source": "《达赖喇嘛语录》",
+      "source_en": "Dalai Lama Quotes"
+    },
+    {
+      "id": "CE016",
+      "chinese": "真正的同情来自于你看到自己的局限：你希望善良，却发现自己并不善良。",
+      "english": "Genuine compassion comes from the fact that you see your own limitations: you wish to be kind, and you find that you aren't kind.",
+      "author": "亨利·J·M·努文",
+      "author_en": "Henri J.M. Nouwen",
+      "source": "《努文语录》",
+      "source_en": "Henri Nouwen Quotes"
+    },
+    {
+      "id": "CE017",
+      "chinese": "你可以称上帝为爱，可以称上帝为良善，但上帝最好的名字是同情。",
+      "english": "You may call God love, you may call God goodness, but the best name for God is compassion.",
+      "author": "迈斯特·艾克哈特",
+      "author_en": "Meister Eckhart",
+      "source": "《艾克哈特语录》",
+      "source_en": "Meister Eckhart Quotes"
+    },
+    {
+      "id": "CE018",
+      "chinese": "在同情中，当我们与他人感同身受时，我们把自己从世界的中心推下来，把另一个人放在那里。",
+      "english": "In compassion, when we feel with the other, we dethrone ourselves from the center of our world and we put another person there.",
+      "author": "凯伦·阿姆斯特朗",
+      "author_en": "Karen Armstrong",
+      "source": "《阿姆斯特朗语录》",
+      "source_en": "Karen Armstrong Quotes"
+    },
+    {
+      "id": "CE019",
+      "chinese": "同情中有高贵，共情中有美丽，宽恕中有恩典。",
+      "english": "There is a nobility in compassion, a beauty in empathy, a grace in forgiveness.",
+      "author": "约翰·康诺利",
+      "author_en": "John Connolly",
+      "source": "《康诺利语录》",
+      "source_en": "John Connolly Quotes"
+    },
+    {
+      "id": "CE020",
+      "chinese": "共情是连接人类经验的桥梁。",
+      "english": "Empathy is the bridge that connects the human experience.",
+      "author": "丹尼尔·平克",
+      "author_en": "Daniel Pink",
+      "source": "《全新思维》",
+      "source_en": "A Whole New Mind"
+    },
+    {
+      "id": "CE021",
+      "chinese": "共情是站在别人的角度去看，用别人的耳朵去听，用别人的心去感受。",
+      "english": "Empathy is seeing with the eyes of another, listening with the ears of another, and feeling with the heart of another.",
+      "author": "阿尔弗雷德·阿德勒",
+      "author_en": "Alfred Adler",
+      "source": "《阿德勒语录》",
+      "source_en": "Alfred Adler Quotes"
+    },
+    {
+      "id": "CE022",
+      "chinese": "共情的人成了一座桥，而桥就是用来被走过的。",
+      "english": "The empathetic person becomes a bridge, and a bridge is meant to be walked on.",
+      "author": "戴维·W·奥格斯伯格",
+      "author_en": "David W. Augsburger",
+      "source": "《仇恨工作》",
+      "source_en": "Hate-Work"
+    },
+    {
+      "id": "CE023",
+      "chinese": "我相信共情是文明最重要的品质。",
+      "english": "I believe empathy is the most essential quality of civilization.",
+      "author": "罗杰·伊伯特",
+      "author_en": "Roger Ebert",
+      "source": "《伊伯特语录》",
+      "source_en": "Roger Ebert Quotes"
+    },
+    {
+      "id": "CE024",
+      "chinese": "共情和同情需要对自我和他人的界限有良好的理解，对他人固有价值有敏锐的意识，以及对自己和他人之间共同人性的理解。",
+      "english": "Empathy and compassion require a good understanding of self and other boundaries, acute awareness of the inherent worth, value and uniqueness of the other person, and understanding of the shared humanity between oneself and the recipient of one's concern and care.",
+      "author": "亚当·杰拉斯",
+      "author_en": "Adam Gerace",
+      "source": "《杰拉斯语录》",
+      "source_en": "Adam Gerace Quotes"
+    },
+    {
+      "id": "CE025",
+      "chinese": "我理解你的感受，因为我也曾在那里。我们必须互相支持，因为我们每个人都比我们想象中更相似。",
+      "english": "I understand how you feel because I have been there myself. We must support each other because each of us is more alike than we are unalike.",
+      "author": "玛雅·安杰卢",
+      "author_en": "Maya Angelou",
+      "source": "《玛雅·安杰卢语录》",
+      "source_en": "Maya Angelou Quotes"
+    },
+    {
+      "id": "CE026",
+      "chinese": "所有，我所理解的一切，我之所以理解，仅仅因为我爱。",
+      "english": "All, everything that I understand, I understand only because I love.",
+      "author": "列夫·托尔斯泰",
+      "author_en": "Leo Tolstoy",
+      "source": "《托尔斯泰语录》",
+      "source_en": "Leo Tolstoy Quotes"
+    },
+    {
+      "id": "CE027",
+      "chinese": "爱是永恒的象征；它混淆了一切时间的概念；抹去了所有开始的记忆，所有结束的恐惧。",
+      "english": "Love is the emblem of eternity; it confounds all notion of time; effaces all memory of a beginning, all fear of an end.",
+      "author": "斯塔尔夫人",
+      "author_en": "Madame de Staël",
+      "source": "《斯塔尔夫人语录》",
+      "source_en": "Madame de Staël Quotes"
+    },
+    {
+      "id": "CE028",
+      "chinese": "除了爱，没有任何补救爱的方法，只有爱得更多。",
+      "english": "There is no remedy for love but to love more.",
+      "author": "亨利·大卫·梭罗",
+      "author_en": "Henry David Thoreau",
+      "source": "《梭罗日记》",
+      "source_en": "Journal"
+    },
+    {
+      "id": "CE029",
+      "chinese": "爱是万物沉默之下的声音，是没有恐惧与之对立的希望；是强大到连力量都显得软弱的力量；是比太阳更先、比星辰更持久的真理。",
+      "english": "Love is the voice under all silences, the hope which has no opposite in fear; the strength so strong mere force is feebleness: the truth more first than sun, more last than star.",
+      "author": "E·E·卡明斯",
+      "author_en": "E.E. Cummings",
+      "source": "《卡明斯诗选》",
+      "source_en": "E.E. Cummings Poems"
+    },
+    {
+      "id": "CE030",
+      "chinese": "我们生来孤独，活着孤独，死去孤独。只有通过我们的爱和友谊，我们才能创造出那一刻我们并不孤独的幻觉。",
+      "english": "We're born alone, we live alone, we die alone. Only through our love and friendship can we create the illusion for the moment that we're not alone.",
+      "author": "奥逊·威尔斯",
+      "author_en": "Orson Welles",
+      "source": "《威尔斯语录》",
+      "source_en": "Orson Welles Quotes"
+    },
+    {
+      "id": "CE031",
+      "chinese": "爱就像风，你看不见它，但你能感觉到它。",
+      "english": "Love is like the wind, you can't see it but you can feel it.",
+      "author": "尼古拉斯·斯帕克斯",
+      "author_en": "Nicholas Sparks",
+      "source": "《恋恋笔记本》",
+      "source_en": "The Notebook"
+    },
+    {
+      "id": "CE032",
+      "chinese": "爱不是因为它完美，而是尽管它不完美。",
+      "english": "You don't love because: you love despite; not for the virtues, but despite the faults.",
+      "author": "威廉·福克纳",
+      "author_en": "William Faulkner",
+      "source": "《福克纳语录》",
+      "source_en": "William Faulkner Quotes"
+    },
+    {
+      "id": "CE033",
+      "chinese": "爱由两个孤独组成，它们相遇、保护和问候彼此。",
+      "english": "Love consists of this: two solitudes that meet, protect and greet each other.",
+      "author": "莱纳·玛利亚·里尔克",
+      "author_en": "Rainer Maria Rilke",
+      "source": "《给一个青年诗人的信》",
+      "source_en": "Letters to a Young Poet"
+    },
+    {
+      "id": "CE034",
+      "chinese": "我爱你，当你爱一个人时，你爱的是整个的人，如他所是，而不是你希望他成为的样子。",
+      "english": "I've always loved you, and when you love someone, you love the whole person, just as he or she is, and not as you would like them to be.",
+      "author": "列夫·托尔斯泰",
+      "author_en": "Leo Tolstoy",
+      "source": "《安娜·卡列尼娜》",
+      "source_en": "Anna Karenina"
+    },
+    {
+      "id": "CE035",
+      "chinese": "我们爱我们所爱的事物，是因为它们本来的样子。",
+      "english": "We love the things we love for what they are.",
+      "author": "罗伯特·弗罗斯特",
+      "author_en": "Robert Frost",
+      "source": "《弗罗斯特诗选》",
+      "source_en": "The Poetry of Robert Frost"
+    },
+    {
+      "id": "CE036",
+      "chinese": "连接是赋予生命意义的东西；其他一切只是背景。",
+      "english": "Only connect — relationships give meaning to life; all else is background.",
+      "author": "E·M·福斯特",
+      "author_en": "E.M. Forster",
+      "source": "《霍华德庄园》",
+      "source_en": "Howards End"
+    },
+    {
+      "id": "CE037",
+      "chinese": "人类是一个结，关系被系在其中。",
+      "english": "Man is a knot into which relationships are tied.",
+      "author": "安托万·德·圣埃克苏佩里",
+      "author_en": "Antoine de Saint-Exupéry",
+      "source": "《人类的大地》",
+      "source_en": "Wind, Sand and Stars"
+    },
+    {
+      "id": "CE038",
+      "chinese": "个人关系是永远重要的事，而不是外在的电报和愤怒的生活。",
+      "english": "Personal relations are the important thing for ever and ever, and not this outer life of telegrams and anger.",
+      "author": "E·M·福斯特",
+      "author_en": "E.M. Forster",
+      "source": "《霍华德庄园》",
+      "source_en": "Howards End"
+    },
+    {
+      "id": "CE039",
+      "chinese": "知道如何信任某人，最好的方法就是信任他们。",
+      "english": "The best way to find out if you can trust somebody is to trust them.",
+      "author": "欧内斯特·海明威",
+      "author_en": "Ernest Hemingway",
+      "source": "《海明威语录》",
+      "source_en": "Ernest Hemingway Quotes"
+    },
+    {
+      "id": "CE040",
+      "chinese": "人是相互联系的，你所做的会影响整个世界。当你做得好时……",
+      "english": "We are connected and what you do affects the whole World. When you do well...",
+      "author": "德兰修女",
+      "author_en": "Mother Teresa",
+      "source": "《德兰修女语录》",
+      "source_en": "Mother Teresa Quotes"
+    },
+    {
+      "id": "CE041",
+      "chinese": "我存在是因为我们存在。",
+      "english": "I am because we are.",
+      "author": "德斯蒙德·图图",
+      "author_en": "Desmond Tutu",
+      "source": "《乌班图哲学》",
+      "source_en": "Ubuntu Philosophy"
+    },
+    {
+      "id": "CE042",
+      "chinese": "人与人之间最短的距离是一个故事。",
+      "english": "The shortest distance between people is a story.",
+      "author": "科勒姆·麦凯恩",
+      "author_en": "Colum McCann",
+      "source": "《麦凯恩演讲》",
+      "source_en": "Colum McCann Speech"
+    },
+    {
+      "id": "CE043",
+      "chinese": "我们全都被捆绑在一起，成为人类的一大捆，社会不能践踏其最弱小的成员而不在自己的灵魂中受到诅咒。",
+      "english": "We are all bound up together in one great bundle of humanity, and society cannot trample on the weakest and feeblest of its members without receiving the curse in its own soul.",
+      "author": "弗朗西斯·E·W·哈珀",
+      "author_en": "Frances E.W. Harper",
+      "source": "《哈珀语录》",
+      "source_en": "Frances Harper Quotes"
+    },
+    {
+      "id": "CE044",
+      "chinese": "当我们失去对方时，我们就失去了自己。",
+      "english": "When we lose each other, we lose ourselves.",
+      "author": "玛丽·麦卡锡",
+      "author_en": "Mary McCarthy",
+      "source": "《麦卡锡语录》",
+      "source_en": "Mary McCarthy Quotes"
+    },
+    {
+      "id": "CE045",
+      "chinese": "爱和同情是必需品，不是奢侈品。没有它们，人类无法生存。",
+      "english": "Love and compassion are necessities, not luxuries. Without them humanity cannot survive.",
+      "author": "达赖喇嘛",
+      "author_en": "Dalai Lama",
+      "source": "《达赖喇嘛语录》",
+      "source_en": "Dalai Lama Quotes"
+    },
+    {
+      "id": "CE046",
+      "chinese": "我们共同人性的纽带比我们的恐惧和偏见的分裂更强大。",
+      "english": "The bond of our common humanity is stronger than the divisiveness of our fears and prejudices.",
+      "author": "达赖喇嘛",
+      "author_en": "Dalai Lama",
+      "source": "《达赖喇嘛语录》",
+      "source_en": "Dalai Lama Quotes"
+    },
+    {
+      "id": "CE047",
+      "chinese": "我们的命运是彼此相连的，我们只有在一起才能自由，只有在一起才能成为人。",
+      "english": "Our destinies are bound up in one another's, that we can be free only together, that we can be human only together.",
+      "author": "德斯蒙德·图图",
+      "author_en": "Desmond Tutu",
+      "source": "《图图语录》",
+      "source_en": "Desmond Tutu Quotes"
+    },
+    {
+      "id": "CE048",
+      "chinese": "不仅仅是与他人分享共同的人性，而是我们每个人没有彼此就没有人性。",
+      "english": "It is not simply that we share with each other a common humanity, but that individually we have no humanity without each other.",
+      "author": "德斯蒙德·图图",
+      "author_en": "Desmond Tutu",
+      "source": "《图图语录》",
+      "source_en": "Desmond Tutu Quotes"
+    },
+    {
+      "id": "CE049",
+      "chinese": "我们必须通过扩大我们的同情圈来解放自己，拥抱所有生物和整个自然。",
+      "english": "Our task must be to free ourselves from this prison by widening our circle of compassion to embrace all living creatures and the whole of nature.",
+      "author": "阿尔伯特·爱因斯坦",
+      "author_en": "Albert Einstein",
+      "source": "《爱因斯坦语录》",
+      "source_en": "Albert Einstein Quotes"
+    },
+    {
+      "id": "CE050",
+      "chinese": "我们都属于一个人类大家庭。",
+      "english": "We have all been born into this world as part of one great human family.",
+      "author": "达赖喇嘛",
+      "author_en": "Dalai Lama",
+      "source": "《达赖喇嘛语录》",
+      "source_en": "Dalai Lama Quotes"
+    },
+    {
+      "id": "CE051",
+      "chinese": "同理心是理解他人感受的能力。",
+      "english": "Empathy is the ability to understand another person's feelings.",
+      "author": "西蒙·巴伦-科恩",
+      "author_en": "Simon Baron-Cohen",
+      "source": "《巴伦-科恩语录》",
+      "source_en": "Simon Baron-Cohen Quotes"
+    },
+    {
+      "id": "CE052",
+      "chinese": "善良是聋人能听到、盲人能看到的语言。",
+      "english": "Kindness is language the deaf can hear and the blind can see.",
+      "author": "马克·吐温",
+      "author_en": "Mark Twain",
+      "source": "《马克·吐温语录》",
+      "source_en": "Mark Twain Quotes"
+    },
+    {
+      "id": "CE053",
+      "chinese": "如果你想别人快乐，实践同情。如果你想自己快乐，实践同情。",
+      "english": "If you want others to be happy, practise compassion. If you want to be happy, practise compassion.",
+      "author": "达赖喇嘛",
+      "author_en": "Dalai Lama",
+      "source": "《达赖喇嘛语录》",
+      "source_en": "Dalai Lama Quotes"
+    },
+    {
+      "id": "CE054",
+      "chinese": "同情是人类存在的主要法则。",
+      "english": "Compassion is the chief law of human existence.",
+      "author": "费奥多尔·陀思妥耶夫斯基",
+      "author_en": "Fyodor Dostoevsky",
+      "source": "《陀思妥耶夫斯基语录》",
+      "source_en": "Fyodor Dostoevsky Quotes"
+    },
+    {
+      "id": "CE055",
+      "chinese": "善良的一部分在于爱人们超过他们应得的。",
+      "english": "A part of kindness consists in loving people more than they deserve.",
+      "author": "约瑟夫·儒贝尔",
+      "author_en": "Joseph Joubert",
+      "source": "《儒贝尔语录》",
+      "source_en": "Joseph Joubert Quotes"
+    },
+    {
+      "id": "CE056",
+      "chinese": "同情不是关于解决方案。它是关于在没有判断的情况下见证痛苦。",
+      "english": "Compassion isn't about solutions. It's about witnessing pain without judgment.",
+      "author": "布伦妮·布朗",
+      "author_en": "Brené Brown",
+      "source": "《脆弱的力量》",
+      "source_en": "The Power of Vulnerability"
+    },
+    {
+      "id": "CE057",
+      "chinese": "善良在我们力所能及，即使喜欢不在。",
+      "english": "Kindness is in our power even when fondness is not.",
+      "author": "亨利·詹姆斯",
+      "author_en": "Henry James",
+      "source": "《亨利·詹姆斯语录》",
+      "source_en": "Henry James Quotes"
+    },
+    {
+      "id": "CE058",
+      "chinese": "从来没有任何一颗真正伟大和慷慨的心，不是温柔和富有同情心的。",
+      "english": "There never was any heart truly great and generous, that was not also tender and compassionate.",
+      "author": "罗伯特·弗罗斯特",
+      "author_en": "Robert Frost",
+      "source": "《弗罗斯特语录》",
+      "source_en": "Robert Frost Quotes"
+    },
+    {
+      "id": "CE059",
+      "chinese": "同情是道德的基础。",
+      "english": "Compassion is the basis of all morality.",
+      "author": "亚瑟·叔本华",
+      "author_en": "Arthur Schopenhauer",
+      "source": "《叔本华语录》",
+      "source_en": "Arthur Schopenhauer Quotes"
+    },
+    {
+      "id": "CE060",
+      "chinese": "忘记伤害；永不忘记善良。",
+      "english": "Forget injuries; never forget kindness.",
+      "author": "孔子",
+      "author_en": "Confucius",
+      "source": "《论语》",
+      "source_en": "The Analects"
+    },
+    {
+      "id": "CE061",
+      "chinese": "我们因团结而屹立，因分裂而倒下。",
+      "english": "By uniting we stand, by dividing we fall.",
+      "author": "约翰·狄金森",
+      "author_en": "John Dickinson",
+      "source": "《狄金森语录》",
+      "source_en": "John Dickinson Quotes"
+    },
+    {
+      "id": "CE062",
+      "chinese": "我们必须团结一致，否则我们必定会分别被绞死。",
+      "english": "We must all hang together or assuredly we shall all hang separately.",
+      "author": "本杰明·富兰克林",
+      "author_en": "Benjamin Franklin",
+      "source": "《富兰克林语录》",
+      "source_en": "Benjamin Franklin Quotes"
+    },
+    {
+      "id": "CE063",
+      "chinese": "我们必须学会像兄弟一样一起生活，否则我们将像傻瓜一样一起灭亡。",
+      "english": "We must learn to live together as brothers or we are going to perish together as fools.",
+      "author": "马丁·路德·金",
+      "author_en": "Martin Luther King Jr.",
+      "source": "《马丁·路德·金演讲》",
+      "source_en": "Martin Luther King Jr. Speeches"
+    },
+    {
+      "id": "CE064",
+      "chinese": "对人一人的伤害，是所有人的关切！",
+      "english": "An injury to one is the concern of all!",
+      "author": "劳工骑士团",
+      "author_en": "Knights of Labor",
+      "source": "《劳工骑士团口号》",
+      "source_en": "Knights of Labor Slogan"
+    },
+    {
+      "id": "CE065",
+      "chinese": "团结并不意味着相同，而是意味着一起。",
+      "english": "Unity does not mean sameness, it means togetherness.",
+      "author": "阿卜杜勒-阿齐兹",
+      "author_en": "Abdul-Aziz",
+      "source": "《阿卜杜勒-阿齐兹语录》",
+      "source_en": "Abdul-Aziz Quotes"
+    },
+    {
+      "id": "CE066",
+      "chinese": "团结意味着元素的聚集，这些元素在本质上最初是多样和不同的。",
+      "english": "Unity implies the coming together of elements which are, to begin with, varied and diverse in their particular natures.",
+      "author": "奥德雷·洛德",
+      "author_en": "Audre Lorde",
+      "source": "《洛德语录》",
+      "source_en": "Audre Lorde Quotes"
+    },
+    {
+      "id": "CE067",
+      "chinese": "在我们的世界里，分而治之必须变成定义和赋权。",
+      "english": "In our world, divide and conquer must become define and empower.",
+      "author": "奥德雷·洛德",
+      "author_en": "Audre Lorde",
+      "source": "《洛德语录》",
+      "source_en": "Audre Lorde Quotes"
+    },
+    {
+      "id": "CE068",
+      "chinese": "社区最奇妙的事情之一是，它使我们能够以我们作为个人无法做到的方式欢迎和帮助他人。",
+      "english": "One of the marvelous things about community is that it enables us to welcome and help people in a way we couldn't as individuals.",
+      "author": "让·瓦尼尔",
+      "author_en": "Jean Vanier",
+      "source": "《瓦尼尔语录》",
+      "source_en": "Jean Vanier Quotes"
+    },
+    {
+      "id": "CE069",
+      "chinese": "没有比一个社区发现它关心什么更大的变革力量了。",
+      "english": "There is no power for change greater than a community discovering what it cares about.",
+      "author": "玛格丽特·J·惠特利",
+      "author_en": "Margaret J. Wheatley",
+      "source": "《惠特利语录》",
+      "source_en": "Margaret Wheatley Quotes"
+    },
+    {
+      "id": "CE070",
+      "chinese": "我们不能只为己而活。千丝万缕将我们与同胞相连。",
+      "english": "We cannot live only for ourselves. A thousand fibers connect us with our fellow men.",
+      "author": "赫尔曼·梅尔维尔",
+      "author_en": "Herman Melville",
+      "source": "《梅尔维尔语录》",
+      "source_en": "Herman Melville Quotes"
+    },
+    {
+      "id": "CE071",
+      "chinese": "我们生来就是与同胞团结，并与人类共同进入社区。",
+      "english": "We were born to unite with our fellow men, and to join in community with the human race.",
+      "author": "西塞罗",
+      "author_en": "Cicero",
+      "source": "《论义务》",
+      "source_en": "De Officiis"
+    },
+    {
+      "id": "CE072",
+      "chinese": "有些人认为他们在社区里，但他们只是在邻近。真正的社区需要承诺和开放。",
+      "english": "Some people think they are in community, but they are only in proximity. True community requires commitment and openness.",
+      "author": "戴维·斯潘格勒",
+      "author_en": "David Spangler",
+      "source": "《斯潘格勒语录》",
+      "source_en": "David Spangler Quotes"
+    },
+    {
+      "id": "CE073",
+      "chinese": "年轻人今天应该用他们的生命做什么？很多事情，显然。但最大胆的事情是建立稳定的社区，在其中可以治愈孤独的可怕疾病。",
+      "english": "What should young people do with their lives today? Many things, obviously. But the most daring thing is to create stable communities in which the terrible disease of loneliness can be cured.",
+      "author": "库尔特·冯内古特",
+      "author_en": "Kurt Vonnegut",
+      "source": "《冯内古特语录》",
+      "source_en": "Kurt Vonnegut Quotes"
+    },
+    {
+      "id": "CE074",
+      "chinese": "我们都曾经历过漫长的孤独，我们学到唯一的解决办法是爱，而爱来自于社区。",
+      "english": "We have all known the long loneliness and we have learned that the only solution is love and that love comes with community.",
+      "author": "多萝西·戴",
+      "author_en": "Dorothy Day",
+      "source": "《戴语录》",
+      "source_en": "Dorothy Day Quotes"
+    },
+    {
+      "id": "CE075",
+      "chinese": "每个人都是由她所属的社区定义的。",
+      "english": "Every person is defined by the communities she belongs to.",
+      "author": "奥森·斯科特·卡德",
+      "author_en": "Orson Scott Card",
+      "source": "《卡德语录》",
+      "source_en": "Orson Scott Card Quotes"
+    },
+    {
+      "id": "CE076",
+      "chinese": "为他人服务是你在地球上支付的房租。",
+      "english": "Service to others is the rent you pay for your room here on Earth.",
+      "author": "穆罕默德·阿里",
+      "author_en": "Muhammad Ali",
+      "source": "《阿里语录》",
+      "source_en": "Muhammad Ali Quotes"
+    },
+    {
+      "id": "CE077",
+      "chinese": "找到自己的最好方法是在为他人服务中失去自己。",
+      "english": "The best way to find yourself is to lose yourself in the service of others.",
+      "author": "圣雄甘地",
+      "author_en": "Mahatma Gandhi",
+      "source": "《甘地语录》",
+      "source_en": "Mahatma Gandhi Quotes"
+    },
+    {
+      "id": "CE078",
+      "chinese": "生命中最持久和最紧迫的问题是：'你在为他人做什么？'",
+      "english": "Life's most persistent and urgent question is, 'What are you doing for others?'",
+      "author": "马丁·路德·金",
+      "author_en": "Martin Luther King Jr.",
+      "source": "《马丁·路德·金演讲》",
+      "source_en": "Martin Luther King Jr. Speeches"
+    },
+    {
+      "id": "CE079",
+      "chinese": "我认为我的生命属于社区，只要我活着，为它做我能做的一切是我的特权。",
+      "english": "I am of the opinion that my life belongs to the community, and as long as I live it is my privilege to do for it whatever I can.",
+      "author": "萧伯纳",
+      "author_en": "George Bernard Shaw",
+      "source": "《萧伯纳语录》",
+      "source_en": "George Bernard Shaw Quotes"
+    },
+    {
+      "id": "CE080",
+      "chinese": "我们渴望归属，归属和关怀将我们对宇宙的位置感锚定。",
+      "english": "We long to belong, and belonging and caring anchors our sense of place in the universe.",
+      "author": "帕特里夏·丘奇兰德",
+      "author_en": "Patricia Churchland",
+      "source": "《丘奇兰德语录》",
+      "source_en": "Patricia Churchland Quotes"
+    },
+    {
+      "id": "CE081",
+      "chinese": "相互关系中存在着一种治愈的力量。",
+      "english": "There is a healing power in mutual relationships.",
+      "author": "多萝西·诺尔特",
+      "author_en": "Dorothy Nolte",
+      "source": "《诺尔特语录》",
+      "source_en": "Dorothy Nolte Quotes"
+    },
+    {
+      "id": "CE082",
+      "chinese": "安全不在于孤立，而在于联系。",
+      "english": "Safety is not found in isolation, but in connection.",
+      "author": "约瑟夫·戈德斯坦",
+      "author_en": "Joseph Goldstein",
+      "source": "《戈德斯坦语录》",
+      "source_en": "Joseph Goldstein Quotes"
+    },
+    {
+      "id": "CE083",
+      "chinese": "分享快乐就是加倍快乐；分享痛苦就是减半痛苦。",
+      "english": "Shared joy is a double joy; shared sorrow is half a sorrow.",
+      "author": "瑞典谚语",
+      "author_en": "Swedish Proverb",
+      "source": "瑞典民间谚语",
+      "source_en": "Swedish Folklore"
+    },
+    {
+      "id": "CE084",
+      "chinese": "关系的质量决定了生活的质量。",
+      "english": "The quality of your life is determined by the quality of your relationships.",
+      "author": "托尼·罗宾斯",
+      "author_en": "Tony Robbins",
+      "source": "《罗宾斯语录》",
+      "source_en": "Tony Robbins Quotes"
+    },
+    {
+      "id": "CE085",
+      "chinese": "每一个善举，无论多么微小，都不会浪费。",
+      "english": "No act of kindness, however small, is ever wasted.",
+      "author": "伊索",
+      "author_en": "Aesop",
+      "source": "《伊索寓言》",
+      "source_en": "Aesop's Fables"
+    },
+    {
+      "id": "CE086",
+      "chinese": "人是需要人的。",
+      "english": "Man is a social animal.",
+      "author": "亚里士多德",
+      "author_en": "Aristotle",
+      "source": "《政治学》",
+      "source_en": "Politics"
+    },
+    {
+      "id": "CE087",
+      "chinese": "朋友是耐心的，朋友是善良的；朋友不嫉妒，不自夸，不张狂。",
+      "english": "A friend is patient, a friend is kind; a friend does not envy, does not boast, is not proud.",
+      "author": "使徒保罗",
+      "author_en": "Apostle Paul",
+      "source": "《圣经·哥林多前书》",
+      "source_en": "The Bible, 1 Corinthians"
+    },
+    {
+      "id": "CE088",
+      "chinese": "爱是恒久忍耐，又有恩慈；爱是不嫉妒，不自夸，不张狂。",
+      "english": "Love is patient, love is kind. It does not envy, it does not boast, it is not proud.",
+      "author": "使徒保罗",
+      "author_en": "Apostle Paul",
+      "source": "《圣经·哥林多前书》",
+      "source_en": "The Bible, 1 Corinthians"
+    },
+    {
+      "id": "CE089",
+      "chinese": "爱不求自己的益处，不轻易发怒，不计算人的恶。",
+      "english": "Love does not insist on its own way; it is not irritable or resentful.",
+      "author": "使徒保罗",
+      "author_en": "Apostle Paul",
+      "source": "《圣经·哥林多前书》",
+      "source_en": "The Bible, 1 Corinthians"
+    },
+    {
+      "id": "CE090",
+      "chinese": "爱是永不止息。",
+      "english": "Love never ends.",
+      "author": "使徒保罗",
+      "author_en": "Apostle Paul",
+      "source": "《圣经·哥林多前书》",
+      "source_en": "The Bible, 1 Corinthians"
+    },
+    {
+      "id": "CE091",
+      "chinese": "如今常存的有信、有望、有爱；这三样，其中最大的是爱。",
+      "english": "And now these three remain: faith, hope and love. But the greatest of these is love.",
+      "author": "使徒保罗",
+      "author_en": "Apostle Paul",
+      "source": "《圣经·哥林多前书》",
+      "source_en": "The Bible, 1 Corinthians"
+    },
+    {
+      "id": "CE092",
+      "chinese": "你们要彼此相爱，像我爱你们一样，这就是我的命令。",
+      "english": "Love each other as I have loved you.",
+      "author": "耶稣基督",
+      "author_en": "Jesus Christ",
+      "source": "《圣经·约翰福音》",
+      "source_en": "The Bible, John"
+    },
+    {
+      "id": "CE093",
+      "chinese": "要爱人如己。",
+      "english": "Love your neighbor as yourself.",
+      "author": "摩西",
+      "author_en": "Moses",
+      "source": "《圣经·利未记》",
+      "source_en": "The Bible, Leviticus"
+    },
+    {
+      "id": "CE094",
+      "chinese": "你们若有彼此相爱的心，众人因此就认出你们是我的门徒了。",
+      "english": "By this everyone will know that you are my disciples, if you love one another.",
+      "author": "耶稣基督",
+      "author_en": "Jesus Christ",
+      "source": "《圣经·约翰福音》",
+      "source_en": "The Bible, John"
+    },
+    {
+      "id": "CE095",
+      "chinese": "朋友乃时常亲爱，弟兄为患难而生。",
+      "english": "A friend loves at all times, and a brother is born for a time of adversity.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·箴言》",
+      "source_en": "The Bible, Proverbs"
+    },
+    {
+      "id": "CE096",
+      "chinese": "铁磨铁，磨出刃来；朋友相感，也是如此。",
+      "english": "As iron sharpens iron, so one person sharpens another.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·箴言》",
+      "source_en": "The Bible, Proverbs"
+    },
+    {
+      "id": "CE097",
+      "chinese": "滥交朋友的自取败坏；但有一朋友比弟兄更亲密。",
+      "english": "One who has unreliable friends soon comes to ruin, but there is a friend who sticks closer than a brother.",
+      "author": "所罗门",
+      "author_en": "King Solomon",
+      "source": "《圣经·箴言》",
+      "source_en": "The Bible, Proverbs"
+    },
+    {
+      "id": "CE098",
+      "chinese": "我们若说是与上帝相交，却仍在黑暗里行，就是说谎话，不行真理了。我们若在光明中行，如同上帝在光明中，就彼此相交。",
+      "english": "If we claim to have fellowship with him and yet walk in the darkness, we lie and do not live out the truth. But if we walk in the light, as he is in the light, we have fellowship with one another.",
+      "author": "使徒约翰",
+      "author_en": "Apostle John",
+      "source": "《圣经·约翰一书》",
+      "source_en": "The Bible, 1 John"
+    },
+    {
+      "id": "CE099",
+      "chinese": "最要紧的是彼此切实相爱，因为爱能遮掩许多的罪。",
+      "english": "Above all, love each other deeply, because love covers over a multitude of sins.",
+      "author": "使徒彼得",
+      "author_en": "Apostle Peter",
+      "source": "《圣经·彼得前书》",
+      "source_en": "The Bible, 1 Peter"
+    },
+    {
+      "id": "CE100",
+      "chinese": "我们因为爱弟兄，就晓得是已经出死入生了。没有爱心的，仍住在死中。",
+      "english": "We know that we have passed from death to life, because we love each other. Anyone who does not love remains in death.",
+      "author": "使徒约翰",
+      "author_en": "Apostle John",
+      "source": "《圣经·约翰一书》",
+      "source_en": "The Bible, 1 John"
+    }
+  ]
+}

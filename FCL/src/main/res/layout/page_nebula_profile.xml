@@ -27,6 +27,89 @@
             android:padding="16dp">
 
             <TextView
+                android:id="@+id/tvNebulaName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="星灯云浪：未登录"
+                android:textColor="@color/nebula_text"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvNebulaStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="登录后可同步喵币、称号与通知"
+                android:textColor="@color/nebula_text_dim"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnNebulaLogin"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="登录 / 注册"
+                    android:textColor="#FF10131A"
+                    android:textSize="13sp"
+                    app:backgroundTint="@color/nebula_accent"
+                    app:cornerRadius="10dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnNotifications"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:text="我的通知"
+                    android:textColor="@color/nebula_accent"
+                    android:textSize="13sp"
+                    app:cornerRadius="10dp"
+                    app:strokeColor="@color/nebula_accent" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRefreshProfile"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:text="刷新资料"
+                    android:textColor="@color/nebula_accent"
+                    android:textSize="13sp"
+                    app:cornerRadius="10dp"
+                    app:strokeColor="@color/nebula_accent" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnLogout"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:text="退出登录"
+                    android:textColor="@color/nebula_text_dim"
+                    android:textSize="13sp"
+                    android:visibility="gone"
+                    app:cornerRadius="10dp"
+                    app:strokeColor="@color/nebula_card_border" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_nebula_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
                 android:id="@+id/tvAccountName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -40,7 +123,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="创建一个账户以启动游戏"
+                android:text="创建一个游戏账户以启动游戏"
                 android:textColor="@color/nebula_text_dim"
                 android:textSize="12sp" />
 
@@ -72,20 +155,36 @@
                     app:backgroundTint="@color/nebula_accent"
                     app:cornerRadius="10dp" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnMicrosoftLogin"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:text="微软登录"
-                    android:textColor="@color/nebula_accent"
-                    android:textSize="13sp"
-                    android:visibility="gone"
-                    app:cornerRadius="10dp"
-                    app:strokeColor="@color/nebula_accent" />
-
             </LinearLayout>
+
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:text="应用"
+            android:textColor="@color/nebula_text_dim"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_nebula_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOpenSettings"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="应用设置"
+                android:textColor="@color/nebula_accent"
+                android:textSize="14sp"
+                app:cornerRadius="10dp"
+                app:strokeColor="@color/nebula_accent" />
 
         </LinearLayout>
 

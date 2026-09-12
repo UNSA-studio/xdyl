@@ -66,6 +66,31 @@
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.Nebula" />
+        <activity
+            android:name=".nebula.NebulaSettingsActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|keyboard|navigation|uiMode"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Nebula" />
+        <activity
+            android:name=".nebula.NebulaEasterEggActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|keyboard|navigation|uiMode"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Nebula" />
+        <activity
+            android:name=".nebula.NebulaTerminalActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|keyboard|navigation|uiMode"
+            android:exported="false"
+            android:theme="@style/Theme.Nebula" />
+        <receiver
+            android:name="com.tungsten.fcl.nebula.TerminalUnlockReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.nebula.launcher.REQ_TERMINAL_CHALLENGE" />
+                <action android:name="com.nebula.launcher.ENABLE_TERMINAL" />
+            </intent-filter>
+        </receiver>
         <activity-alias
             android:name=".ImportActivity"
             android:exported="true"

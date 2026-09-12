@@ -9,10 +9,11 @@ import com.tungsten.fcl.R
 import com.tungsten.fcl.nebula.NebulaCommunityPage
 import com.tungsten.fcl.nebula.NebulaHomePage
 import com.tungsten.fcl.nebula.NebulaProfilePage
+import com.tungsten.fcl.nebula.NebulaShopPage
 import com.tungsten.fcl.nebula.NebulaVersionsPage
 
 /**
- * 星云主界面（我们的 UI）——四 Tab：主页 / 版本 / 社区 / 我的。
+ * 星云主界面（我们的 UI）——五 Tab：主页 / 版本 / 社区 / 商城 / 我的。
  * 启动游戏、版本列表等能力全部走 NebulaLauncher / fclcore 内核，
  * 不再进入 FCL 原生的管理界面。
  */
@@ -22,6 +23,7 @@ class NebulaMainActivity : AppCompatActivity() {
         private set
     private lateinit var versionsPage: NebulaVersionsPage
     private lateinit var communityPage: NebulaCommunityPage
+    private lateinit var shopPage: NebulaShopPage
     private lateinit var profilePage: NebulaProfilePage
     private lateinit var pages: List<View>
     private var currentIndex = 0
@@ -34,13 +36,15 @@ class NebulaMainActivity : AppCompatActivity() {
         val home = layoutInflater.inflate(R.layout.page_nebula_home, container, false)
         val versions = layoutInflater.inflate(R.layout.page_nebula_versions, container, false)
         val community = layoutInflater.inflate(R.layout.page_nebula_community, container, false)
+        val shop = layoutInflater.inflate(R.layout.page_nebula_shop, container, false)
         val profile = layoutInflater.inflate(R.layout.page_nebula_profile, container, false)
-        listOf(home, versions, community, profile).forEach { container.addView(it) }
-        pages = listOf(home, versions, community, profile)
+        listOf(home, versions, community, shop, profile).forEach { container.addView(it) }
+        pages = listOf(home, versions, community, shop, profile)
 
         homePage = NebulaHomePage(this, home)
         versionsPage = NebulaVersionsPage(this, versions)
         communityPage = NebulaCommunityPage(this, community)
+        shopPage = NebulaShopPage(this, shop)
         profilePage = NebulaProfilePage(this, profile)
 
         val nav = findViewById<BottomNavigationView>(R.id.bottomNav)
@@ -49,7 +53,8 @@ class NebulaMainActivity : AppCompatActivity() {
                 R.id.nav_home -> 0
                 R.id.nav_versions -> 1
                 R.id.nav_community -> 2
-                R.id.nav_profile -> 3
+                R.id.nav_shop -> 3
+                R.id.nav_profile -> 4
                 else -> 0
             }
             showPage(index)
@@ -67,7 +72,8 @@ class NebulaMainActivity : AppCompatActivity() {
             0 -> homePage.onShow()
             1 -> versionsPage.onShow()
             2 -> communityPage.onShow()
-            3 -> profilePage.onShow()
+            3 -> shopPage.onShow()
+            4 -> profilePage.onShow()
         }
     }
 
@@ -77,7 +83,8 @@ class NebulaMainActivity : AppCompatActivity() {
         when (currentIndex) {
             0 -> homePage.onShow()
             1 -> versionsPage.onShow(force = true)
-            3 -> profilePage.onShow()
+            3 -> shopPage.onShow(force = true)
+            4 -> profilePage.onShow()
         }
     }
 }
