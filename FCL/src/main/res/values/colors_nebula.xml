@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="nebula_bg">#FF121212</color>
+    <color name="nebula_card">#FF1E1E1E</color>
+    <color name="nebula_card_border">#FF2A2A2E</color>
+    <color name="nebula_accent">#FFA0C4FF</color>
+    <color name="nebula_text">#FFEDEDED</color>
+    <color name="nebula_text_dim">#FF9AA0A6</color>
+    <color name="nebula_green">#FF7BD88F</color>
+    <color name="nebula_red">#FFE57373</color>
+</resources>

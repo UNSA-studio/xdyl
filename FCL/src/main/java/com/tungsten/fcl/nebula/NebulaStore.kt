@@ -1,14 +1,16 @@
 package com.tungsten.fcl.nebula
 
 import android.content.Context
+import com.tungsten.fclauncher.utils.FCLPath
 import java.io.File
 
 object NebulaDirs {
-    /** FCL 自己的游戏根目录（.minecraft） */
-    fun fclGameRoot(context: Context): File {
-        val base = context.getExternalFilesDir(null) ?: context.filesDir
-        return File(base, ".minecraft")
-    }
+    /**
+     * 游戏根目录：与 FCL 内核真正读取的位置保持一致
+     * （FCLPath.SHARED_COMMON_DIR = /sdcard/NUL/.minecraft）。
+     * 整合包安装与游戏启动必须使用同一目录，否则版本列表看不到已安装的包。
+     */
+    fun fclGameRoot(context: Context): File = File(FCLPath.SHARED_COMMON_DIR)
 }
 
 object NebulaInstallStore {

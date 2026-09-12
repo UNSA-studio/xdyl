@@ -107,6 +107,12 @@ class MainActivity : FCLActivity(), OnSelectListener, View.OnClickListener {
         fun getInstance(): MainActivity {
             return instance.get()!!
         }
+
+        /** 未初始化/已回收时返回 null（供内核等非 UI 流程安全调用） */
+        @JvmStatic
+        fun getInstanceOrNull(): MainActivity? {
+            return if (::instance.isInitialized) instance.get() else null
+        }
     }
 
     lateinit var binding: ActivityMainBinding

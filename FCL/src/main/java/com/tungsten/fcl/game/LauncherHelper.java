@@ -256,9 +256,10 @@ public final class LauncherHelper {
                             intent.putExtras(bundle);
                             LOG.log(Level.INFO, "Start JVMActivity!");
                             context.startActivity(intent);
-                            if (MainActivity.getInstance().shouldPlayVideo()) {
-                                MainActivity.getInstance().setMediaPlayer(null);
-                                MainActivity.getInstance().binding.videoView.stopPlayback();
+                            MainActivity mainActivity = MainActivity.getInstanceOrNull();
+                            if (mainActivity != null && mainActivity.shouldPlayVideo()) {
+                                mainActivity.setMediaPlayer(null);
+                                mainActivity.getBinding().videoView.stopPlayback();
                             }
                             if (context.getSharedPreferences("launcher", MODE_PRIVATE).getBoolean("autoExitLauncher", false)) {
                                 Activity activity = FCLApp.getActivity();
@@ -452,10 +453,7 @@ public final class LauncherHelper {
                             .setPositiveButton(context.getString(R.string.button_cancel), () -> future.completeExceptionally(new CancellationException()))
                             .setNeutralButton(context.getString(R.string.button_install), () -> {
                                 future.completeExceptionally(new CancellationException());
-                                UIManager manager = UIManager.getInstance();
-                                MainActivity.getInstance().binding.manage.setSelected(true);
-                                FCLTabLayout tabLayout = manager.getManageUI().tabLayout;
-                                tabLayout.selectTab(tabLayout.getTabAt(2));
+                                android.widget.Toast.makeText(context, "请先在版本管理安装 Mod 加载器后再启动", android.widget.Toast.LENGTH_LONG).show();
                             })
                             .setNegativeButton(context.getString(R.string.mod_check_continue), () -> future.complete(Task.completed(bridge))).create().show());
                     return Task.fromCompletableFuture(future).thenComposeAsync(task -> task);
