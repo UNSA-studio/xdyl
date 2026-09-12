@@ -21,4 +21,10 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:textSize">18sp</item>
     </style>
+
+    <!-- 对话框动效（旧版 xdyl 同款：底部滑入滑出） -->
+    <style name="DialogAnimation" parent="Animation.AppCompat.Dialog">
+        <item name="android:windowEnterAnimation">@anim/dialog_slide_in_bottom</item>
+        <item name="android:windowExitAnimation">@anim/dialog_slide_out_bottom</item>
+    </style>
 </resources>

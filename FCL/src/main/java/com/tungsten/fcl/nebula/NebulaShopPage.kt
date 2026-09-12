@@ -5,7 +5,7 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.tungsten.fcl.R
@@ -175,7 +175,7 @@ class NebulaShopPage(
 
     private fun confirmBuy(name: String, desc: String, id: Int) {
         val message = if (desc.isBlank()) "购买「$name」？" else "购买「$name」？\n\n$desc"
-        AlertDialog.Builder(activity)
+        MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setTitle("确认购买")
             .setMessage(message)
             .setPositiveButton("购买") { _, _ ->

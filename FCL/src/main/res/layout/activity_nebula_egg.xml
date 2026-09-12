@@ -1,98 +1,182 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/nebula_bg"
-    android:orientation="vertical"
-    android:padding="20dp">
+    android:background="@color/background_dark">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <ImageButton
-            android:id="@+id/btnEggBack"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="返回"
-            android:src="@drawable/ic_nebula_back"
-            app:tint="@color/nebula_accent" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="扩展页"
-            android:textColor="@color/nebula_accent"
-            android:textSize="24sp"
-            android:textStyle="bold" />
-
-    </LinearLayout>
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="14dp"
-        android:layout_weight="1">
-
+        <!-- 顶栏：返回 + 标题 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_marginBottom="24dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/btnBack"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="返回"
+                android:src="@drawable/ic_arrow_back"
+                android:tint="@color/primary_light_blue" />
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="高级选项，请谨慎调整"
-                android:textColor="@color/nebula_text_dim"
-                android:textSize="12sp" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/swUnlockThread"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="解锁线程上限（1024 / 128）"
-                android:textColor="@color/nebula_text"
-                android:textSize="14sp" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/swNeoforgeCheck"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="NeoForge 检查"
-                android:textColor="@color/nebula_text"
-                android:textSize="14sp" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/swCleanOrphanFiles"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="孤儿文件清理"
-                android:textColor="@color/nebula_text"
-                android:textSize="14sp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTerminal"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="隐藏终端"
-                android:textColor="@color/nebula_accent"
-                android:textSize="14sp"
-                android:visibility="gone"
-                app:cornerRadius="10dp"
-                app:strokeColor="@color/nebula_accent" />
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:text="扩展页面"
+                android:textColor="@color/primary_light_blue"
+                android:textSize="24sp"
+                android:textStyle="bold" />
 
         </LinearLayout>
 
-    </ScrollView>
+        <!-- 解锁线程数上限 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="#2A2A2A"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#3A3A3A"
+            app:strokeWidth="1dp">
 
-</LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:contentDescription="解锁"
+                    android:src="@drawable/ic_unlock"
+                    android:tint="@color/primary_light_blue" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/swUnlockThread"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:text="解锁线程数上限至 1024"
+                    android:textColor="@android:color/white" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp"
+            android:background="#3A3A3A" />
+
+        <!-- NeoForge 检查 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="#2A2A2A"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#3A3A3A"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:contentDescription="检查"
+                    android:src="@drawable/ic_check"
+                    android:tint="@color/primary_light_blue" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/swNeoforgeCheck"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:text="开启 NeoForge 版本检查"
+                    android:textColor="@android:color/white" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp"
+            android:background="#3A3A3A" />
+
+        <!-- 清理孤儿文件 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="#2A2A2A"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#3A3A3A"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:contentDescription="清理"
+                    android:src="@drawable/ic_clean"
+                    android:tint="@color/primary_light_blue" />
+
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/swCleanOrphanFiles"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:text="更新后自动清理多余文件"
+                    android:textColor="@android:color/white" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 隐藏终端入口：ADB 广播解锁后才显示 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnTerminal"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:text="进入终端"
+            android:textColor="@android:color/black"
+            android:textSize="16sp"
+            android:visibility="gone"
+            app:backgroundTint="@color/primary_light_blue" />
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

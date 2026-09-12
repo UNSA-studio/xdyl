@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:gravity="center_horizontal">
+
+    <ImageView
+        android:id="@+id/ivIcon"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:contentDescription="应用图标"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Nebula Updater-NU 星云更新器"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:layout_marginTop="8dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="快速且方便更新模组，无需顾虑下载损坏问题"
+        android:textSize="14sp"
+        android:textColor="#BBBBBB"
+        android:layout_marginTop="4dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="本软件为开源项目"
+        android:textSize="14sp"
+        android:textColor="#BBBBBB"
+        android:layout_marginTop="8dp"/>
+
+    <TextView
+        android:id="@+id/tvRepo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="GitHub 仓库"
+        android:textColor="#FFA0C4FF"
+        android:textSize="14sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:layout_marginTop="4dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="开发者: UNSA-Studio"
+        android:textSize="14sp"
+        android:textColor="#BBBBBB"
+        android:layout_marginTop="8dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="其他开源项目:"
+        android:textSize="14sp"
+        android:textColor="@android:color/white"
+        android:layout_marginTop="12dp"/>
+
+    <TextView
+        android:id="@+id/tvSBA"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Supply By Airdrop-SBA"
+        android:textColor="#FFA0C4FF"
+        android:textSize="14sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:layout_marginTop="4dp"/>
+
+    <TextView
+        android:id="@+id/tvST"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Shortcut Terminal-ST"
+        android:textColor="#FFA0C4FF"
+        android:textSize="14sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:layout_marginTop="4dp"/>
+
+    <TextView
+        android:id="@+id/tvJE404"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Java ERROR 404-JE404"
+        android:textColor="#FFA0C4FF"
+        android:textSize="14sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:layout_marginTop="4dp"/>
+
+</LinearLayout>

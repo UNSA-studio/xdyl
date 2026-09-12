@@ -77,7 +77,7 @@ class NebulaTerminalActivity : AppCompatActivity() {
             if (!autoSetupMode) {
                 finish()
             } else {
-                MaterialAlertDialogBuilder(this)
+                MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
                     .setTitle("退出安装?")
                     .setMessage("扩展组件仍在后台安装中，现在退出不会中断安装，\n完成后回到设置页点击 Ping (MC服务器) 即可使用。")
                     .setPositiveButton("退出") { _, _ -> finish() }

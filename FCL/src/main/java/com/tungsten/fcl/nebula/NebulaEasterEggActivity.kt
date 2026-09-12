@@ -23,7 +23,11 @@ class NebulaEasterEggActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_nebula_egg)
 
-        findViewById<ImageButton>(R.id.btnEggBack).setOnClickListener { finish() }
+        findViewById<ImageButton>(R.id.btnBack).setOnClickListener {
+            finish()
+            @Suppress("DEPRECATION")
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+        }
 
         val swUnlock = findViewById<SwitchMaterial>(R.id.swUnlockThread)
         swUnlock.isChecked = prefs.getBoolean("unlock_thread_limit", false)

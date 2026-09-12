@@ -7,7 +7,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
@@ -56,6 +56,8 @@ class NebulaProfilePage(
         }
         btnOpenSettings.setOnClickListener {
             activity.startActivity(Intent(activity, NebulaSettingsActivity::class.java))
+            @Suppress("DEPRECATION")
+            activity.overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
         btnCreateOffline.setOnClickListener { showCreateOfflineDialog() }
         btnSwitchAccount.setOnClickListener { showSwitchAccountDialog() }
@@ -99,7 +101,7 @@ class NebulaProfilePage(
         }
         col.addView(etUser)
         col.addView(etPass)
-        AlertDialog.Builder(activity)
+        MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setTitle("登录星灯云浪")
             .setView(col)
             .setPositiveButton("登录") { _, _ ->
@@ -166,13 +168,13 @@ class NebulaProfilePage(
                     }
                 }
                 if (list.isEmpty()) {
-                    AlertDialog.Builder(activity)
+                    MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
                         .setTitle("我的通知")
                         .setMessage("暂无通知")
                         .setPositiveButton("关闭", null)
                         .show()
                 } else {
-                    AlertDialog.Builder(activity)
+                    MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
                         .setTitle("我的通知")
                         .setMessage(list.joinToString("\n\n"))
                         .setPositiveButton("关闭", null)
@@ -217,7 +219,7 @@ class NebulaProfilePage(
             hint = "玩家名（英文 / 数字 / 下划线）"
             setSingleLine()
         }
-        AlertDialog.Builder(activity)
+        MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setTitle("新建离线账户")
             .setView(input)
             .setPositiveButton("创建") { _, _ ->
@@ -271,7 +273,7 @@ class NebulaProfilePage(
             }
             if (t.isBlank()) n else "$n（$t）"
         }.toTypedArray()
-        AlertDialog.Builder(activity)
+        MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setTitle("切换账户")
             .setItems(labels) { _, which ->
                 try {

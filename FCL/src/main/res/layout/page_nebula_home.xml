@@ -62,13 +62,29 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <TextView
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="整合包状态"
-                android:textColor="@color/nebula_text"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="整合包"
+                    android:src="@drawable/ic_package"
+                    app:tint="@color/nebula_accent" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="整合包状态"
+                    android:textColor="@color/nebula_text"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/tvPackStatus"
@@ -102,7 +118,7 @@
             android:textSize="16sp"
             app:backgroundTint="@color/nebula_accent"
             app:cornerRadius="14dp"
-            app:icon="@drawable/ic_nebula_update"
+            app:icon="@drawable/ic_rocket"
             app:iconGravity="textStart"
             app:iconTint="#FF10131A" />
 

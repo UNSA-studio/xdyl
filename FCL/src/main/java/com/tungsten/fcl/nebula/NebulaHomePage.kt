@@ -40,6 +40,8 @@ class NebulaHomePage(
         }
         btnOpenSettings.setOnClickListener {
             activity.startActivity(Intent(activity, NebulaSettingsActivity::class.java))
+            @Suppress("DEPRECATION")
+            activity.overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
         btnLaunch.setOnClickListener {
             val version = NebulaLauncher.currentVersion()
