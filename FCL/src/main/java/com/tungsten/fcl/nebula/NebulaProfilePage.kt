@@ -13,7 +13,6 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.tungsten.fcl.R
 import com.tungsten.fcl.activity.NebulaMainActivity
-import com.tungsten.fcl.activity.NebulaSettingsActivity
 import com.tungsten.fcl.setting.Accounts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
