@@ -3,10 +3,12 @@ package com.tungsten.fcl.nebula
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.tungsten.fcl.R
 import java.security.MessageDigest
@@ -63,6 +65,71 @@ class NebulaEasterEggActivity : AppCompatActivity() {
         btnTerminal.setOnClickListener {
             startActivity(Intent(this, NebulaTerminalActivity::class.java))
         }
+
+        // 模组白名单
+        findViewById<MaterialButton>(R.id.btnWhitelist).setOnClickListener { showWhitelistDialog() }
+    }
+
+    /** 模组白名单（与旧版交互一致：多选删除 / 输入添加 / 循环刷新） */
+    private fun showWhitelistDialog() {
+        val whitelist = (prefs.getStringSet("mod_whitelist", emptySet()) ?: emptySet()).toMutableList()
+        val items = whitelist.toTypedArray()
+        val checked = BooleanArray(items.size)
+
+        MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+            .setTitle("模组白名单")
+            .setMultiChoiceItems(items, checked) { _, which, isChecked ->
+                checked[which] = isChecked
+            }
+            .setPositiveButton("添加") { d, _ ->
+                d.dismiss()
+                val input = EditText(this)
+                input.hint = "输入模组文件名"
+                MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+                    .setTitle("添加白名单")
+                    .setView(input)
+                    .setPositiveButton("确定") { d2, _ ->
+                        d2.dismiss()
+                        val name = input.text.toString().trim()
+                        if (name.isNotEmpty() && !whitelist.contains(name)) {
+                            whitelist.add(name)
+                            saveWhitelist(whitelist)
+                            Toast.makeText(this, "已添加", Toast.LENGTH_SHORT).show()
+                        }
+                        // 添加后回到白名单（刷新列表）
+                        showWhitelistDialog()
+                    }
+                    .setNegativeButton("取消") { _, _ ->
+                        // 取消也回到白名单
+                        showWhitelistDialog()
+                    }
+                    .setOnCancelListener {
+                        showWhitelistDialog()
+                    }
+                    .show()
+            }
+            .setNegativeButton("删除选中") { d, _ ->
+                val toRemove = mutableListOf<String>()
+                for (i in items.indices) {
+                    if (checked[i]) toRemove.add(items[i])
+                }
+                if (toRemove.isNotEmpty()) {
+                    whitelist.removeAll(toRemove)
+                    saveWhitelist(whitelist)
+                    Toast.makeText(this, "已删除 ${toRemove.size} 项", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "未选中任何项", Toast.LENGTH_SHORT).show()
+                }
+                d.dismiss()
+                // 删除后回到白名单（刷新列表）
+                showWhitelistDialog()
+            }
+            .setNeutralButton("关闭", null)
+            .show()
+    }
+
+    private fun saveWhitelist(list: List<String>) {
+        prefs.edit().putStringSet("mod_whitelist", list.toSet()).apply()
     }
 
     /** 校验解锁状态：terminal_enabled 且签名匹配当前包名 */

@@ -123,11 +123,16 @@ class IncrementalSync(
             }
         }
         for (j in deferreds) runCatching { j.await() }
-
-        // ---- removed 清理 ----
+        // ---- removed 清理（模组白名单保护：名单内的文件跳过删除） ----
         var cleaned = 0
+        val whitelist = context.getSharedPreferences("nebula_settings", Context.MODE_PRIVATE)
+            .getStringSet("mod_whitelist", emptySet()) ?: emptySet()
         for (r in manifest.removed) {
             val name = r.name
+            if (whitelist.contains(name)) {
+                messages.add("白名单跳过: $name")
+                continue
+            }
             val candidates = listOf(File(modsDir, name), File(taczDir, name))
             for (c in candidates) {
                 if (c.exists()) {

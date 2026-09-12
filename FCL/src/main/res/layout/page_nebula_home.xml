@@ -1,66 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:background="@color/background_dark"
+    android:padding="16dp">
 
+    <!-- 标题区域 -->
     <LinearLayout
-        android:layout_width="match_parent"
+        android:id="@+id/titleContainer"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:orientation="vertical"
-        android:padding="20dp">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/tvTitleLine1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:letterSpacing="0.05"
+            android:text="Nebula updater-NU"
+            android:textColor="@color/primary_light_blue"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvTitleLine2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:alpha="0.8"
+            android:text="星云更新器-Android端"
+            android:textColor="@color/primary_light_blue"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/btnOpenSettings"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="设置"
+        android:src="@drawable/ic_settings"
+        android:tint="@color/primary_light_blue"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 整合包状态卡 -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardPackStatus"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        app:cardBackgroundColor="#252525"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/titleContainer">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:letterSpacing="0.05"
-                    android:text="Nebula updater-NU"
-                    android:textColor="@color/nebula_accent"
-                    android:textSize="28sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:alpha="0.8"
-                    android:text="星云更新器-Android端"
-                    android:textColor="@color/nebula_accent"
-                    android:textSize="16sp" />
-
-            </LinearLayout>
-
-            <ImageButton
-                android:id="@+id/btnOpenSettings"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="设置"
-                android:src="@drawable/ic_nebula_settings"
-                app:tint="@color/nebula_accent" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:background="@drawable/bg_nebula_card"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="14dp">
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -73,15 +78,16 @@
                     android:layout_height="16dp"
                     android:contentDescription="整合包"
                     android:src="@drawable/ic_package"
-                    app:tint="@color/nebula_accent" />
+                    app:tint="@color/primary_light_blue" />
 
                 <TextView
+                    android:id="@+id/tvPackStatusTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
                     android:text="整合包状态"
-                    android:textColor="@color/nebula_text"
-                    android:textSize="15sp"
+                    android:textColor="@color/primary_light_blue"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
 
             </LinearLayout>
@@ -90,130 +96,214 @@
                 android:id="@+id/tvPackStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="检查中…"
-                android:textColor="@color/nebula_text_dim"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/tvVersionInfo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text=""
-                android:textColor="@color/nebula_text_dim"
-                android:textSize="12sp" />
+                android:text="未安装——点击下方按钮一键全自动"
+                android:textColor="#CCFFFFFF"
+                android:textSize="13sp" />
 
         </LinearLayout>
 
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- 整合包安装按钮 -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardModpack"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        app:cardBackgroundColor="#2A2A2A"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cardPackStatus">
+
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnAutoUpdate"
+            android:id="@+id/btnInstallModpack"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:paddingTop="14dp"
-            android:paddingBottom="14dp"
+            android:layout_height="52dp"
+            android:stateListAnimator="@null"
             android:text="一键全自动更新"
-            android:textColor="#FF10131A"
-            android:textSize="16sp"
-            app:backgroundTint="@color/nebula_accent"
-            app:cornerRadius="14dp"
-            app:icon="@drawable/ic_rocket"
+            android:textColor="@color/primary_light_blue"
+            app:cornerRadius="24dp"
+            app:icon="@drawable/ic_nebula_update"
             app:iconGravity="textStart"
-            app:iconTint="#FF10131A" />
+            app:iconTint="@color/primary_light_blue" />
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- 启动游戏按钮 -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardLaunch"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        app:cardBackgroundColor="#2A2A2A"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cardModpack">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnLaunch"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:paddingTop="14dp"
-            android:paddingBottom="14dp"
+            android:layout_height="52dp"
+            android:stateListAnimator="@null"
             android:text="启动游戏"
-            android:textColor="@color/nebula_accent"
-            android:textSize="16sp"
-            app:cornerRadius="14dp"
+            android:textColor="@color/primary_light_blue"
+            app:cornerRadius="24dp"
             app:icon="@drawable/ic_nebula_play"
             app:iconGravity="textStart"
-            app:iconTint="@color/nebula_accent"
-            app:strokeColor="@color/nebula_accent" />
+            app:iconTint="@color/primary_light_blue" />
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- 进度条 -->
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/progressBar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:indeterminate="true"
+        android:visibility="gone"
+        app:indicatorColor="@color/primary_light_blue"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cardLaunch"
+        app:trackColor="#33FFFFFF"
+        app:trackThickness="6dp" />
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/secondary_light_blue"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/progressBar" />
+
+    <!-- 日志区域（权重 1，会填充剩余空间直到名言面板） -->
+    <ScrollView
+        android:id="@+id/logScroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        android:background="#1E1E1E"
+        android:padding="8dp"
+        app:layout_constraintBottom_toTopOf="@id/cardQuote"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvStatus">
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="最近动作"
-            android:textColor="@color/nebula_text_dim"
-            android:textSize="13sp" />
-
-        <TextView
-            android:id="@+id/tvHomeLog"
+            android:id="@+id/tvLog"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/bg_nebula_card"
-            android:minHeight="72dp"
-            android:padding="12dp"
-            android:text=""
-            android:textColor="@color/nebula_text_dim"
-            android:textSize="12sp" />
+            android:gravity="bottom"
+            android:padding="4dp"
+            android:textColor="#AAFFFFFF"
+            android:textSize="12sp"
+            android:typeface="monospace" />
+
+    </ScrollView>
+
+    <!-- 每日名言面板 -->
+    <LinearLayout
+        android:id="@+id/cardQuote"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/quote_card_bg"
+        android:orientation="vertical"
+        android:padding="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:id="@+id/tvQuoteTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="今日名言 - WH"
+            android:textColor="@color/primary_light_blue"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvQuoteChinese"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:breakStrategy="simple"
+            android:ellipsize="none"
+            android:fontFamily="sans-serif"
+            android:hyphenationFrequency="none"
+            android:lineSpacingExtra="2dp"
+            android:maxLines="10"
+            android:singleLine="false"
+            android:textColor="@android:color/white"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/tvQuoteEnglish"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_marginTop="4dp"
+            android:breakStrategy="simple"
+            android:ellipsize="none"
+            android:fontFamily="sans-serif"
+            android:hyphenationFrequency="none"
+            android:lineSpacingExtra="2dp"
+            android:maxLines="10"
+            android:singleLine="false"
+            android:textColor="#CCFFFFFF"
+            android:textSize="14sp" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:background="@drawable/bg_nebula_card"
-            android:orientation="vertical"
-            android:padding="16dp">
-
-            <TextView
-                android:id="@+id/tvQuoteTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="今日名言"
-                android:textColor="@color/nebula_accent"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/tvQuoteChinese"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text=""
-                android:textColor="@color/nebula_text"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/tvQuoteEnglish"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text=""
-                android:textColor="@color/nebula_text_dim"
-                android:textSize="12sp" />
+            android:layout_marginTop="8dp"
+            android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tvQuoteAuthor"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text=""
-                android:textColor="@color/nebula_text_dim"
-                android:textSize="12sp" />
+                android:layout_marginLeft="8dp"
+                android:breakStrategy="simple"
+                android:ellipsize="none"
+                android:fontFamily="sans-serif"
+                android:hyphenationFrequency="none"
+                android:maxLines="10"
+                android:singleLine="false"
+                android:text="-作者 / 出处"
+                android:textColor="#B0FFFFFF"
+                android:textSize="13sp" />
 
             <TextView
                 android:id="@+id/tvQuoteAuthorEn"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginLeft="8dp"
                 android:layout_marginTop="2dp"
-                android:text=""
-                android:textColor="@color/nebula_text_dim"
-                android:textSize="10sp" />
+                android:breakStrategy="simple"
+                android:ellipsize="none"
+                android:fontFamily="sans-serif"
+                android:hyphenationFrequency="none"
+                android:maxLines="10"
+                android:singleLine="false"
+                android:text="-Author / Source"
+                android:textColor="#B0FFFFFF"
+                android:textSize="13sp" />
 
         </LinearLayout>
 
     </LinearLayout>
 
-</androidx.core.widget.NestedScrollView>
+</androidx.constraintlayout.widget.ConstraintLayout>

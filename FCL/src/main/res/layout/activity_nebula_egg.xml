@@ -165,6 +165,46 @@
 
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- 模组白名单：更新清理时保护名单内文件不被删除 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:cardBackgroundColor="#2A2A2A"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:strokeColor="#3A3A3A"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:contentDescription="白名单"
+                    android:src="@drawable/ic_whitelist"
+                    android:tint="@color/primary_light_blue" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnWhitelist"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:text="模组白名单"
+                    android:textColor="@android:color/black"
+                    android:textSize="16sp"
+                    app:backgroundTint="@color/primary_light_blue" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- 隐藏终端入口：ADB 广播解锁后才显示 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnTerminal"

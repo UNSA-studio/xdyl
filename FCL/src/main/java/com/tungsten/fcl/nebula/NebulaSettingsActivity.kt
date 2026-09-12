@@ -184,18 +184,25 @@ class NebulaSettingsActivity : AppCompatActivity() {
     }
 
     private fun executePing(address: String, hideIp: Boolean): String {
-        return try {
-            val process = Runtime.getRuntime().exec(
-                arrayOf("/system/bin/sh", "-c", "/system/bin/ping -c 4 -W 2 $address")
-            )
-            val out = process.inputStream.bufferedReader().readText()
-            val err = process.errorStream.bufferedReader().readText()
-            process.waitFor()
-            var text = if (out.isNotBlank()) out.trim() else "ping 失败: ${err.trim().ifBlank { "未知错误" }}"
-            if (hideIp) text = text.replace(address, "服务器")
-            text
+        try {
+            val process = Runtime.getRuntime().exec(arrayOf("ping", "-c", "4", address))
+            val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
+            val output = reader.readText()
+            // 最多等 15 秒，防止 ping 挂起导致无限等待
+            if (!process.waitFor(15, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroyForcibly()
+                return "Ping error: 超时"
+            }
+            val loss = Regex("(\\d+)% packet loss").find(output)?.groupValues?.get(1) ?: "N/A"
+            val rtt = Regex("min/avg/max/mdev = (\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)/(\\d+\\.?\\d*)").find(output)
+            val analysis = buildString {
+                append("Packet loss: $loss%\n")
+                if (rtt != null) append("Min/Avg/Max/mdev: ${rtt.groupValues[1]}/${rtt.groupValues[2]}/${rtt.groupValues[3]}/${rtt.groupValues[4]} ms\n")
+            }
+            val raw = if (hideIp) output.replace(Regex("\\b(?:[0-9]{1,3}\\.){3}[0-9]{1,3}\\b"), "***") else output
+            return "$analysis\n$raw"
         } catch (e: Exception) {
-            "查询异常: ${e.message}"
+            return "Ping error: ${e.message}"
         }
     }
 

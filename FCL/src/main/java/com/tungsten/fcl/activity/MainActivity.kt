@@ -653,7 +653,7 @@ class MainActivity : FCLActivity(), OnSelectListener, View.OnClickListener {
             if (view === nebula) {
                 refreshMenuView(null)
                 title.setTextWithAnim(getString(R.string.nebula))
-                startActivity(android.content.Intent(this@MainActivity, com.tungsten.fcl.nebula.NebulaUpdateActivity::class.java))
+                startActivity(android.content.Intent(this@MainActivity, NebulaMainActivity::class.java))
             }
             if (view === back) {
                 uiManager.onBackPressed()
