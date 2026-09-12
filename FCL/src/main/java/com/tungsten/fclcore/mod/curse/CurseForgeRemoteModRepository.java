@@ -295,10 +295,21 @@ public final class CurseForgeRemoteModRepository implements RemoteModRepository 
     public RemoteMod.File getModFile(String modId, String fileId) throws IOException {
         CurseAddon.LatestFile file = RemoteModCache.getOrFetch("cf:file:" + modId + ":" + fileId, RemoteModCache.TTL_PERMANENT,
                 CurseAddon.LatestFile.class, () -> {
-                    Response<CurseAddon.LatestFile> response = withApiKey(HttpRequest.GET(String.format("%s/v1/mods/%s/files/%s", PREFIX, modId, fileId)))
-                            .getJson(new TypeToken<Response<CurseAddon.LatestFile>>() {
-                            }.getType());
-                    return response.data();
+                    try {
+                        Response<CurseAddon.LatestFile> response = withApiKey(HttpRequest.GET(String.format("%s/v1/mods/%s/files/%s", PREFIX, modId, fileId)))
+                                .getJson(new TypeToken<Response<CurseAddon.LatestFile>>() {
+                                }.getType());
+                        return response.data();
+                    } catch (Exception e) {
+                        // Nebula: 无 API key / 官方 API 不可用时，走 cfwidget 镜像解析
+                        CurseAddon.LatestFile mirrored = com.tungsten.fcl.nebula.NebulaCfMirror.resolveFile(modId, fileId);
+                        if (mirrored != null) {
+                            LOG.info("Nebula: CF file resolved via mirror: " + modId + "/" + fileId);
+                            return mirrored;
+                        }
+                        if (e instanceof IOException) throw (IOException) e;
+                        throw new IOException(e);
+                    }
                 });
         return file.toVersion().file();
     }

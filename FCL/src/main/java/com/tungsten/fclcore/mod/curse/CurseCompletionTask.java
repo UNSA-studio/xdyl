@@ -177,8 +177,14 @@ public final class CurseCompletionTask extends Task<Void> {
      * @throws IOException If IOException was encountered during getting data from CurseForge.
      */
     private File guessFilePath(CurseManifestFile file, File resourcePacksRoot, File shaderPacksRoot) throws IOException {
-        RemoteMod mod = CurseForgeRemoteModRepository.MODS.getModById(Integer.toString(file.getProjectID()));
-        int classID = ((CurseAddon) mod.getData()).classId();
+        // Nebula: 镜像模式（无 API key）下无法查询类别，按普通模组处理
+        int classID = 6;
+        try {
+            RemoteMod mod = CurseForgeRemoteModRepository.MODS.getModById(Integer.toString(file.getProjectID()));
+            classID = ((CurseAddon) mod.getData()).classId();
+        } catch (Exception e) {
+            Logging.LOG.log(Level.WARNING, "Nebula: getModById failed, fallback to mods/: " + file.getProjectID(), e);
+        }
         String fileName = file.getFileName();
         switch (classID) {
             case 12: // Resource pack

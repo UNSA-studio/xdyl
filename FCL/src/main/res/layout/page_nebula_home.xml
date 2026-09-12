@@ -133,46 +133,18 @@
 
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- 启动游戏按钮 -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/cardLaunch"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        app:cardBackgroundColor="#2A2A2A"
-        app:cardCornerRadius="24dp"
-        app:cardElevation="8dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/cardModpack">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnLaunch"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:stateListAnimator="@null"
-            android:text="启动游戏"
-            android:textColor="@color/primary_light_blue"
-            app:cornerRadius="24dp"
-            app:icon="@drawable/ic_nebula_play"
-            app:iconGravity="textStart"
-            app:iconTint="@color/primary_light_blue" />
-
-    </com.google.android.material.card.MaterialCardView>
-
     <!-- 进度条 -->
     <com.google.android.material.progressindicator.LinearProgressIndicator
         android:id="@+id/progressBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
-        android:indeterminate="true"
+        android:indeterminate="false"
         android:visibility="gone"
         app:indicatorColor="@color/primary_light_blue"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/cardLaunch"
+        app:layout_constraintTop_toBottomOf="@id/cardModpack"
         app:trackColor="#33FFFFFF"
         app:trackThickness="6dp" />
 

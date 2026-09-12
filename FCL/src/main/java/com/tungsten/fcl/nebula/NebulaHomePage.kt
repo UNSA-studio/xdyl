@@ -28,7 +28,6 @@ class NebulaHomePage(
 ) {
     private val tvPackStatus: TextView = root.findViewById(R.id.tvPackStatus)
     private val btnInstallModpack: MaterialButton = root.findViewById(R.id.btnInstallModpack)
-    private val btnLaunch: MaterialButton = root.findViewById(R.id.btnLaunch)
     private val btnOpenSettings: View = root.findViewById(R.id.btnOpenSettings)
     private val progressBar: LinearProgressIndicator = root.findViewById(R.id.progressBar)
     private val tvStatus: TextView = root.findViewById(R.id.tvStatus)
@@ -46,15 +45,6 @@ class NebulaHomePage(
     init {
         tvLog.movementMethod = ScrollingMovementMethod()
         btnInstallModpack.setOnClickListener { startAutoFlow() }
-        btnLaunch.setOnClickListener {
-            val version = NebulaLauncher.currentVersion()
-            if (version == null) {
-                Toast.makeText(activity, "没有可启动的版本，请先执行一键更新", Toast.LENGTH_SHORT).show()
-            } else {
-                appendLog("正在启动 $version …")
-                NebulaLauncher.launch(activity, version)
-            }
-        }
         btnOpenSettings.setOnClickListener {
             activity.startActivity(Intent(activity, NebulaSettingsActivity::class.java))
             @Suppress("DEPRECATION")
@@ -93,11 +83,20 @@ class NebulaHomePage(
         activity.runOnUiThread { tvStatus.text = s }
     }
 
+    /** 进度条 + 状态文字（与旧版一致：progressBar.progress = pct; tvStatus = message） */
+    private fun updateProgress(pct: Int, msg: String) {
+        activity.runOnUiThread {
+            progressBar.setProgressCompat(pct.coerceIn(0, 100), true)
+            tvStatus.text = msg
+        }
+    }
+
     private fun startAutoFlow() {
         if (busy) return
         busy = true
         btnInstallModpack.isEnabled = false
         progressBar.visibility = View.VISIBLE
+        progressBar.setProgressCompat(0, false)
         appendLog("[AUTO] 一键流程启动")
         val root = NebulaDirs.fclGameRoot(activity).let { fcl ->
             fcl.takeIf { it.exists() } ?: fcl.also { it.mkdirs() }
@@ -169,11 +168,11 @@ class NebulaHomePage(
                         throw RuntimeException("sha256 校验失败，已删除损坏文件，请重试")
                     }
                     appendLog("[AUTO] sha256 校验通过")
-                    setStatus("安装整合包（游戏版本 → 驱动 → 模组）...")
+                    updateProgress(20, "安装整合包（游戏版本 → 驱动 → 模组）...")
                     val installer = NebulaFclInstaller()
                     versionDir = withContext(Dispatchers.IO) {
-                        installer.install(zipFile, root, versionId) { _, msg ->
-                            setStatus(msg)
+                        installer.install(zipFile, root, versionId) { pct, msg ->
+                            updateProgress(pct, msg)
                         }
                     }
                     NebulaInstallStore.save(activity, versionId, manifest.packVersion, root, versionDir)
@@ -188,16 +187,16 @@ class NebulaHomePage(
                     appendLog("[AUTO] 整合包已是最新 (${installedPack})，跳过安装")
                 }
 
-                setStatus("增量同步...")
+                updateProgress(85, "增量同步...")
                 val sync = IncrementalSync(activity, NebulaHasher())
                 val result = withContext(Dispatchers.IO) {
                     sync.sync(manifest, versionDir, threadCount = 8) { p ->
-                        setStatus(p.message)
+                        updateProgress(p.percent, p.message)
                     }
                 }
                 result.messages.forEach { appendLog("[SYNC] $it") }
                 appendLog("[AUTO] 同步完成: 新下 ${result.downloaded}, 已最新 ${result.skipped}, 失败 ${result.failed}, 清理 ${result.cleaned}")
-                setStatus(if (result.failed > 0) "完成（${result.failed} 个失败，详见日志）" else "全部完成")
+                updateProgress(100, if (result.failed > 0) "完成（${result.failed} 个失败，详见日志）" else "全部完成")
                 refreshPackStatus()
             } catch (e: Exception) {
                 android.util.Log.e("Nebula", "exc: ${e.message}", e)
