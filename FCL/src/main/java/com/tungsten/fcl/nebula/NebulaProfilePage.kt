@@ -54,7 +54,7 @@ class NebulaProfilePage(
             tvAccountType.text = "创建一个账户以启动游戏"
         } else {
             val name = try {
-                account.profile?.name ?: "账户"
+                account.character ?: "账户"
             } catch (e: Throwable) {
                 "账户"
             }
@@ -117,7 +117,7 @@ class NebulaProfilePage(
         }
         val labels = accounts.map { acc ->
             val n = try {
-                acc.profile?.name ?: "账户"
+                acc.character ?: "账户"
             } catch (e: Throwable) {
                 "账户"
             }
