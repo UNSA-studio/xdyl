@@ -20,5 +20,4 @@
     <color name="card_background">#FF2A2A2A</color>
     <color name="primary_container">#FF2C3E50</color>
     <color name="on_primary_container">#FFE0EBFF</color>
-    <color name="black">#FF000000</color>
 </resources>
