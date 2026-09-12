@@ -131,7 +131,8 @@
             android:name="com.tungsten.fcl.nebula.NebulaUpdateActivity"
             android:exported="false"
             android:label="Nebula Updater"
-            android:screenOrientation="sensorLandscape" />
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.Nebula" />
         <activity
             android:name=".activity.WebActivity"
             android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|keyboard|navigation|uiMode"

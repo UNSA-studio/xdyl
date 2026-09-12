@@ -18,7 +18,7 @@
         android:id="@+id/bottomNav"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="#FF191921"
+        android:background="@color/nebula_bg"
         app:itemIconTint="@color/nebula_nav_item"
         app:itemTextColor="@color/nebula_nav_item"
         app:labelVisibilityMode="labeled"

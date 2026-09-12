@@ -27,8 +27,8 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:text="应用设置"
-            android:textColor="@color/nebula_text"
-            android:textSize="22sp"
+            android:textColor="@color/nebula_accent"
+            android:textSize="24sp"
             android:textStyle="bold" />
 
     </LinearLayout>

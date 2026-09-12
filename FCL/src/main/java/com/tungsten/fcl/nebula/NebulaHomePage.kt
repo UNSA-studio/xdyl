@@ -30,12 +30,16 @@ class NebulaHomePage(
     private val tvQuoteAuthorEn: TextView = root.findViewById(R.id.tvQuoteAuthorEn)
     private val btnAutoUpdate: MaterialButton = root.findViewById(R.id.btnAutoUpdate)
     private val btnLaunch: MaterialButton = root.findViewById(R.id.btnLaunch)
+    private val btnOpenSettings: View = root.findViewById(R.id.btnOpenSettings)
 
     private var quoteLoadedFor: String? = null
 
     init {
         btnAutoUpdate.setOnClickListener {
             activity.startActivity(Intent(activity, NebulaUpdateActivity::class.java))
+        }
+        btnOpenSettings.setOnClickListener {
+            activity.startActivity(Intent(activity, NebulaSettingsActivity::class.java))
         }
         btnLaunch.setOnClickListener {
             val version = NebulaLauncher.currentVersion()
