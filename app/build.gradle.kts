@@ -22,8 +22,8 @@ android {
         // 保持 28 以豁免 Android10+ W^X 限制：targetSdk>=29 的应用私有目录 noexec，
         // 无法执行下载解压的 Python ELF（Termux 同款做法）
         targetSdk = 28
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 1
+        versionName = "1.0"
     }
 
     buildTypes {
@@ -39,8 +39,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-        // fclcore 要求 core library desugaring（java.time/stream/Optional 脱糖）
-        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "17"
@@ -51,7 +49,6 @@ android {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.12.0")
@@ -61,8 +58,5 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("com.google.code.gson:gson:2.10.1")   // 新增
-    implementation("org.apache.commons:commons-compress:1.26.0") // ModpackInstaller 解析 mcbbs manifest 用
     implementation("dev.mobile:dadb:2.0.0")            // ADB 客户端库
-    // fclcore: 整合包安装核心（GPL-3.0，vendored from FCL-Team/FoldCraftLauncher）
-    implementation(project(":fclcore"))
 }

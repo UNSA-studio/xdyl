@@ -108,9 +108,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun loadPrefs() {
-        // 整合包时代：版本文件夹由整合包 manifest 自动管理，此输入框仅展示锁定
-        binding.etVersionName.setText("（由整合包自动管理）")
-        binding.etVersionName.isEnabled = false
+        binding.etVersionName.setText(prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR)
         val currentThreads = prefs.getInt("thread_limit", 256)
         binding.etThreadCount.setText(currentThreads.toString())
         binding.ivThreadInfo.setOnClickListener { showThreadInfo() }
@@ -126,12 +124,14 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun savePrefs() {
-                val threads = binding.etThreadCount.text.toString().toIntOrNull() ?: 256
+        val version = binding.etVersionName.text.toString().ifBlank { Constants.TARGET_VERSION_DIR }
+        val threads = binding.etThreadCount.text.toString().toIntOrNull() ?: 256
         val unlocked = prefs.getBoolean("unlock_thread_limit", false)
         val maxVal = if (unlocked) 1024 else 128
         val finalThreads = threads.coerceIn(20, maxVal)
         prefs.edit()
-                        .putInt("thread_limit", finalThreads)
+            .putString("version_folder", version)
+            .putInt("thread_limit", finalThreads)
             .apply()
     }
 
