@@ -189,11 +189,18 @@ object ForumPostDialog {
     private fun addImage(activity: MainActivity, col: LinearLayout, url: String) {
         val iv = ImageView(activity).apply {
             adjustViewBounds = true
+            maxHeight = dip(activity, 360)
+            scaleType = ImageView.ScaleType.FIT_CENTER
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = dip(activity, 10) }
-            setBackgroundColor(0xFF1E1E1E.toInt())
+            // 圆角占位背景
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = 20f
+                setColor(0xFF1E1E1E.toInt())
+            }
+            clipToOutline = true
         }
         col.addView(iv)
         SimpleImageLoader.load(url, iv)
