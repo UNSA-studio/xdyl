@@ -1,6 +1,5 @@
 package www.xdyl.hygge.com
 
-import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -28,7 +27,7 @@ object ImageActions {
     private val items = arrayOf("查看 Markdown 源码", "下载", "指定下载", "删除该资源缓存")
 
     /** 在任意 Activity 中弹出图片操作菜单 */
-    fun showMenu(activity: Activity, url: String, markdown: String? = null) {
+    fun showMenu(activity: androidx.appcompat.app.AppCompatActivity, url: String, markdown: String? = null) {
         MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setTitle("图片操作")
             .setItems(items) { _, which ->
@@ -47,7 +46,7 @@ object ImageActions {
     }
 
     /** 查看 Markdown 源码（可复制） */
-    private fun showMarkdownSource(activity: Activity, url: String, markdown: String?) {
+    private fun showMarkdownSource(activity: androidx.appcompat.app.AppCompatActivity, url: String, markdown: String?) {
         val md = markdown ?: "![图片]($url)"
         MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setTitle("Markdown 源码")
@@ -62,7 +61,7 @@ object ImageActions {
     }
 
     /** 指定下载目录（Download 下的子目录名） */
-    private fun askDownloadDir(activity: Activity, url: String) {
+    private fun askDownloadDir(activity: androidx.appcompat.app.AppCompatActivity, url: String) {
         val et = EditText(activity).apply {
             hint = "Download 下的子目录名"
             setText("NebulaImages")
@@ -85,7 +84,7 @@ object ImageActions {
     }
 
     /** 下载图片到 /sdcard/Download/<subDir>/ */
-    fun download(activity: Activity, url: String, subDir: String = "NebulaImages") {
+    fun download(activity: androidx.appcompat.app.AppCompatActivity, url: String, subDir: String = "NebulaImages") {
         Toast.makeText(activity, "正在下载…", Toast.LENGTH_SHORT).show()
         activity.lifecycleScope.launch {
             try {
@@ -118,7 +117,7 @@ object ImageActions {
     }
 
     /** 给 ImageView 绑定长按菜单 */
-    fun attachLongPress(activity: Activity, view: View, url: String, markdown: String? = null) {
+    fun attachLongPress(activity: androidx.appcompat.app.AppCompatActivity, view: View, url: String, markdown: String? = null) {
         view.setOnLongClickListener {
             showMenu(activity, url, markdown)
             true
