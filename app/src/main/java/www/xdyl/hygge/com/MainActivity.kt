@@ -1148,7 +1148,7 @@ class MainActivity : AppCompatActivity() {
                         ).apply { topMargin = 10 }
                     }
                     holder.row.addView(iv)
-                    SimpleImageLoader.load(m.groupValues[1], iv)
+                    SimpleImageLoader.load(ctx, m.groupValues[1], iv)
                 }
             }
             holder.row.setOnClickListener { onClick(item) }

@@ -211,7 +211,7 @@ object ForumPostDialog {
             clipToOutline = true
         }
         col.addView(iv)
-        SimpleImageLoader.load(url, iv)
+        SimpleImageLoader.load(activity, url, iv)
     }
 
     private fun simpleText(
