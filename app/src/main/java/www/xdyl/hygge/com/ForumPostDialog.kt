@@ -26,19 +26,79 @@ import org.json.JSONObject
 object ForumPostDialog {
 
     private val IMAGE_REGEX = Regex("!\\[.*?]\\((.*?)\\)")
+fun show(activity: MainActivity, api: ApiClient, postId: Int) {
+        val rootCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
 
-    fun show(activity: MainActivity, api: ApiClient, postId: Int) {
-        val scroll = ScrollView(activity)
+        // ===== 顶部固定回复栏（不随内容滚动） =====
+        val inputBar = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(dip(activity, 16), dip(activity, 10), dip(activity, 16), dip(activity, 10))
+            setBackgroundColor(0xFF1E1E1E.toInt())
+        }
+        val input = EditText(activity).apply {
+            hint = "写下你的回复…"
+            setTextColor(0xFFEDEDED.toInt())
+            setHintTextColor(0xFF6B6B6B.toInt())
+            textSize = 14f
+            setBackgroundColor(0xFF2A2A2A.toInt())
+            setPadding(dip(activity, 12), dip(activity, 10), dip(activity, 12), dip(activity, 10))
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val sendBtn = MaterialButton(activity).apply {
+            text = "发送"
+            textSize = 13f
+            setTextColor(0xFF10131A.toInt())
+            setBackgroundColor(0xFFA0C4FF.toInt())
+            minWidth = 0
+            setPadding(dip(activity, 16), 0, dip(activity, 16), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dip(activity, 40)
+            ).apply { leftMargin = dip(activity, 8) }
+        }
+        inputBar.addView(input)
+        inputBar.addView(sendBtn)
+        rootCol.addView(inputBar)
+
+        // ===== 可滚动内容区 =====
+        val scroll = ScrollView(activity).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
+            )
+        }
         val col = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dip(activity, 20), dip(activity, 16), dip(activity, 20), dip(activity, 16))
         }
         scroll.addView(col)
+        rootCol.addView(scroll)
 
         val dialog = MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
-            .setView(scroll)
+            .setView(rootCol)
             .setNegativeButton("关闭", null)
             .create()
+
+        // 发送回复（顶部固定栏按钮）
+        sendBtn.setOnClickListener {
+            val text = input.text.toString().trim()
+            if (text.isEmpty()) {
+                Toast.makeText(activity, "回复内容不能为空", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            activity.lifecycleScope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        api.post("/forum/post/$postId/reply", JSONObject().put("content", text))
+                    }
+                    input.setText("")
+                    Toast.makeText(activity, "回复成功", Toast.LENGTH_SHORT).show()
+                    reload()
+                } catch (e: Exception) {
+                    Toast.makeText(activity, "回复失败：" + e.message, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
 
         fun reload() {
             activity.lifecycleScope.launch {
@@ -140,49 +200,6 @@ object ForumPostDialog {
                             }
                         }
                     }
-
-                    // 回复输入
-                    val input = EditText(activity).apply {
-                        hint = "写下你的回复…"
-                        setTextColor(0xFFEDEDED.toInt())
-                        setHintTextColor(0xFF6B6B6B.toInt())
-                        textSize = 14f
-                        setBackgroundColor(0xFF1E1E1E.toInt())
-                        setPadding(dip(activity, 12), dip(activity, 10), dip(activity, 12), dip(activity, 10))
-                        layoutParams = LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT
-                        ).apply { topMargin = dip(activity, 14) }
-                    }
-                    col.addView(input)
-                    val sendBtn = MaterialButton(activity).apply {
-                        text = "发送回复"
-                        textSize = 13f
-                        setTextColor(0xFF10131A.toInt())
-                        setBackgroundColor(0xFFA0C4FF.toInt())
-                        layoutParams = LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT, dip(activity, 42)
-                        ).apply { topMargin = dip(activity, 10) }
-                        setOnClickListener {
-                            val text = input.text.toString().trim()
-                            if (text.isEmpty()) {
-                                Toast.makeText(activity, "回复内容不能为空", Toast.LENGTH_SHORT).show()
-                                return@setOnClickListener
-                            }
-                            activity.lifecycleScope.launch {
-                                try {
-                                    withContext(Dispatchers.IO) {
-                                        api.post("/forum/post/$postId/reply", JSONObject().put("content", text))
-                                    }
-                                    Toast.makeText(activity, "回复成功", Toast.LENGTH_SHORT).show()
-                                    reload()
-                                } catch (e: Exception) {
-                                    Toast.makeText(activity, "回复失败：" + e.message, Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        }
-                    }
-                    col.addView(sendBtn)
                 } catch (e: Exception) {
                     col.removeAllViews()
                     col.addView(simpleText(activity, "加载失败：" + e.message, 14f, 0xFFE57373.toInt()))
@@ -212,6 +229,45 @@ object ForumPostDialog {
         }
         col.addView(iv)
         SimpleImageLoader.load(activity, url, iv)
+        // 长按保存图片到本地
+        iv.setOnLongClickListener {
+            saveImage(activity, url)
+            true
+        }
+    }
+
+    /** 下载图片并保存到 /sdcard/Download/NebulaImages/ */
+    private fun saveImage(activity: MainActivity, url: String) {
+        Toast.makeText(activity, "正在保存图片…", Toast.LENGTH_SHORT).show()
+        activity.lifecycleScope.launch {
+            try {
+                val file = withContext(Dispatchers.IO) {
+                    val client = okhttp3.OkHttpClient.Builder()
+                        .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                        .build()
+                    val req = okhttp3.Request.Builder().url(url)
+                        .header("User-Agent", "NebulaUpdater-Android/1.0")
+                        .build()
+                    val bytes = client.newCall(req).execute().use { resp ->
+                        if (!resp.isSuccessful) throw RuntimeException("HTTP ${resp.code}")
+                        resp.body?.bytes() ?: throw RuntimeException("响应为空")
+                    }
+                    // 文件名：时间戳 + 原扩展名
+                    val ext = url.substringAfterLast('.', "jpg").substringBefore('?').take(5)
+                    val dir = java.io.File(
+                        android.os.Environment.getExternalStorageDirectory(),
+                        "Download/NebulaImages"
+                    ).apply { mkdirs() }
+                    val out = java.io.File(dir, "img_${System.currentTimeMillis()}.$ext")
+                    out.writeBytes(bytes)
+                    out
+                }
+                Toast.makeText(activity, "已保存到：${file.absolutePath}", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(activity, "保存失败：" + e.message, Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun simpleText(
