@@ -95,27 +95,59 @@ class ApiClient(private val session: SessionStore) {
         try {
             client.newCall(req).execute().use { resp ->
                 val text = resp.body?.string() ?: ""
-                LogManager.log("[QQ] poll http=${resp.code} body=${text.take(200)}")
-                val root = try { JSONObject(text) } catch (e: Exception) { return@use null }
+                LogManager.log("[QQ] poll http=${resp.code} body=${text.take(300)}")
+                val root = try { JSONObject(text) } catch (e: Exception) { null }
+                    ?: return@use null // 非 JSON：继续等
+
                 val code = root.optInt("code", resp.code)
-                when {
-                    code == 202 -> null // 等待扫码
-                    code == 200 -> {
-                        val data = root.optJSONObject("data") ?: root
-                        val access = data.optString("access_token", data.optString("token", root.optString("access_token", "")))
-                        if (access.isBlank()) {
-                            LogManager.log("[QQ] 200 但无token字段: $text")
-                            null
-                        } else {
-                            val refresh = data.optString("refresh_token", root.optString("refresh_token", ""))
-                            val nickname = data.optString("nickname", data.optString("username", root.optString("nickname", "QQ用户")))
-                            session.saveSession(access, refresh, nickname)
-                            LogManager.log("[QQ] 登录成功 user=$nickname")
-                            true
-                        }
+                val data = root.optJSONObject("data")
+                val tokens = data?.optJSONObject("tokens") ?: root.optJSONObject("tokens")
+                val status = (data?.optString("status", "") ?: "").ifBlank { root.optString("status", "") }
+
+                // === 成功判定（对齐 iOS：status / token 字段优先，不只看 code） ===
+                val access = firstNonBlank(
+                    data?.optString("access_token"),
+                    data?.optString("token"),
+                    tokens?.optString("access_token"),
+                    root.optString("access_token"),
+                    root.optString("token"),
+                    data?.optString("jwt"),
+                    root.optString("jwt")
+                )
+                if (status == "success" || !access.isNullOrBlank()) {
+                    if (!access.isNullOrBlank()) {
+                        val refresh = firstNonBlank(
+                            data?.optString("refresh_token"),
+                            tokens?.optString("refresh_token"),
+                            root.optString("refresh_token")
+                        ) ?: ""
+                        val nickname = firstNonBlank(
+                            data?.optString("nickname"),
+                            data?.optString("username"),
+                            data?.optJSONObject("user")?.optString("username"),
+                            root.optString("nickname"),
+                            root.optString("username"),
+                            root.optJSONObject("user")?.optString("username")
+                        ) ?: "QQ用户"
+                        session.saveSession(access, refresh, nickname)
+                        LogManager.log("[QQ] 登录成功 user=$nickname（via ${if (status == "success") "status" else "token"}）")
+                        return@use true
                     }
-                    else -> throw ApiException(code, root.optString("message").ifBlank { "QQ 登录失败 ($code)" })
+                    LogManager.log("[QQ] 判定成功但未取到 token（继续等待）: $text")
+                    return@use null
                 }
+
+                // === 等待中 ===
+                if (code == 202) return@use null
+
+                // === 明确失败（带错误消息的 4xx/5xx，且非"等待"类文案） ===
+                val msg = root.optString("message")
+                if (code >= 400 && msg.isNotBlank() && !msg.contains("等待")) {
+                    throw ApiException(code, msg)
+                }
+
+                // 其他过渡态：记录后继续轮询（鲁棒）
+                return@use null
             }
         } catch (e: ApiException) {
             throw e
@@ -124,6 +156,9 @@ class ApiClient(private val session: SessionStore) {
             null
         }
     }
+
+    private fun firstNonBlank(vararg values: String?): String? =
+        values.firstOrNull { !it.isNullOrBlank() }
 
     // ==================== 通用请求 ====================
 
