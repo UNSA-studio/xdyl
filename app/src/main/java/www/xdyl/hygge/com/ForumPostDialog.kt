@@ -129,7 +129,15 @@ object ForumPostDialog {
                                 if (t.isNotBlank()) append(" · ").append(t)
                             }
                             col.addView(simpleText(activity, head, 12f, 0xFF9AA0A6.toInt(), topMargin = 12))
-                            col.addView(simpleText(activity, r.optString("content", ""), 14f, 0xFFEDEDED.toInt(), topMargin = 4))
+                            val rc = r.optString("content", "")
+                            val rText = rc.replace(IMAGE_REGEX, "").trim()
+                            if (rText.isNotBlank()) {
+                                col.addView(simpleText(activity, rText, 14f, 0xFFEDEDED.toInt(), topMargin = 4))
+                            }
+                            // 回复里的图片（表情 / 上传图）同样渲染
+                            IMAGE_REGEX.findAll(rc).take(2).forEach { m ->
+                                addImage(activity, col, m.groupValues[1])
+                            }
                         }
                     }
 
