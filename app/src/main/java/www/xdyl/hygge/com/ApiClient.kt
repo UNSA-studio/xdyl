@@ -250,6 +250,14 @@ class ApiClient(private val session: SessionStore) {
         }
     }
 
+    /** 绑定 QQ 到当前登录账号（POST /user/bind-qq {temp_token}） */
+    suspend fun bindQQ(tempToken: String): Boolean = withContext(Dispatchers.IO) {
+        val body = JSONObject().put("temp_token", tempToken)
+        postRaw("/user/bind-qq", body, requiresAuth = true)
+        LogManager.log("[QQ] 绑定成功")
+        true
+    }
+
     // ==================== 通用请求 ====================
 
     /** GET 并返回 envelope 根对象（调用方自行取 data） */
