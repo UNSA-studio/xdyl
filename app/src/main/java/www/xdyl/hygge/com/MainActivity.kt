@@ -1085,7 +1085,11 @@ class MainActivity : AppCompatActivity() {
             val row = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(36, 28, 36, 28)
-                setBackgroundColor(0xFF2A2A2A.toInt())
+                // MD 观感：圆角卡片（替代直角）
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = 28f
+                    setColor(0xFF2A2A2A.toInt())
+                }
             }
             val lp = RecyclerView.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
