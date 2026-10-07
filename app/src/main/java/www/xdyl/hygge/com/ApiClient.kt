@@ -42,9 +42,11 @@ class ApiClient(private val session: SessionStore) {
 
     // ==================== 认证 ====================
 
-    suspend fun login(account: String, password: String): Pair<String, String> =
+    suspend fun login(account: String, password: String, tempToken: String? = null): Pair<String, String> =
         withContext(Dispatchers.IO) {
             val body = JSONObject().put("account", account).put("password", password)
+            // QQ 登录绑定流程：附带 temp_token，服务端校验账号后把 QQ 绑定到该账号
+            if (!tempToken.isNullOrBlank()) body.put("temp_token", tempToken)
             val root = postRaw("/login", body, requiresAuth = false)
             val data = root.getJSONObject("data")
             val access = data.getString("access_token")
@@ -166,6 +168,87 @@ class ApiClient(private val session: SessionStore) {
 
     private fun firstNonBlank(vararg values: String?): String? =
         values.firstOrNull { !it.isNullOrBlank() }
+
+    // ==================== QQ 登录（详细状态） ====================
+
+    /** QQ 轮询详细结果 */
+    sealed class QQPoll {
+        /** 等待扫码/授权 */
+        object Waiting : QQPoll()
+        /** 已直接拿到正式令牌 */
+        data class Token(val access: String, val refresh: String, val nickname: String) : QQPoll()
+        /** 服务端返回 temp_token —— 需要用【账号+密码】调 /login 完成绑定式登录 */
+        data class NeedBind(val tempToken: String, val nickname: String) : QQPoll()
+    }
+
+    /** 轮询 QQ 授权详细状态（供 QQ 登录绑定流程使用） */
+    suspend fun pollQQDetail(sessionId: String): QQPoll = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$BASE/check-qq-login?session_id=$sessionId")
+            .get()
+            .build()
+        try {
+            client.newCall(req).execute().use { resp ->
+                val text = resp.body?.string() ?: ""
+                LogManager.log("[QQ] poll sid=$sessionId http=${resp.code} body=${text.take(300)}")
+                val root = try { JSONObject(text) } catch (e: Exception) { null }
+                    ?: return@use QQPoll.Waiting
+
+                val code = root.optInt("code", resp.code)
+                val data = root.optJSONObject("data")
+                val tokens = data?.optJSONObject("tokens") ?: root.optJSONObject("tokens")
+                val status = (data?.optString("status", "") ?: "").ifBlank { root.optString("status", "") }
+
+                // 1) 正式令牌（若服务端未来支持免密直发）
+                val access = firstNonBlank(
+                    data?.optString("access_token"), data?.optString("token"),
+                    tokens?.optString("access_token"),
+                    root.optString("access_token"), root.optString("token")
+                )
+                if (!access.isNullOrBlank()) {
+                    val refresh = firstNonBlank(
+                        data?.optString("refresh_token"), tokens?.optString("refresh_token"),
+                        root.optString("refresh_token")
+                    ) ?: ""
+                    val nickname = firstNonBlank(
+                        data?.optString("nickname"), data?.optString("username"),
+                        root.optString("nickname"), root.optString("username")
+                    ) ?: "QQ用户"
+                    session.saveSession(access, refresh, nickname)
+                    LogManager.log("[QQ] 直接登录成功 user=$nickname")
+                    return@use QQPoll.Token(access, refresh, nickname)
+                }
+
+                // 2) temp_token —— 绑定式登录（需要账号密码配合）
+                val temp = firstNonBlank(
+                    data?.optString("temp_token"), root.optString("temp_token")
+                )
+                if (!temp.isNullOrBlank()) {
+                    val nickname = firstNonBlank(
+                        data?.optString("qq_nickname"), data?.optString("nickname"),
+                        root.optString("qq_nickname"), root.optString("nickname")
+                    ) ?: "QQ用户"
+                    LogManager.log("[QQ] 需要账号绑定 tempToken=${temp.take(8)}… nickname=$nickname")
+                    return@use QQPoll.NeedBind(temp, nickname)
+                }
+
+                if (status == "success") {
+                    LogManager.log("[QQ] 判定成功但无令牌: $text")
+                }
+                if (code == 202) return@use QQPoll.Waiting
+                val msg = root.optString("message")
+                if (code >= 400 && msg.isNotBlank() && !msg.contains("等待")) {
+                    throw ApiException(code, msg)
+                }
+                QQPoll.Waiting
+            }
+        } catch (e: ApiException) {
+            throw e
+        } catch (e: Exception) {
+            LogManager.log("[QQ] poll异常: ${e.message}")
+            QQPoll.Waiting
+        }
+    }
 
     // ==================== 通用请求 ====================
 

@@ -35,6 +35,10 @@ class QqWebviewActivity : AppCompatActivity() {
         /** 授权完成的结果码（MainActivity 用 onActivityResult / registerForActivityResult 接） */
         const val RESULT_LOGGED_IN = 77
         const val RESULT_FAILED = 78
+        /** 需要账号密码完成 QQ 绑定式登录（服务端返回 temp_token） */
+        const val RESULT_NEED_BIND = 79
+        const val EXTRA_TEMP_TOKEN = "temp_token"
+        const val EXTRA_QQ_NICKNAME = "qq_nickname"
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -93,10 +97,22 @@ class QqWebviewActivity : AppCompatActivity() {
                     LogManager.log("[QQ-WebView] 到达回调页: $url")
                     lifecycleScope.launch {
                         try {
-                            val ok = withContext(Dispatchers.IO) { api.pollQQLogin(sessionId) }
-                            if (ok == true) {
-                                binding.tvQqTitle.text = "登录成功，正在返回…"
-                                finishWith(RESULT_LOGGED_IN)
+                            when (val r = withContext(Dispatchers.IO) { api.pollQQDetail(sessionId) }) {
+                                is ApiClient.QQPoll.Token -> {
+                                    binding.tvQqTitle.text = "登录成功，正在返回…"
+                                    finishWith(RESULT_LOGGED_IN)
+                                }
+                                is ApiClient.QQPoll.NeedBind -> {
+                                    binding.tvQqTitle.text = "授权完成，正在绑定账号…"
+                                    setResult(
+                                        RESULT_NEED_BIND,
+                                        android.content.Intent()
+                                            .putExtra(EXTRA_TEMP_TOKEN, r.tempToken)
+                                            .putExtra(EXTRA_QQ_NICKNAME, r.nickname)
+                                    )
+                                    finish()
+                                }
+                                else -> { }
                             }
                         } catch (e: Exception) {
                             LogManager.log("[QQ-WebView] 回调页轮询异常: ${e.message}")
@@ -115,7 +131,7 @@ class QqWebviewActivity : AppCompatActivity() {
             for (i in 0 until 45) { // 45 × 2s = 90s
                 delay(2000)
                 val outcome = try {
-                    withContext(Dispatchers.IO) { api.pollQQLogin(sessionId) }
+                    withContext(Dispatchers.IO) { api.pollQQDetail(sessionId) }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
                         binding.tvQqTitle.text = (e.message ?: "登录失败")
@@ -124,12 +140,28 @@ class QqWebviewActivity : AppCompatActivity() {
                     finishWith(RESULT_FAILED)
                     return@launch
                 }
-                if (outcome == true) {
-                    withContext(Dispatchers.Main) {
-                        binding.tvQqTitle.text = "登录成功，正在返回…"
-                        finishWith(RESULT_LOGGED_IN)
+                when (outcome) {
+                    is ApiClient.QQPoll.Token -> {
+                        withContext(Dispatchers.Main) {
+                            binding.tvQqTitle.text = "登录成功，正在返回…"
+                            finishWith(RESULT_LOGGED_IN)
+                        }
+                        return@launch
                     }
-                    return@launch
+                    is ApiClient.QQPoll.NeedBind -> {
+                        withContext(Dispatchers.Main) {
+                            binding.tvQqTitle.text = "授权完成，正在绑定账号…"
+                            val data = android.content.Intent()
+                                .putExtra(EXTRA_TEMP_TOKEN, outcome.tempToken)
+                                .putExtra(EXTRA_QQ_NICKNAME, outcome.nickname)
+                            setResult(RESULT_NEED_BIND, data)
+                            finish()
+                        }
+                        return@launch
+                    }
+                    else -> {
+                        // 继续等待
+                    }
                 }
                 if (i % 5 == 4) {
                     withContext(Dispatchers.Main) {
