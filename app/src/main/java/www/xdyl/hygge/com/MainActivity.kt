@@ -250,19 +250,12 @@ class MainActivity : AppCompatActivity() {
 
         // 「我的」页按钮
         profileBinding.btnLogin.setOnClickListener { showLoginDialog() }
+        // 点头像卡片 → 查看账户详细信息
+        profileBinding.profileCard.setOnClickListener { showProfileDetail() }
         profileBinding.btnRefreshProfile.setOnClickListener {
             if (!session.isLoggedIn) { Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
-            scope.launch {
-                try {
-                    val root = api.get("/user/profile")
-                    val data = root.getJSONObject("data")
-                    profileBinding.tvNickname.text = api.firstString(data, "nickname", "username") ?: session.username
-                    profileBinding.tvBio.text = api.firstString(data, "bio", "title") ?: ""
-                    profileBinding.tvProfileStatus.text = "资料已刷新"
-                } catch (e: Exception) {
-                    profileBinding.tvProfileStatus.text = "刷新失败：" + e.message
-                }
-            }
+            refreshProfileUI()
+            profileBinding.tvProfileStatus.text = "资料已刷新"
         }
         profileBinding.btnNotifications.setOnClickListener { showNotifications() }
         profileBinding.btnOpenSettings.setOnClickListener {
@@ -943,6 +936,36 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** 查看账户详细信息（/user/profile 全字段） */
+    private fun showProfileDetail() {
+        if (!session.isLoggedIn) {
+            Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show()
+            return
+        }
+        scope.launch {
+            try {
+                val root = api.get("/user/profile")
+                val data = root.optJSONObject("data") ?: root
+                val sb = StringBuilder()
+                val keys = data.keys()
+                while (keys.hasNext()) {
+                    val k = keys.next()
+                    val v = data.opt(k)?.toString() ?: ""
+                    if (v.isBlank() || v == "null" || v == "{}" || v == "[]") continue
+                    sb.append("• ").append(k).append("：").append(v).append("\n\n")
+                }
+                if (sb.isEmpty()) sb.append("（暂无数据）")
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(this@MainActivity, R.style.DialogAnimation)
+                    .setTitle("账户详细信息")
+                    .setMessage(sb.toString())
+                    .setPositiveButton("关闭", null)
+                    .show()
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, "获取失败：" + e.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private fun showLoginDialog() {
         val input = android.widget.LinearLayout(this)
         input.orientation = android.widget.LinearLayout.VERTICAL
@@ -1149,6 +1172,11 @@ class MainActivity : AppCompatActivity() {
                     }
                     holder.row.addView(iv)
                     SimpleImageLoader.load(ctx, m.groupValues[1], iv)
+                    // 长按图片 → 图片操作菜单（查看源码/下载/指定下载/删除缓存）
+                    iv.setOnLongClickListener {
+                        ImageActions.showMenu(this@MainActivity, m.groupValues[1], m.value)
+                        true
+                    }
                 }
             }
             holder.row.setOnClickListener { onClick(item) }
