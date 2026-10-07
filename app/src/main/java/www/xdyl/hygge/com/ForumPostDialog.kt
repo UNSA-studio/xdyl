@@ -227,43 +227,10 @@ object ForumPostDialog {
         }
         col.addView(iv)
         SimpleImageLoader.load(activity, url, iv)
-        // 长按保存图片到本地
+        // 长按弹出图片操作菜单（查看 Markdown 源码 / 下载 / 指定下载 / 删除缓存）
         iv.setOnLongClickListener {
-            saveImage(activity, url)
+            ImageActions.showMenu(activity, url)
             true
-        }
-    }
-
-    /** 下载图片并保存到 /sdcard/Download/NebulaImages/ */
-    private fun saveImage(activity: MainActivity, url: String) {
-        Toast.makeText(activity, "正在保存图片…", Toast.LENGTH_SHORT).show()
-        activity.lifecycleScope.launch {
-            try {
-                val file = withContext(Dispatchers.IO) {
-                    val client = okhttp3.OkHttpClient.Builder()
-                        .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                        .build()
-                    val req = okhttp3.Request.Builder().url(url)
-                        .header("User-Agent", "NebulaUpdater-Android/1.0")
-                        .build()
-                    val bytes = client.newCall(req).execute().use { resp ->
-                        if (!resp.isSuccessful) throw RuntimeException("HTTP ${resp.code}")
-                        resp.body?.bytes() ?: throw RuntimeException("响应为空")
-                    }
-                    val ext = url.substringAfterLast('.', "jpg").substringBefore('?').take(5)
-                    val dir = java.io.File(
-                        android.os.Environment.getExternalStorageDirectory(),
-                        "Download/NebulaImages"
-                    ).apply { mkdirs() }
-                    val out = java.io.File(dir, "img_${System.currentTimeMillis()}.$ext")
-                    out.writeBytes(bytes)
-                    out
-                }
-                Toast.makeText(activity, "已保存到：${file.absolutePath}", Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                Toast.makeText(activity, "保存失败：" + e.message, Toast.LENGTH_LONG).show()
-            }
         }
     }
 

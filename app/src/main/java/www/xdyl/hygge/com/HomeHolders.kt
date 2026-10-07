@@ -50,6 +50,7 @@ object HomeHolders {
     }
 
     class Profile(root: View) {
+        val profileCard: android.view.View = root.findViewById(R.id.profileCard)
         val ivAvatar: ImageView = root.findViewById(R.id.ivAvatar)
         val tvNickname: TextView = root.findViewById(R.id.tvNickname)
         val tvBio: TextView = root.findViewById(R.id.tvBio)

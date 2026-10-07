@@ -52,6 +52,16 @@ object SimpleImageLoader {
         return File(diskDir(context), sha)
     }
 
+    /** 移除某个 URL 的内存 + 磁盘缓存 */
+    fun removeCache(context: Context, url: String) {
+        cache.remove(url)
+        try {
+            diskFile(context, url).delete()
+        } catch (e: Throwable) {
+            // 忽略
+        }
+    }
+
     /** 异步加载图片到 ImageView（tag 校验防止复用错位） */
     fun load(context: Context, url: String, imageView: ImageView) {
         if (url.isBlank()) return

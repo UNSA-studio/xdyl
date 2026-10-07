@@ -72,7 +72,10 @@
             android:text="登录 / 注册"
             android:textColor="@android:color/black"
             app:backgroundTint="@color/primary_light_blue"
-            app:cornerRadius="16dp" />
+            app:cornerRadius="16dp"
+            app:icon="@drawable/ic_qq"
+            app:iconGravity="textStart"
+            app:iconTint="@android:color/black" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRefreshProfile"
@@ -83,6 +86,9 @@
             android:text="刷新资料"
             android:textColor="@color/primary_light_blue"
             app:cornerRadius="16dp"
+            app:icon="@drawable/ic_refresh"
+            app:iconGravity="textStart"
+            app:iconTint="@color/primary_light_blue"
             app:strokeColor="@color/primary_light_blue" />
 
         <com.google.android.material.button.MaterialButton
@@ -94,6 +100,9 @@
             android:text="我的通知"
             android:textColor="@color/primary_light_blue"
             app:cornerRadius="16dp"
+            app:icon="@drawable/ic_notifications"
+            app:iconGravity="textStart"
+            app:iconTint="@color/primary_light_blue"
             app:strokeColor="@color/primary_light_blue" />
 
         <com.google.android.material.button.MaterialButton
@@ -102,9 +111,12 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginBottom="10dp"
-            android:text="⚙ 应用设置"
+            android:text="应用设置"
             android:textColor="@color/primary_light_blue"
             app:cornerRadius="16dp"
+            app:icon="@drawable/ic_settings"
+            app:iconGravity="textStart"
+            app:iconTint="@color/primary_light_blue"
             app:strokeColor="@color/primary_light_blue" />
 
         <com.google.android.material.button.MaterialButton
@@ -115,6 +127,9 @@
             android:text="退出登录"
             android:textColor="#FFFF8A8A"
             app:cornerRadius="16dp"
+            app:icon="@drawable/ic_logout"
+            app:iconGravity="textStart"
+            app:iconTint="#FFFF8A8A"
             app:strokeColor="#FFFF8A8A" />
     </LinearLayout>
 
