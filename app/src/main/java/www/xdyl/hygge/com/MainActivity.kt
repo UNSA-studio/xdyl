@@ -1085,9 +1085,9 @@ class MainActivity : AppCompatActivity() {
             val row = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(36, 28, 36, 28)
-                // MD 观感：圆角卡片（替代直角）
+                // MD 观感：圆角卡片（12dp）
                 background = android.graphics.drawable.GradientDrawable().apply {
-                    cornerRadius = 28f
+                    cornerRadius = 12 * ctx.resources.displayMetrics.density
                     setColor(0xFF2A2A2A.toInt())
                 }
             }
@@ -1120,12 +1120,36 @@ class MainActivity : AppCompatActivity() {
                 })
             }
             if (item.detail.isNotBlank() && !item.detail.startsWith("id=")) {
-                holder.row.addView(TextView(ctx).apply {
-                    text = if (item.detail.length > 80) item.detail.take(80) + "…" else item.detail
-                    setTextColor(0x99FFFFFF.toInt())
-                    textSize = 12f
-                    setPadding(0, 6, 0, 0)
-                })
+                // 提取 Markdown 图片（表情 / 上传图），文字部分剥离语法
+                val imgRegex = Regex("!\\[.*?]\\((.*?)\\)")
+                val textOnly = item.detail.replace(imgRegex, "").trim()
+                if (textOnly.isNotBlank()) {
+                    holder.row.addView(TextView(ctx).apply {
+                        text = if (textOnly.length > 80) textOnly.take(80) + "…" else textOnly
+                        setTextColor(0x99FFFFFF.toInt())
+                        textSize = 12f
+                        setPadding(0, 6, 0, 0)
+                    })
+                }
+                imgRegex.findAll(item.detail).take(2).forEach { m ->
+                    val iv = android.widget.ImageView(ctx).apply {
+                        adjustViewBounds = true
+                        maxHeight = (140 * ctx.resources.displayMetrics.density).toInt()
+                        scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                        background = android.graphics.drawable.GradientDrawable().apply {
+                            cornerRadius = 16f
+                            setColor(0xFF1E1E1E.toInt())
+                            setStroke(2, 0xFF3A3A3A.toInt())
+                        }
+                        clipToOutline = true
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { topMargin = 10 }
+                    }
+                    holder.row.addView(iv)
+                    SimpleImageLoader.load(m.groupValues[1], iv)
+                }
             }
             holder.row.setOnClickListener { onClick(item) }
         }
