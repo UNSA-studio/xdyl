@@ -29,6 +29,13 @@ class ApiClient(private val session: SessionStore) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
+        // 统一携带客户端标识 UA（服务端可能按 UA 区分客户端下发令牌）
+        .addInterceptor { chain ->
+            val req = chain.request().newBuilder()
+                .header("User-Agent", "NebulaUpdater-Android/1.0")
+                .build()
+            chain.proceed(req)
+        }
         .build()
 
     private val gson = com.google.gson.Gson()
@@ -95,7 +102,7 @@ class ApiClient(private val session: SessionStore) {
         try {
             client.newCall(req).execute().use { resp ->
                 val text = resp.body?.string() ?: ""
-                LogManager.log("[QQ] poll http=${resp.code} body=${text.take(300)}")
+                LogManager.log("[QQ] poll sid=$sessionId http=${resp.code} body=${text.take(300)}")
                 val root = try { JSONObject(text) } catch (e: Exception) { null }
                     ?: return@use null // 非 JSON：继续等
 
