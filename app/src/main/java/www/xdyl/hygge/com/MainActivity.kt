@@ -78,6 +78,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var api: ApiClient
     private var communityLoaded = false
     private var shopLoaded = false
+    // QQ 绑定式登录：记录登录框中的账号密码（服务端要求 temp_token 配合账号完成绑定）
+    private var pendingAccount = ""
+    private var pendingPassword = ""
 
     private val qqLoginLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
@@ -88,6 +91,42 @@ class MainActivity : AppCompatActivity() {
                 profileBinding.tvProfileStatus.text = "QQ 登录成功"
                 shopLoaded = false
                 Toast.makeText(this, "欢迎，" + session.username, Toast.LENGTH_SHORT).show()
+            }
+            QqWebviewActivity.RESULT_NEED_BIND -> {
+                // 服务端返回 temp_token：用登录框中已填的账号密码完成"绑定式登录"
+                val temp = result.data?.getStringExtra(QqWebviewActivity.EXTRA_TEMP_TOKEN) ?: ""
+                val qqNick = result.data?.getStringExtra(QqWebviewActivity.EXTRA_QQ_NICKNAME) ?: "QQ"
+                LogManager.log("[QQ] 绑定式登录: tempToken=${temp.take(8)}… account=$pendingAccount")
+                if (temp.isBlank()) {
+                    profileBinding.tvProfileStatus.text = "QQ 绑定失败：缺少临时令牌"
+                    return@registerForActivityResult
+                }
+                if (pendingAccount.isBlank() || pendingPassword.isBlank()) {
+                    profileBinding.tvProfileStatus.text = "QQ 授权完成，但缺少账号密码，请重新登录并填写"
+                    Toast.makeText(this, "使用 QQ 登录请先填写账号和密码（QQ 将绑定到该账号）", Toast.LENGTH_LONG).show()
+                    return@registerForActivityResult
+                }
+                profileBinding.tvProfileStatus.text = "QQ($qqNick) 授权完成，正在绑定账号…"
+                scope.launch {
+                    try {
+                        api.login(pendingAccount, pendingPassword, temp)
+                        refreshProfileUI()
+                        profileBinding.tvProfileStatus.text = "QQ 绑定并登录成功"
+                        shopLoaded = false
+                        Toast.makeText(
+                            this@MainActivity,
+                            "QQ（$qqNick）已绑定，欢迎，" + session.username,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } catch (e: Exception) {
+                        profileBinding.tvProfileStatus.text = "QQ 绑定失败：" + e.message
+                        Toast.makeText(
+                            this@MainActivity,
+                            "QQ 绑定失败：" + e.message + "\n（请确认账号密码正确、且账号已注册）",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
             }
             QqWebviewActivity.RESULT_FAILED -> {
                 profileBinding.tvProfileStatus.text = "QQ 登录未完成"
@@ -896,8 +935,20 @@ class MainActivity : AppCompatActivity() {
             .create()
 
         btnQQ.setOnClickListener {
+            val account = etUser.text?.toString()?.trim() ?: ""
+            val password = etPass.text?.toString() ?: ""
+            if (account.isEmpty() || password.isEmpty()) {
+                Toast.makeText(
+                    this@MainActivity,
+                    "使用 QQ 登录请先填写账号和密码（QQ 将绑定到该账号）",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@setOnClickListener
+            }
+            pendingAccount = account
+            pendingPassword = password
             Toast.makeText(this@MainActivity, "QQ登录启动...", Toast.LENGTH_SHORT).show()
-            LogManager.log("[QQ] 用户点击QQ登录按钮")
+            LogManager.log("[QQ] 用户点击QQ登录按钮 account=$account")
             dialog.dismiss()
             beginQQLogin()
         }
@@ -929,9 +980,13 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    /** QQ 登录：内置 WebView 打开授权页，完成后自动返回 */
+    /** QQ 登录：内置 WebView 打开授权页，完成后自动返回（绑定式：需配合账号密码） */
     private fun beginQQLogin() {
         LogManager.log("[QQ] beginQQLogin 开始")
+        if (pendingAccount.isBlank() || pendingPassword.isBlank()) {
+            Toast.makeText(this, "使用 QQ 登录请先填写账号和密码", Toast.LENGTH_LONG).show()
+            return
+        }
         val sessionId = java.util.UUID.randomUUID().toString()
         profileBinding.tvProfileStatus.text = "正在打开 QQ 授权..."
         scope.launch {
