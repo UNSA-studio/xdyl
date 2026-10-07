@@ -122,32 +122,53 @@ class MainActivity : AppCompatActivity() {
                     }
                     return@registerForActivityResult
                 }
-                if (pendingAccount.isBlank() || pendingPassword.isBlank()) {
-                    profileBinding.tvProfileStatus.text = "QQ 授权完成，但缺少账号密码，请重新登录并填写"
-                    Toast.makeText(this, "请先填写账号和密码（首次需账号密码完成绑定）", Toast.LENGTH_LONG).show()
-                    return@registerForActivityResult
-                }
-                profileBinding.tvProfileStatus.text = "QQ($qqNick) 授权完成，正在绑定账号…"
-                scope.launch {
-                    try {
-                        api.login(pendingAccount, pendingPassword, temp)
-                        refreshProfileUI()
-                        profileBinding.tvProfileStatus.text = "QQ 绑定并登录成功"
-                        shopLoaded = false
-                        Toast.makeText(
-                            this@MainActivity,
-                            "QQ（$qqNick）已绑定，欢迎，" + session.username,
-                            Toast.LENGTH_LONG
-                        ).show()
-                    } catch (e: Exception) {
-                        profileBinding.tvProfileStatus.text = "QQ 绑定失败：" + e.message
-                        Toast.makeText(
-                            this@MainActivity,
-                            "QQ 绑定失败：" + e.message + "\n（请确认账号密码正确、且账号已注册）",
-                            Toast.LENGTH_LONG
-                        ).show()
+                // 未登录：弹输入框完成首次绑定（此时才需要账号密码）
+                val col = android.widget.LinearLayout(this@MainActivity)
+                col.orientation = android.widget.LinearLayout.VERTICAL
+                col.setPadding(48, 24, 48, 0)
+                val etUser2 = com.google.android.material.textfield.TextInputEditText(this@MainActivity)
+                etUser2.hint = "账号（邮箱或用户名）"
+                val etPass2 = com.google.android.material.textfield.TextInputEditText(this@MainActivity)
+                etPass2.hint = "密码"
+                etPass2.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
+                col.addView(etUser2)
+                col.addView(etPass2)
+                MaterialAlertDialogBuilder(this@MainActivity, R.style.DialogAnimation)
+                    .setTitle("首次绑定 QQ")
+                    .setMessage("QQ（$qqNick）还未绑定账号。\n请输入你的账号密码完成绑定，以后即可扫码免密登录。")
+                    .setView(col)
+                    .setPositiveButton("绑定") { _, _ ->
+                        val account = etUser2.text?.toString()?.trim() ?: ""
+                        val password = etPass2.text?.toString() ?: ""
+                        if (account.isEmpty() || password.isEmpty()) {
+                            Toast.makeText(this@MainActivity, "请填写账号和密码", Toast.LENGTH_SHORT).show()
+                            return@setPositiveButton
+                        }
+                        profileBinding.tvProfileStatus.text = "QQ($qqNick) 授权完成，正在绑定账号…"
+                        scope.launch {
+                            try {
+                                api.login(account, password, temp)
+                                refreshProfileUI()
+                                profileBinding.tvProfileStatus.text = "QQ 绑定并登录成功"
+                                shopLoaded = false
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "QQ（$qqNick）已绑定，欢迎，" + session.username,
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } catch (e: Exception) {
+                                profileBinding.tvProfileStatus.text = "QQ 绑定失败：" + e.message
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "QQ 绑定失败：" + e.message + "\n（请确认账号密码正确、且账号已注册）",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
                     }
-                }
+                    .setNegativeButton("取消", null)
+                    .show()
+                return@registerForActivityResult
             }
             QqWebviewActivity.RESULT_FAILED -> {
                 profileBinding.tvProfileStatus.text = "QQ 登录未完成"
@@ -913,12 +934,15 @@ class MainActivity : AppCompatActivity() {
         if (session.isLoggedIn) {
             profileBinding.tvNickname.text = session.username
             profileBinding.tvBio.text = "已登录"
-            profileBinding.btnLogin.visibility = View.GONE
+            // 已登录：保留 QQ 入口用于"绑定 / 更换 QQ"（一键绑定，无需账号密码）
+            profileBinding.btnLogin.visibility = View.VISIBLE
+            profileBinding.btnLogin.text = "绑定 QQ"
             profileBinding.btnLogout.visibility = View.VISIBLE
         } else {
             profileBinding.tvNickname.text = "未登录"
             profileBinding.tvBio.text = "登录星灯云浪，同步你的喵币与称号"
             profileBinding.btnLogin.visibility = View.VISIBLE
+            profileBinding.btnLogin.text = "登录 / 注册"
             profileBinding.btnLogout.visibility = View.GONE
         }
     }
@@ -956,22 +980,19 @@ class MainActivity : AppCompatActivity() {
             .create()
 
         btnQQ.setOnClickListener {
-            val account = etUser.text?.toString()?.trim() ?: ""
-            val password = etPass.text?.toString() ?: ""
-            if (account.isEmpty() || password.isEmpty()) {
-                Toast.makeText(
-                    this@MainActivity,
-                    "使用 QQ 登录请先填写账号和密码（QQ 将绑定到该账号）",
-                    Toast.LENGTH_LONG
-                ).show()
-                return@setOnClickListener
-            }
-            pendingAccount = account
-            pendingPassword = password
-            Toast.makeText(this@MainActivity, "QQ登录启动...", Toast.LENGTH_SHORT).show()
-            LogManager.log("[QQ] 用户点击QQ登录按钮 account=$account")
+            LogManager.log("[QQ] 用户点击QQ登录按钮")
             dialog.dismiss()
-            beginQQLogin()
+            MaterialAlertDialogBuilder(this@MainActivity, R.style.DialogAnimation)
+                .setTitle("使用 QQ 登录")
+                .setMessage(
+                    "请确保该 QQ 账号已经绑定到你的账户。\n\n" +
+                        "· 已绑定：扫码后直接登录\n" +
+                        "· 未绑定：扫码后需用账号密码完成一次绑定\n\n" +
+                        "如尚未绑定，请点【否】，先用账号密码登录后在「我的」页绑定 QQ。"
+                )
+                .setPositiveButton("是，继续") { _, _ -> beginQQLogin() }
+                .setNegativeButton("否", null)
+                .show()
         }
 
         dialog.setOnShowListener {
@@ -1001,13 +1022,9 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    /** QQ 登录：内置 WebView 打开授权页，完成后自动返回（绑定式：需配合账号密码） */
+    /** QQ 登录：内置 WebView 打开授权页，完成后自动返回 */
     private fun beginQQLogin() {
         LogManager.log("[QQ] beginQQLogin 开始")
-        if (pendingAccount.isBlank() || pendingPassword.isBlank()) {
-            Toast.makeText(this, "使用 QQ 登录请先填写账号和密码", Toast.LENGTH_LONG).show()
-            return
-        }
         val sessionId = java.util.UUID.randomUUID().toString()
         profileBinding.tvProfileStatus.text = "正在打开 QQ 授权..."
         scope.launch {
