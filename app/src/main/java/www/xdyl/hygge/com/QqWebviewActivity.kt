@@ -59,26 +59,49 @@ class QqWebviewActivity : AppCompatActivity() {
 
         binding.webview.settings.javaScriptEnabled = true
         binding.webview.settings.domStorageEnabled = true
+        // 关键：使用桌面 UA —— 让 QQ 授权页走"扫码/网页登录"，
+        // 避免触发 wtloginmqq:// 快速登录被系统浏览器截走整个授权流程（token 会绑到浏览器会话）。
+        binding.webview.settings.userAgentString =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         binding.webview.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val u = request.url
                 val scheme = u.scheme?.lowercase() ?: ""
                 LogManager.log("[QQ-WebView] navigate: $u")
                 return when {
-                    // QQ 快速登录协议：交给系统/QQ app 处理
+                    // QQ 快速登录协议：不再丢给系统（那会把授权流程交给浏览器）。
+                    // 桌面 UA 下正常不会出现；出现也拦下并提示扫码登录。
                     scheme == "wtloginmqq" || scheme == "mqq" || scheme == "mqqopensdkapi" -> {
-                        try {
-                            startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, u))
-                        } catch (e: Exception) {
-                            // 没装QQ：留在WebView用账号密码登录
-                            LogManager.log("[QQ-WebView] 无QQ app，使用网页登录")
-                            Toast.makeText(this@QqWebviewActivity, "未检测到QQ，请用账号密码登录", Toast.LENGTH_SHORT).show()
-                        }
+                        LogManager.log("[QQ-WebView] 拦截快速登录协议，保持页内扫码登录")
+                        Toast.makeText(
+                            this@QqWebviewActivity,
+                            "请使用页面内的二维码/账号登录完成授权",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         true
                     }
                     // http/https 照常由 WebView 加载
                     scheme == "http" || scheme == "https" -> false
-                    else -> true // 其他自定义scheme一律拦截
+                    else -> true // 其他自定义 scheme一律拦截
+                }
+            }
+
+            override fun onPageFinished(view: WebView, url: String) {
+                super.onPageFinished(view, url)
+                // 授权回调页出现 → 说明服务端即将完成换票，立即补一次轮询加速
+                if (url.contains("callback", ignoreCase = true)) {
+                    LogManager.log("[QQ-WebView] 到达回调页: $url")
+                    lifecycleScope.launch {
+                        try {
+                            val ok = withContext(Dispatchers.IO) { api.pollQQLogin(sessionId) }
+                            if (ok == true) {
+                                binding.tvQqTitle.text = "登录成功，正在返回…"
+                                finishWith(RESULT_LOGGED_IN)
+                            }
+                        } catch (e: Exception) {
+                            LogManager.log("[QQ-WebView] 回调页轮询异常: ${e.message}")
+                        }
+                    }
                 }
             }
         }
