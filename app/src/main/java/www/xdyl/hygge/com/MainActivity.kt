@@ -14,6 +14,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AnimationUtils
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -69,6 +70,32 @@ class MainActivity : AppCompatActivity() {
         "AC" to "行动召唤"
     )
 
+    // ==================== 新页面体系（社区/商城/我的） ====================
+    private lateinit var communityBinding: HomeHolders.Community
+    private lateinit var shopBinding: HomeHolders.Shop
+    private lateinit var profileBinding: HomeHolders.Profile
+    private lateinit var session: SessionStore
+    private lateinit var api: ApiClient
+    private var communityLoaded = false
+    private var shopLoaded = false
+
+    private val qqLoginLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        when (result.resultCode) {
+            QqWebviewActivity.RESULT_LOGGED_IN -> {
+                refreshProfileUI()
+                profileBinding.tvProfileStatus.text = "QQ 登录成功"
+                shopLoaded = false
+                Toast.makeText(this, "欢迎，" + session.username, Toast.LENGTH_SHORT).show()
+            }
+            QqWebviewActivity.RESULT_FAILED -> {
+                profileBinding.tvProfileStatus.text = "QQ 登录未完成"
+                Toast.makeText(this, "QQ 登录未完成或已超时", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     companion object { var instance: MainActivity? = null }
 
     data class ModInfo(val fileName: String, val size: Long, val md5: String, val sha256: String)
@@ -80,10 +107,16 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         instance = this
-        binding.tvTitleLine1.text = "Nebula updater-NU"
-        binding.tvTitleLine2.text = "星云更新器-Android端"
+        binding.pageHome.tvTitleLine1.text = "Nebula updater-NU"
+        binding.pageHome.tvTitleLine2.text = "星云更新器-Android端"
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
-        binding.tvLog.movementMethod = ScrollingMovementMethod()
+        session = SessionStore(this)
+        api = ApiClient(session)
+        // 内页 binding：include 的各页
+        communityBinding = HomeHolders.Community(binding.viewFlipper.getChildAt(1))
+        shopBinding = HomeHolders.Shop(binding.viewFlipper.getChildAt(2))
+        profileBinding = HomeHolders.Profile(binding.viewFlipper.getChildAt(3))
+        binding.pageHome.tvLog.movementMethod = ScrollingMovementMethod()
 
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
@@ -138,11 +171,11 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        binding.btnSelectDir.setOnClickListener {
+        binding.pageHome.btnSelectDir.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
             showFileBrowser()
         }
-        binding.btnStartDownload.setOnClickListener {
+        binding.pageHome.btnStartDownload.setOnClickListener {
             it.startAnimation(AnimationUtils.loadAnimation(this, android.R.anim.fade_in))
             if (prefs.getBoolean("neoforge_check_enabled", true)) {
                 verifyNeoforgeVersion { verified ->
@@ -158,13 +191,50 @@ class MainActivity : AppCompatActivity() {
                 startUpdateProcess()
             }
         }
-        binding.btnSettings.setOnClickListener {
+        binding.pageHome.btnSettings.setOnClickListener {
             it.animate().rotationBy(180f).setDuration(300).start()
             val intent = Intent(this, SettingsActivity::class.java)
             @Suppress("DEPRECATION")
             startActivity(intent)
             @Suppress("DEPRECATION")
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
+        }
+
+        // 「我的」页按钮
+        profileBinding.btnLogin.setOnClickListener { showLoginDialog() }
+        profileBinding.btnRefreshProfile.setOnClickListener {
+            if (!session.isLoggedIn) { Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
+            scope.launch {
+                try {
+                    val root = api.get("/user/profile")
+                    val data = root.getJSONObject("data")
+                    profileBinding.tvNickname.text = api.firstString(data, "nickname", "username") ?: session.username
+                    profileBinding.tvBio.text = api.firstString(data, "bio", "title") ?: ""
+                    profileBinding.tvProfileStatus.text = "资料已刷新"
+                } catch (e: Exception) {
+                    profileBinding.tvProfileStatus.text = "刷新失败：" + e.message
+                }
+            }
+        }
+        profileBinding.btnNotifications.setOnClickListener { showNotifications() }
+        profileBinding.btnOpenSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+        profileBinding.btnLogout.setOnClickListener {
+            session.logout()
+            refreshProfileUI()
+            shopLoaded = false
+            Toast.makeText(this, "已退出登录", Toast.LENGTH_SHORT).show()
+        }
+        // 底部导航切换
+        binding.bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> { binding.viewFlipper.displayedChild = 0; true }
+                R.id.nav_community -> { binding.viewFlipper.displayedChild = 1; ensureCommunityLoaded(); true }
+                R.id.nav_shop -> { binding.viewFlipper.displayedChild = 2; ensureShopLoaded(); true }
+                R.id.nav_profile -> { binding.viewFlipper.displayedChild = 3; refreshProfileUI(); true }
+                else -> false
+            }
         }
     }
 
@@ -210,7 +280,7 @@ class MainActivity : AppCompatActivity() {
                 val found = findMinecraftModsDir(dir)
                 if (found != null) {
                     targetModsDir = found
-                    binding.btnStartDownload.isEnabled = true
+                    binding.pageHome.btnStartDownload.isEnabled = true
                     LogManager.log("成功恢复 mods 目录: ${found.absolutePath}")
                     return
                 } else { LogManager.log("未能在 $lastPath 下找到 mods 目录") }
@@ -290,24 +360,24 @@ class MainActivity : AppCompatActivity() {
         val title = "今日名言 - ${categoryNames[category] ?: category}"
 
         // Force system default sans-serif font for correct CJK text metrics
-        binding.tvQuoteChinese.typeface = android.graphics.Typeface.DEFAULT
-        binding.tvQuoteEnglish.typeface = android.graphics.Typeface.DEFAULT
-        binding.tvQuoteAuthor.typeface = android.graphics.Typeface.DEFAULT
-        binding.tvQuoteAuthorEn.typeface = android.graphics.Typeface.DEFAULT
+        binding.pageHome.tvQuoteChinese.typeface = android.graphics.Typeface.DEFAULT
+        binding.pageHome.tvQuoteEnglish.typeface = android.graphics.Typeface.DEFAULT
+        binding.pageHome.tvQuoteAuthor.typeface = android.graphics.Typeface.DEFAULT
+        binding.pageHome.tvQuoteAuthorEn.typeface = android.graphics.Typeface.DEFAULT
 
-        binding.tvQuoteChinese.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
-        binding.tvQuoteEnglish.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
-        binding.tvQuoteAuthor.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
-        binding.tvQuoteAuthorEn.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 10f)
+        binding.pageHome.tvQuoteChinese.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
+        binding.pageHome.tvQuoteEnglish.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
+        binding.pageHome.tvQuoteAuthor.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
+        binding.pageHome.tvQuoteAuthorEn.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 10f)
 
-        binding.tvQuoteTitle.text = title
-        binding.tvQuoteChinese.text = quote.chinese
-        binding.tvQuoteEnglish.text = quote.english
-        binding.tvQuoteAuthor.text = "- ${quote.author} / ${quote.source}"
-        binding.tvQuoteAuthorEn.text = "- ${quote.authorEn} / ${quote.sourceEn}"
+        binding.pageHome.tvQuoteTitle.text = title
+        binding.pageHome.tvQuoteChinese.text = quote.chinese
+        binding.pageHome.tvQuoteEnglish.text = quote.english
+        binding.pageHome.tvQuoteAuthor.text = "- ${quote.author} / ${quote.source}"
+        binding.pageHome.tvQuoteAuthorEn.text = "- ${quote.authorEn} / ${quote.sourceEn}"
 
-        binding.tvQuoteChinese.requestLayout()
-        binding.tvQuoteEnglish.requestLayout()
+        binding.pageHome.tvQuoteChinese.requestLayout()
+        binding.pageHome.tvQuoteEnglish.requestLayout()
     }
 
     // ========== 文件浏览器 ==========
@@ -376,7 +446,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleSelectedFolder(folder: File) {
         val modsDir = findMinecraftModsDir(folder)
-        if (modsDir != null) { targetModsDir = modsDir; binding.btnStartDownload.isEnabled = true; Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show() }
+        if (modsDir != null) { targetModsDir = modsDir; binding.pageHome.btnStartDownload.isEnabled = true; Toast.makeText(this, "游戏目录已选择", Toast.LENGTH_SHORT).show() }
         else showError(Constants.ERROR01)
         fileBrowserDialog?.dismiss()
     }
@@ -487,7 +557,7 @@ class MainActivity : AppCompatActivity() {
                     targetModsDir = findMinecraftModsDir(dir)
                     if (targetModsDir != null) {
                         LogManager.log("恢复成功: ${targetModsDir!!.absolutePath}")
-                        binding.btnStartDownload.isEnabled = true
+                        binding.pageHome.btnStartDownload.isEnabled = true
                     } else {
                         LogManager.log("恢复失败: 在 $lastPath 下未找到 mods 目录")
                     }
@@ -502,9 +572,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         val modsDir = targetModsDir!!
-        isProcessing = true; binding.btnStartDownload.isEnabled = false
-        binding.progressBar.visibility = View.VISIBLE; binding.progressBar.progress = 0
-        binding.tvLog.text = "Checking mods..."; LogManager.log("开始更新，目标目录: ${modsDir.absolutePath}")
+        isProcessing = true; binding.pageHome.btnStartDownload.isEnabled = false
+        binding.pageHome.progressBar.visibility = View.VISIBLE; binding.pageHome.progressBar.progress = 0
+        binding.pageHome.tvLog.text = "Checking mods..."; LogManager.log("开始更新，目标目录: ${modsDir.absolutePath}")
 
         val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
         LogManager.log("实际并发下载数: $threadCount")
@@ -521,9 +591,9 @@ class MainActivity : AppCompatActivity() {
                 }
                 val csvSet = csvMods.map { it.fileName }.toSet(); val allServerMods = serverFiles.filter { csvSet.contains(it) }
                 val toDownload = filterOutUnchangedMods(modsDir, csvMods.filter { it.fileName in allServerMods })
-                if (toDownload.isEmpty()) { appendLog("All mods are up-to-date!"); binding.progressBar.visibility = View.GONE; isProcessing = false; binding.btnStartDownload.isEnabled = true; return@launch }
+                if (toDownload.isEmpty()) { appendLog("All mods are up-to-date!"); binding.pageHome.progressBar.visibility = View.GONE; isProcessing = false; binding.pageHome.btnStartDownload.isEnabled = true; return@launch }
 
-                binding.tvLog.text = "Downloading ${toDownload.size} mods..."
+                binding.pageHome.tvLog.text = "Downloading ${toDownload.size} mods..."
                 val sem = Semaphore(threadCount); val failed = AtomicInteger(0); var completed = 0; val total = toDownload.size
                 withContext(Dispatchers.IO) {
                     toDownload.map { mod -> launch { sem.acquire()
@@ -532,7 +602,7 @@ class MainActivity : AppCompatActivity() {
                             val encodedName = URLEncoder.encode(mod.fileName, "UTF-8").replace("+", "%20")
                             downloadWithRetry(Constants.BASE_URL + encodedName, mod.size, file)
                             if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256)) throw RuntimeException("校验失败")
-                            completed++; withContext(Dispatchers.Main) { binding.progressBar.progress = (completed * 100) / total; binding.tvStatus.text = "$completed/$total" }
+                            completed++; withContext(Dispatchers.Main) { binding.pageHome.progressBar.progress = (completed * 100) / total; binding.pageHome.tvStatus.text = "$completed/$total" }
                         } catch (e: Exception) { LogManager.log("下载失败 ${mod.fileName}: ${e.message}"); failed.incrementAndGet() } finally { sem.release() }
                     } }.joinAll()
                 }
@@ -563,7 +633,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             } catch (e: Exception) { LogManager.log("更新异常: ${e.message}"); showError(Constants.ERROR03) }
-            finally { isProcessing = false; binding.btnStartDownload.isEnabled = true }
+            finally { isProcessing = false; binding.pageHome.btnStartDownload.isEnabled = true }
         }
     }
 
@@ -578,7 +648,7 @@ class MainActivity : AppCompatActivity() {
             while (fis.read(buf).also { len = it } != -1) digest.update(buf, 0, len) }; digest.digest().joinToString("") { "%02x".format(it) }
     } catch (e: Exception) { null }
 
-    fun appendLog(msg: String) { runOnUiThread { binding.tvLog.text = "${binding.tvLog.text}\n$msg"; binding.logScroll.post { binding.logScroll.fullScroll(View.FOCUS_DOWN) } } }
+    fun appendLog(msg: String) { runOnUiThread { binding.pageHome.tvLog.text = "${binding.pageHome.tvLog.text}\n$msg"; binding.pageHome.logScroll.post { binding.pageHome.logScroll.fullScroll(View.FOCUS_DOWN) } } }
 
     private fun exportLogToFile() {
         scope.launch(Dispatchers.IO) {
@@ -605,4 +675,374 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() { instance = null; job.cancel(); super.onDestroy() }
+
+    // ==================== 以下为内嵌页面逻辑（社区/商城/我的） ====================
+    private fun ensureCommunityLoaded() {
+        if (!communityLoaded) {
+            communityLoaded = true
+            bindCommunityTabs()
+            loadCommunityTab("ANNOUNCEMENTS")
+        }
+    }
+
+    private fun bindCommunityTabs() {
+        fun tab(view: TextView, key: String) {
+            view.setOnClickListener {
+                val tabs: List<TextView> = listOf(communityBinding.tabAnnounce, communityBinding.tabForum, communityBinding.tabRank, communityBinding.tabPlaytime)
+                tabs.forEach { tb -> tb.alpha = if (tb == view) 1f else 0.5f }
+                loadCommunityTab(key)
+            }
+        }
+        tab(communityBinding.tabAnnounce, "ANNOUNCEMENTS")
+        tab(communityBinding.tabForum, "FORUM")
+        tab(communityBinding.tabRank, "RANK")
+        tab(communityBinding.tabPlaytime, "PLAYTIME")
+        communityBinding.tabAnnounce.alpha = 1f
+    }
+
+    private fun loadCommunityTab(key: String) {
+        communityBinding.communityProgress.visibility = View.VISIBLE
+        communityBinding.communityEmpty.visibility = View.GONE
+        scope.launch {
+            try {
+                val requiresAuth = false
+                val path = when (key) {
+                    "FORUM" -> "/forum/posts?page=1"
+                    "RANK" -> "/rank/coins"
+                    "PLAYTIME" -> "/rank/playtime"
+                    else -> "/announcements"
+                }
+                val root = api.get(path, requiresAuth = requiresAuth)
+                val items = api.extractList(root)
+                val list: List<JSONObject> = (0 until items.length()).map { idx -> items.getJSONObject(idx) }
+                val rendered: List<Triple<String, String, String>> = list.map { obj ->
+                    when (key) {
+                        "FORUM" -> Triple(
+                            api.firstString(obj, "title") ?: "(无标题)",
+                            (api.firstString(obj, "nickname", "username") ?: "") + " · " + (api.firstString(obj, "created_at") ?: "") + " · 赞 " + obj.optInt("likes", 0),
+                            api.firstString(obj, "content") ?: ""
+                        )
+                        "RANK" -> Triple(
+                            "#" + obj.optInt("rank", 0) + "  " + (api.firstString(obj, "nickname", "player_name", "username") ?: ""),
+                            obj.optInt("coins", 0).toString() + " 喵币", ""
+                        )
+                        "PLAYTIME" -> {
+                            val seconds = obj.optLong("seconds", 0)
+                            Triple(
+                                "#" + obj.optInt("rank", 0) + "  " + (api.firstString(obj, "player_name", "nickname") ?: ""),
+                                (seconds / 3600).toString() + "小时" + ((seconds % 3600) / 60) + "分", ""
+                            )
+                        }
+                        else -> Triple(
+                            api.firstString(obj, "title") ?: "公告",
+                            api.firstString(obj, "created_at") ?: "",
+                            api.firstString(obj, "content") ?: ""
+                        )
+                    }
+                }
+                renderCommunity(rendered)
+            } catch (e: Exception) {
+                LogManager.log("[Community] 加载失败: " + e.message)
+                communityBinding.communityProgress.visibility = View.GONE
+                communityBinding.communityEmpty.visibility = View.VISIBLE
+                communityBinding.communityEmpty.text = "加载失败：" + e.message
+            }
+        }
+    }
+
+    private fun renderCommunity(items: List<Triple<String, String, String>>) {
+        communityBinding.communityProgress.visibility = View.GONE
+        if (items.isEmpty()) {
+            communityBinding.communityEmpty.visibility = View.VISIBLE
+            communityBinding.communityEmpty.text = "暂无内容"
+            communityBinding.communityRecycler.adapter = null
+            return
+        }
+        communityBinding.communityEmpty.visibility = View.GONE
+        val mapped: List<Pair<String, String>> = items.map { Triple(it.first, it.second, it.third); Pair(it.first, it.second) }
+        communityBinding.communityRecycler.adapter = InlineItemAdapter(items.map { InlineItem(it.first, it.second, it.third) }) { item ->
+            if (item.detail.isNotBlank()) {
+                MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+                    .setTitle(item.title)
+                    .setMessage(item.subtitle + "\n\n" + item.detail)
+                    .setPositiveButton("好的", null)
+                    .show()
+            }
+        }
+    }
+
+    // ==================== 商城（内嵌页） ====================
+
+    private fun ensureShopLoaded() {
+        if (!shopLoaded) {
+            shopLoaded = true
+            loadRedeemRate()
+            loadShopItems()
+        }
+    }
+
+    private fun loadRedeemRate() {
+        scope.launch {
+            try {
+                val root = api.get("/redeem/rate", requiresAuth = false)
+                val rate = root.getJSONObject("data").optInt("rate", 10)
+                shopBinding.tvRedeemRate.text = "兑换比例 1:$rate"
+            } catch (e: Exception) {
+                shopBinding.tvRedeemRate.text = "兑换比例未知"
+            }
+        }
+    }
+
+    private fun loadShopItems() {
+        if (!session.isLoggedIn) {
+            shopBinding.shopEmpty.visibility = View.VISIBLE
+            shopBinding.shopEmpty.text = "商城需要登录后浏览\n\n点击「我的」页登录（支持 QQ 快捷登录）"
+
+            shopBinding.shopRecycler.adapter = null
+            return
+        }
+        shopBinding.shopProgress.visibility = View.VISIBLE
+        shopBinding.shopEmpty.visibility = View.GONE
+        scope.launch {
+            try {
+                val root = api.get("/shop/items")
+                val items = api.extractList(root)
+                val list: List<JSONObject> = (0 until items.length()).map { idx -> items.getJSONObject(idx) }
+                val rendered: List<InlineItem> = list.map { obj ->
+                    InlineItem(
+                        api.firstString(obj, "name") ?: "商品",
+                        api.firstString(obj, "description") ?: "",
+                        "id=" + obj.optInt("id", 0)
+                    )
+                }
+                shopBinding.shopProgress.visibility = View.GONE
+                shopBinding.shopRecycler.adapter = InlineItemAdapter(rendered) { item ->
+                    scope.launch {
+                        try {
+                            val id = item.detail.removePrefix("id=").toInt()
+                            MaterialAlertDialogBuilder(this@MainActivity, R.style.DialogAnimation)
+                                .setTitle("确认购买")
+                                .setMessage("购买「" + item.title + "」？\n\n" + item.subtitle)
+                                .setPositiveButton("购买") { _, _ ->
+                                    scope.launch {
+                                        try {
+                                            api.post("/shop/buy", JSONObject().put("item_id", id))
+                                            Toast.makeText(this@MainActivity, "购买成功", Toast.LENGTH_SHORT).show()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(this@MainActivity, "购买失败：" + e.message, Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                }
+                                .setNegativeButton("取消", null)
+                                .show()
+                        } catch (e: Exception) { }
+                    }
+                }
+            } catch (e: Exception) {
+                shopBinding.shopProgress.visibility = View.GONE
+                shopBinding.shopEmpty.visibility = View.VISIBLE
+                shopBinding.shopEmpty.text = "加载失败：" + e.message
+            }
+        }
+    }
+
+    // ==================== 我的（登录/资料） ====================
+
+    /** 刷新主页整合包状态卡 */
+    private fun refreshProfileUI() {
+        if (session.isLoggedIn) {
+            profileBinding.tvNickname.text = session.username
+            profileBinding.tvBio.text = "已登录"
+            profileBinding.btnLogin.visibility = View.GONE
+            profileBinding.btnLogout.visibility = View.VISIBLE
+        } else {
+            profileBinding.tvNickname.text = "未登录"
+            profileBinding.tvBio.text = "登录星灯云浪，同步你的喵币与称号"
+            profileBinding.btnLogin.visibility = View.VISIBLE
+            profileBinding.btnLogout.visibility = View.GONE
+        }
+    }
+
+    private fun showLoginDialog() {
+        val input = android.widget.LinearLayout(this)
+        input.orientation = android.widget.LinearLayout.VERTICAL
+        input.setPadding(48, 24, 48, 0)
+        val etUser = com.google.android.material.textfield.TextInputEditText(this)
+        etUser.hint = "账号（邮箱或用户名）"
+        etUser.setTextColor(0xFFFFFFFF.toInt())
+        val etPass = com.google.android.material.textfield.TextInputEditText(this)
+        etPass.hint = "密码"
+        etPass.setTextColor(0xFFFFFFFF.toInt())
+        etPass.transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
+        input.addView(etUser)
+        input.addView(etPass)
+        val btnQQ = com.google.android.material.button.MaterialButton(this)
+        btnQQ.text = "使用 QQ 登录"
+        btnQQ.setTextColor(0xFFA0C4FF.toInt())
+        btnQQ.setBackgroundColor(0xFF2A2A2A.toInt())
+        val lp = android.widget.LinearLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        lp.topMargin = 24
+        btnQQ.layoutParams = lp
+        input.addView(btnQQ)
+
+        val dialog = MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+            .setTitle("登录星灯云浪")
+            .setView(input)
+            .setPositiveButton("登录", null)
+            .setNegativeButton("取消", null)
+            .create()
+
+        btnQQ.setOnClickListener {
+            Toast.makeText(this@MainActivity, "QQ登录启动...", Toast.LENGTH_SHORT).show()
+            LogManager.log("[QQ] 用户点击QQ登录按钮")
+            dialog.dismiss()
+            beginQQLogin()
+        }
+
+        dialog.setOnShowListener {
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val account = etUser.text?.toString()?.trim() ?: ""
+                val password = etPass.text?.toString() ?: ""
+                if (account.isEmpty() || password.isEmpty()) {
+                    Toast.makeText(this, "请填写账号和密码", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                profileBinding.tvProfileStatus.text = "登录中..."
+                scope.launch {
+                    try {
+                        api.login(account, password)
+                        refreshProfileUI()
+                        profileBinding.tvProfileStatus.text = "登录成功"
+                        shopLoaded = false
+                        dialog.dismiss()
+                        Toast.makeText(this@MainActivity, "欢迎，" + session.username, Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        profileBinding.tvProfileStatus.text = "登录失败：" + e.message
+                        Toast.makeText(this@MainActivity, "登录失败：" + e.message, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    /** QQ 登录：内置 WebView 打开授权页，完成后自动返回 */
+    private fun beginQQLogin() {
+        LogManager.log("[QQ] beginQQLogin 开始")
+        val sessionId = java.util.UUID.randomUUID().toString()
+        profileBinding.tvProfileStatus.text = "正在打开 QQ 授权..."
+        scope.launch {
+            try {
+                val url = api.startQQLogin(sessionId)
+                withContext(Dispatchers.Main) {
+                    val intent = android.content.Intent(this@MainActivity, QqWebviewActivity::class.java)
+                        .putExtra(QqWebviewActivity.EXTRA_URL, url)
+                        .putExtra(QqWebviewActivity.EXTRA_SESSION, sessionId)
+                    qqLoginLauncher.launch(intent)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    profileBinding.tvProfileStatus.text = "QQ 登录失败：" + e.message
+                    Toast.makeText(this@MainActivity, "QQ 登录失败：" + e.message, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun showNotifications() {
+        if (!session.isLoggedIn) {
+            Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show()
+            return
+        }
+        scope.launch {
+            try {
+                val root = api.get("/notifications")
+                val items = api.extractList(root)
+                val sb = StringBuilder()
+                for (i in 0 until items.length()) {
+                    val o = items.getJSONObject(i)
+                    sb.append("• ").append(api.firstString(o, "title", "content") ?: "").append("\n")
+                    if (sb.length > 800) { sb.append("..."); break }
+                }
+                MaterialAlertDialogBuilder(this@MainActivity, R.style.DialogAnimation)
+                    .setTitle("我的通知")
+                    .setMessage(if (sb.isBlank()) "暂无通知" else sb.toString())
+                    .setPositiveButton("标记已读") { _, _ ->
+                        scope.launch { runCatching { api.post("/notifications/read") } }
+                    }
+                    .setNegativeButton("关闭", null)
+                    .show()
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, "通知加载失败：" + e.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    data class InlineItem(val title: String, val subtitle: String, val detail: String)
+
+    /** 通用行适配器（社区/商城共用） */
+    inner class InlineItemAdapter(
+        private val items: List<InlineItem>,
+        private val onClick: (InlineItem) -> Unit
+    ) : RecyclerView.Adapter<InlineItemAdapter.VH>() {
+
+        inner class VH(val row: LinearLayout) : RecyclerView.ViewHolder(row)
+
+        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): VH {
+            val ctx = parent.context
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(36, 28, 36, 28)
+                setBackgroundColor(0xFF2A2A2A.toInt())
+            }
+            val lp = RecyclerView.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            lp.bottomMargin = 12
+            row.layoutParams = lp
+            return VH(row)
+        }
+
+        override fun getItemCount() = items.size
+
+        override fun onBindViewHolder(holder: VH, position: Int) {
+            val item = items[position]
+            holder.row.removeAllViews()
+            val ctx = holder.row.context
+            holder.row.addView(TextView(ctx).apply {
+                text = item.title
+                setTextColor(0xFFA0C4FF.toInt())
+                textSize = 16f
+            })
+            if (item.subtitle.isNotBlank()) {
+                holder.row.addView(TextView(ctx).apply {
+                    text = item.subtitle
+                    setTextColor(0xCCFFFFFF.toInt())
+                    textSize = 13f
+                    setPadding(0, 6, 0, 0)
+                })
+            }
+            if (item.detail.isNotBlank() && !item.detail.startsWith("id=")) {
+                holder.row.addView(TextView(ctx).apply {
+                    text = if (item.detail.length > 80) item.detail.take(80) + "…" else item.detail
+                    setTextColor(0x99FFFFFF.toInt())
+                    textSize = 12f
+                    setPadding(0, 6, 0, 0)
+                })
+            }
+            holder.row.setOnClickListener { onClick(item) }
+        }
+    }
+
+    // ==================== 一键全自动流程（mods.json 驱动） ====================
+
+    /**
+     * 全自动：拉 mods.json → 需要时装整合包（fclcore）→ 增量同步 new_mod/tacz → removed 清理。
+     * 用户只需选过一次启动器根目录（.minecraft 所在处），其余全自动。
+     */
+
 }

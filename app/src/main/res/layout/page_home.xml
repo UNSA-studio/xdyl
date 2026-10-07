@@ -47,82 +47,52 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- 整合包状态卡 -->
+    <!-- 选择目录和下载按钮 -->
     <androidx.cardview.widget.CardView
-        android:id="@+id/cardPackStatus"
+        android:id="@+id/cardSelect"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="4dp"
-        app:cardBackgroundColor="#252525"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/titleContainer">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="14dp">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:contentDescription="整合包"
-                    android:src="@drawable/ic_package"
-                    app:tint="@color/primary_light_blue" />
-
-                <TextView
-                    android:id="@+id/tvPackStatusTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:text="整合包状态"
-                    android:textColor="@color/primary_light_blue"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/tvPackStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="未安装——点击下方按钮一键全自动"
-                android:textColor="#CCFFFFFF"
-                android:textSize="13sp" />
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-    <!-- 整合包安装按钮 -->
-    <androidx.cardview.widget.CardView
-        android:id="@+id/cardModpack"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="100dp"
         app:cardCornerRadius="24dp"
         app:cardElevation="8dp"
         app:cardBackgroundColor="#2A2A2A"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/cardPackStatus">
+        app:layout_constraintTop_toTopOf="parent">
+
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnInstallModpack"
-            style="@style/Widget.Material3.Button.TonalButton"
+            android:id="@+id/btnSelectDir"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:text="一键全自动更新"
-            app:icon="@drawable/ic_rocket"
-            app:iconGravity="textStart"
-            app:iconTint="@color/primary_light_blue"
+            android:layout_height="56dp"
+            android:text="@string/btn_select_dir"
             android:textColor="@color/primary_light_blue"
+            app:strokeColor="@color/primary_light_blue"
+            app:cornerRadius="24dp"
+            android:stateListAnimator="@null" />
+    </androidx.cardview.widget.CardView>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardDownload"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="#2A2A2A"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cardSelect">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStartDownload"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="@string/btn_start_download"
+            android:enabled="false"
+            android:textColor="@android:color/black"
+            app:backgroundTint="@color/primary_light_blue"
             app:cornerRadius="24dp"
             android:stateListAnimator="@null" />
     </androidx.cardview.widget.CardView>
@@ -139,7 +109,7 @@
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/cardModpack" />
+        app:layout_constraintTop_toBottomOf="@id/cardDownload" />
 
     <TextView
         android:id="@+id/tvStatus"
