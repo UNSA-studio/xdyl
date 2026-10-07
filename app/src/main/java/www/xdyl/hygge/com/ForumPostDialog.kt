@@ -21,12 +21,14 @@ import org.json.JSONObject
 
 /**
  * 论坛帖子详情（我们的风格）：
- * 正文（含 Markdown 图片渲染）/ 点赞 / 回复列表 / 回复输入。
+ * 顶部固定回复栏 / 正文（含 Markdown 图片渲染）/ 点赞 / 回复列表。
+ * 图片支持长按保存到本地 Download/NebulaImages。
  */
 object ForumPostDialog {
 
     private val IMAGE_REGEX = Regex("!\\[.*?]\\((.*?)\\)")
-fun show(activity: MainActivity, api: ApiClient, postId: Int) {
+
+    fun show(activity: MainActivity, api: ApiClient, postId: Int) {
         val rootCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
 
         // ===== 顶部固定回复栏（不随内容滚动） =====
@@ -34,7 +36,7 @@ fun show(activity: MainActivity, api: ApiClient, postId: Int) {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
             setPadding(dip(activity, 16), dip(activity, 10), dip(activity, 16), dip(activity, 10))
-            setBackgroundColor(0xFF1E1E1E.toInt())
+            setBackgroundColor(0xFF15161A.toInt())
         }
         val input = EditText(activity).apply {
             hint = "写下你的回复…"
@@ -78,28 +80,7 @@ fun show(activity: MainActivity, api: ApiClient, postId: Int) {
             .setNegativeButton("关闭", null)
             .create()
 
-        // 发送回复（顶部固定栏按钮）
-        sendBtn.setOnClickListener {
-            val text = input.text.toString().trim()
-            if (text.isEmpty()) {
-                Toast.makeText(activity, "回复内容不能为空", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            activity.lifecycleScope.launch {
-                try {
-                    withContext(Dispatchers.IO) {
-                        api.post("/forum/post/$postId/reply", JSONObject().put("content", text))
-                    }
-                    input.setText("")
-                    Toast.makeText(activity, "回复成功", Toast.LENGTH_SHORT).show()
-                    reload()
-                } catch (e: Exception) {
-                    Toast.makeText(activity, "回复失败：" + e.message, Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-
-
+        // ---- 局部函数：重新加载帖子内容（定义在 sendBtn 监听之前）----
         fun reload() {
             activity.lifecycleScope.launch {
                 col.removeAllViews()
@@ -121,7 +102,6 @@ fun show(activity: MainActivity, api: ApiClient, postId: Int) {
                         col.addView(simpleText(activity, "帖子不存在或已被删除", 14f, 0xFFE57373.toInt()))
                         return@launch
                     }
-
                     // 标题
                     col.addView(simpleText(activity, post.optString("title", "帖子"), 18f, 0xFFA0C4FF.toInt(), bold = true))
                     // 作者行
@@ -134,7 +114,6 @@ fun show(activity: MainActivity, api: ApiClient, postId: Int) {
                         if (ut.isNotBlank()) append(" · ").append(ut)
                     }
                     col.addView(simpleText(activity, meta, 12f, 0xFF9AA0A6.toInt(), topMargin = 6))
-
                     // 正文（剥离 Markdown 图片语法后显示文字）
                     val content = post.optString("content", "")
                     val textOnly = content.replace(IMAGE_REGEX, "").trim()
@@ -145,7 +124,6 @@ fun show(activity: MainActivity, api: ApiClient, postId: Int) {
                     IMAGE_REGEX.findAll(content).forEach { m ->
                         addImage(activity, col, m.groupValues[1])
                     }
-
                     // 点赞行
                     val likeRow = LinearLayout(activity).apply {
                         orientation = LinearLayout.HORIZONTAL
@@ -177,7 +155,6 @@ fun show(activity: MainActivity, api: ApiClient, postId: Int) {
                     }
                     likeRow.addView(likeBtn)
                     col.addView(likeRow)
-
                     // 回复区
                     col.addView(simpleText(activity, "回复（${replies?.length() ?: 0}）", 14f, 0xFFA0C4FF.toInt(), topMargin = 18, bold = true))
                     if (replies != null) {
@@ -203,6 +180,27 @@ fun show(activity: MainActivity, api: ApiClient, postId: Int) {
                 } catch (e: Exception) {
                     col.removeAllViews()
                     col.addView(simpleText(activity, "加载失败：" + e.message, 14f, 0xFFE57373.toInt()))
+                }
+            }
+        }
+
+        // ---- 发送回复（顶部固定栏按钮，定义在 reload 之后）----
+        sendBtn.setOnClickListener {
+            val text = input.text.toString().trim()
+            if (text.isEmpty()) {
+                Toast.makeText(activity, "回复内容不能为空", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            activity.lifecycleScope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        api.post("/forum/post/$postId/reply", JSONObject().put("content", text))
+                    }
+                    input.setText("")
+                    Toast.makeText(activity, "回复成功", Toast.LENGTH_SHORT).show()
+                    reload()
+                } catch (e: Exception) {
+                    Toast.makeText(activity, "回复失败：" + e.message, Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -253,7 +251,6 @@ fun show(activity: MainActivity, api: ApiClient, postId: Int) {
                         if (!resp.isSuccessful) throw RuntimeException("HTTP ${resp.code}")
                         resp.body?.bytes() ?: throw RuntimeException("响应为空")
                     }
-                    // 文件名：时间戳 + 原扩展名
                     val ext = url.substringAfterLast('.', "jpg").substringBefore('?').take(5)
                     val dir = java.io.File(
                         android.os.Environment.getExternalStorageDirectory(),
