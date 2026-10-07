@@ -78,6 +78,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var api: ApiClient
     private var communityLoaded = false
     private var shopLoaded = false
+    /** 帖子标题 → 帖子ID（用于打开帖子详情） */
+    private val communityPostIds = mutableMapOf<String, Int>()
     // QQ 绑定式登录：记录登录框中的账号密码（服务端要求 temp_token 配合账号完成绑定）
     private var pendingAccount = ""
     private var pendingPassword = ""
@@ -764,11 +766,15 @@ class MainActivity : AppCompatActivity() {
                 val list: List<JSONObject> = (0 until items.length()).map { idx -> items.getJSONObject(idx) }
                 val rendered: List<Triple<String, String, String>> = list.map { obj ->
                     when (key) {
-                        "FORUM" -> Triple(
-                            api.firstString(obj, "title") ?: "(无标题)",
-                            (api.firstString(obj, "nickname", "username") ?: "") + " · " + (api.firstString(obj, "created_at") ?: "") + " · 赞 " + obj.optInt("likes", 0),
-                            api.firstString(obj, "content") ?: ""
-                        )
+                        "FORUM" -> {
+                            val title = api.firstString(obj, "title") ?: "(无标题)"
+                            communityPostIds[title] = obj.optInt("id", -1)
+                            Triple(
+                                title,
+                                (api.firstString(obj, "nickname", "username") ?: "") + " · " + (api.firstString(obj, "created_at") ?: "") + " · 赞 " + obj.optInt("likes", 0),
+                                api.firstString(obj, "content") ?: ""
+                            )
+                        }
                         "RANK" -> Triple(
                             "#" + obj.optInt("rank", 0) + "  " + (api.firstString(obj, "nickname", "player_name", "username") ?: ""),
                             obj.optInt("coins", 0).toString() + " 喵币", ""
@@ -808,7 +814,11 @@ class MainActivity : AppCompatActivity() {
         communityBinding.communityEmpty.visibility = View.GONE
         val mapped: List<Pair<String, String>> = items.map { Triple(it.first, it.second, it.third); Pair(it.first, it.second) }
         communityBinding.communityRecycler.adapter = InlineItemAdapter(items.map { InlineItem(it.first, it.second, it.third) }) { item ->
-            if (item.detail.isNotBlank()) {
+            val pid = communityPostIds[item.title]
+            if (pid != null && pid > 0) {
+                // 论坛帖子 → 打开详情（含图片 / 点赞 / 回复）
+                ForumPostDialog.show(this, api, pid)
+            } else if (item.detail.isNotBlank()) {
                 MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
                     .setTitle(item.title)
                     .setMessage(item.subtitle + "\n\n" + item.detail)
@@ -905,16 +915,21 @@ class MainActivity : AppCompatActivity() {
             profileBinding.btnLogin.visibility = View.VISIBLE
             profileBinding.btnLogin.text = "绑定 QQ"
             profileBinding.btnLogout.visibility = View.VISIBLE
-            // 检测 QQ 绑定状态：已绑定则隐藏"绑定 QQ"按钮
+            // 检测 QQ 绑定状态与余额
             scope.launch {
                 try {
                     val root = api.get("/user/profile")
                     val data = root.optJSONObject("data")
                     val qq = data?.optString("qq_nickname", "") ?: ""
+                    val balance = data?.optString("balance", "") ?: ""
+                    val parts = mutableListOf<String>()
+                    parts.add("已登录")
+                    if (balance.isNotBlank()) parts.add("喵币 $balance")
                     if (qq.isNotBlank()) {
+                        parts.add("已绑定 QQ：$qq")
                         profileBinding.btnLogin.visibility = View.GONE
-                        profileBinding.tvBio.text = "已登录 · 已绑定 QQ：$qq"
                     }
+                    profileBinding.tvBio.text = parts.joinToString(" · ")
                 } catch (e: Exception) {
                     // 检测失败忽略（按钮保持可见）
                 }
