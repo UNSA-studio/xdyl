@@ -726,6 +726,7 @@ class MainActivity : AppCompatActivity() {
     private fun ensureCommunityLoaded() {
         if (!communityLoaded) {
             communityLoaded = true
+            communityBinding.communityRecycler.layoutManager = LinearLayoutManager(this)
             bindCommunityTabs()
             loadCommunityTab("ANNOUNCEMENTS")
         }
@@ -822,6 +823,7 @@ class MainActivity : AppCompatActivity() {
     private fun ensureShopLoaded() {
         if (!shopLoaded) {
             shopLoaded = true
+            shopBinding.shopRecycler.layoutManager = LinearLayoutManager(this)
             loadRedeemRate()
             loadShopItems()
         }
@@ -903,6 +905,20 @@ class MainActivity : AppCompatActivity() {
             profileBinding.btnLogin.visibility = View.VISIBLE
             profileBinding.btnLogin.text = "绑定 QQ"
             profileBinding.btnLogout.visibility = View.VISIBLE
+            // 检测 QQ 绑定状态：已绑定则隐藏"绑定 QQ"按钮
+            scope.launch {
+                try {
+                    val root = api.get("/user/profile")
+                    val data = root.optJSONObject("data")
+                    val qq = data?.optString("qq_nickname", "") ?: ""
+                    if (qq.isNotBlank()) {
+                        profileBinding.btnLogin.visibility = View.GONE
+                        profileBinding.tvBio.text = "已登录 · 已绑定 QQ：$qq"
+                    }
+                } catch (e: Exception) {
+                    // 检测失败忽略（按钮保持可见）
+                }
+            }
         } else {
             profileBinding.tvNickname.text = "未登录"
             profileBinding.tvBio.text = "登录星灯云浪，同步你的喵币与称号"
