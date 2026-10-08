@@ -738,6 +738,7 @@ class MainActivity : AppCompatActivity() {
             view.setOnClickListener {
                 val tabs: List<TextView> = listOf(communityBinding.tabAnnounce, communityBinding.tabForum, communityBinding.tabRank, communityBinding.tabPlaytime)
                 tabs.forEach { tb -> tb.alpha = if (tb == view) 1f else 0.5f }
+                showCommunityList()
                 loadCommunityTab(key)
             }
         }
@@ -746,11 +747,32 @@ class MainActivity : AppCompatActivity() {
         tab(communityBinding.tabRank, "RANK")
         tab(communityBinding.tabPlaytime, "PLAYTIME")
         communityBinding.tabAnnounce.alpha = 1f
-        // ===== 社区扩展功能入口（可横向滚动的选择栏） =====
-        communityBinding.chipTasks.setOnClickListener { FeatureDialogs.showTasks(this) }
-        communityBinding.chipPlayers.setOnClickListener { FeatureDialogs.showPlayers(this) }
-        communityBinding.chipMemorials.setOnClickListener { FeatureDialogs.showMemorials(this) }
-        communityBinding.chipMyItems.setOnClickListener { FeatureDialogs.showMyItems(this) }
+        // ===== 社区扩展功能入口（点击后整页展示，不是弹窗） =====
+        communityBinding.chipTasks.setOnClickListener { openCommunityFeature("tasks") }
+        communityBinding.chipPlayers.setOnClickListener { openCommunityFeature("players") }
+        communityBinding.chipMemorials.setOnClickListener { openCommunityFeature("memorials") }
+        communityBinding.chipMyItems.setOnClickListener { openCommunityFeature("items") }
+    }
+
+    /** 打开社区功能页（整页展示，不是弹窗） */
+    private fun openCommunityFeature(type: String) {
+        communityBinding.communityRecycler.visibility = View.GONE
+        communityBinding.communityEmpty.visibility = View.GONE
+        communityBinding.communityProgress.visibility = View.GONE
+        communityBinding.featureScroll.visibility = View.VISIBLE
+        val c = communityBinding.featureContainer
+        when (type) {
+            "tasks" -> FeatureDialogs.renderTasksPage(this, c)
+            "players" -> FeatureDialogs.renderPlayersPage(this, c)
+            "memorials" -> FeatureDialogs.renderMemorialsPage(this, c)
+            "items" -> FeatureDialogs.renderMyItemsPage(this, c)
+        }
+    }
+
+    /** 切回社区列表视图 */
+    private fun showCommunityList() {
+        communityBinding.featureScroll.visibility = View.GONE
+        communityBinding.communityRecycler.visibility = View.VISIBLE
     }
 
     private fun loadCommunityTab(key: String) {

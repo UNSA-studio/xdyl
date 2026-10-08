@@ -17,18 +17,15 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * 社区功能集合（按服务端接口清单扩展）：
- *  - 论坛分类      /forum/categories
- *  - 纪念堂        /memorials
- *  - 在线玩家      /server/players
- *  - 任务中心      /tasks + /tasks/{id}/claim
- *  - 我的称号      /titles/mine + /titles/catalog + /titles/wear + /titles/buy
- *  - 我的物品      /user/items
- *  - 账户设置      /user/change-username + /user/password
- *  - 帖子打赏      /forum/post/{id}/tip
- *  - 通知已读      /notifications/read
- *  - 商城购买      /shop/buy
- *  - 兑换游戏币    /redeem/game-coins
+ * 社区功能集合（支持两种呈现方式）：
+ *  · 页面模式：renderXxxPage(activity, container) —— 直接渲染进社区页内容容器（整页）
+ *  · 弹窗模式：listDialog(...)                    —— 需要时弹出的列表
+ *
+ * 覆盖接口：
+ *  /forum/categories  /memorials  /server/players  /tasks(+claim)  /user/items
+ *  /titles/mine  /titles/catalog  /titles/wear  /titles/buy
+ *  /user/change-username  /user/password
+ *  /forum/post/{id}/tip  /notifications/read  /shop/buy  /redeem/game-coins
  */
 object FeatureDialogs {
 
@@ -37,7 +34,10 @@ object FeatureDialogs {
 
     // ==================== 通用工具 ====================
 
-    /** 把接口返回的 data 归一化成 JSONArray（兼容 data 为数组 / data.items / data.list 等形式） */
+    private fun dp(a: AppCompatActivity, v: Int): Int =
+        (v * a.resources.displayMetrics.density).toInt()
+
+    /** 归一化 data → JSONArray */
     private fun toArray(root: JSONObject): JSONArray? {
         val data = root.opt("data")
         return when (data) {
@@ -46,13 +46,12 @@ object FeatureDialogs {
                 ?: data.optJSONArray("list")
                 ?: data.optJSONArray("posts")
                 ?: data.optJSONArray("players")
-                ?: data.optJSONArray("data")
                 ?: data.optJSONArray("titles")
+                ?: data.optJSONArray("data")
             else -> root.optJSONArray("data")
         }
     }
 
-    /** 条目渲染：优先常见字段，没有就展示条目的前若干字符（避免字段名猜错导致空白） */
     private fun itemTitle(o: JSONObject): String =
         firstNonBlank(o, "title", "name", "nickname", "username", "player_name", "id") ?: "条目"
 
@@ -61,10 +60,7 @@ object FeatureDialogs {
         firstNonBlank(o, "description", "desc", "content", "subtitle")?.let { parts.add(it.take(80)) }
         firstNonBlank(o, "reward", "coins", "price", "cost")?.let { parts.add("奖励/价格：$it") }
         firstNonBlank(o, "status", "state")?.let { parts.add(it) }
-        if (parts.isEmpty()) {
-            // 兜底：把 JSON 截断展示
-            parts.add(o.toString().take(100))
-        }
+        if (parts.isEmpty()) parts.add(o.toString().take(100))
         return parts.joinToString(" · ")
     }
 
@@ -76,122 +72,150 @@ object FeatureDialogs {
         return null
     }
 
-    /** 通用滚动列表弹窗 */
-    fun listDialog(
-        activity: AppCompatActivity,
-        title: String,
-        rows: List<Triple<String, String, (() -> Unit)?>>
-    ) {
-        val col = LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 16, 48, 16)
+    private fun textView(a: AppCompatActivity, s: String, size: Float, color: Int, bold: Boolean = false) =
+        TextView(a).apply {
+            text = s
+            textSize = size
+            setTextColor(color)
+            if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
         }
-        val scroll = ScrollView(activity).apply { addView(col) }
-        val dialog = MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
-            .setTitle(title)
-            .setView(scroll)
-            .setNegativeButton("关闭", null)
-            .create()
 
-        if (rows.isEmpty()) {
-            col.addView(TextView(activity).apply {
-                text = "暂无数据"
-                setTextColor(0xFF9AA0A6.toInt())
-                textSize = 14f
+    /** 统一卡片（列表项） */
+    private fun makeCard(
+        a: AppCompatActivity,
+        title: String,
+        subtitle: String,
+        onClick: (() -> Unit)?
+    ): LinearLayout {
+        val card = LinearLayout(a).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(a, 18), dp(a, 14), dp(a, 18), dp(a, 14))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(a, 14).toFloat()
+                setColor(0xFF2A2A2A.toInt())
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(a, 10) }
+            isClickable = onClick != null
+            if (onClick != null) setOnClickListener { onClick() }
+        }
+        card.addView(textView(a, title, 15f, 0xFFA0C4FF.toInt(), bold = true))
+        if (subtitle.isNotBlank()) {
+            card.addView(textView(a, subtitle, 12f, 0xFF9AA0A6.toInt()).apply {
+                setPadding(0, dp(a, 6), 0, 0)
             })
         }
-        for ((t, s, onClick) in rows) {
-            val card = LinearLayout(activity).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(28, 22, 28, 22)
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    cornerRadius = 24f
-                    setColor(0xFF2A2A2A.toInt())
-                }
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                ).apply { bottomMargin = 18 }
-                isClickable = onClick != null
-                if (onClick != null) setOnClickListener { onClick() }
-            }
-            card.addView(TextView(activity).apply {
-                text = t
-                setTextColor(0xFFA0C4FF.toInt())
-                textSize = 15f
-                setTypeface(typeface, android.graphics.Typeface.BOLD)
-            })
-            if (s.isNotBlank()) {
-                card.addView(TextView(activity).apply {
-                    text = s
-                    setTextColor(0xFF9AA0A6.toInt())
-                    textSize = 12f
-                    setPadding(0, 8, 0, 0)
-                })
-            }
-            col.addView(card)
-        }
-        dialog.show()
+        return card
     }
 
-    /** 通用「加载中→列表」流程 */
-    private fun load(
+    // ==================== 页面模式（整页渲染） ====================
+
+    /**
+     * 通用功能页：渲染到社区页的 featureContainer 中。
+     * 自带「标题 + 刷新按钮 + 可滚动列表」。
+     */
+    fun renderPage(
         activity: AppCompatActivity,
-        loadingToast: String,
-        path: String,
+        container: LinearLayout,
         title: String,
+        path: String,
         itemMapper: ((JSONObject) -> Triple<String, String, (() -> Unit)?>)? = null
     ) {
-        Toast.makeText(activity, loadingToast, Toast.LENGTH_SHORT).show()
-        activity.lifecycleScope.launch {
-            try {
-                val root = withContext(Dispatchers.IO) { api.get(path) }
-                val arr = toArray(root)
-                val rows = mutableListOf<Triple<String, String, (() -> Unit)?>>()
-                if (arr != null) {
+        container.removeAllViews()
+
+        val listCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+        val head = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(0, dp(activity, 4), 0, dp(activity, 12))
+        }
+        head.addView(textView(activity, title, 18f, 0xFFA0C4FF.toInt(), bold = true).apply {
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        val refresh = MaterialButton(activity).apply {
+            text = "刷新"
+            textSize = 12f
+            minWidth = 0
+            setTextColor(0xFF10131A.toInt())
+            setBackgroundColor(0xFFA0C4FF.toInt())
+            setPadding(dp(activity, 16), 0, dp(activity, 16), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 36)
+            )
+        }
+        head.addView(refresh)
+        container.addView(head)
+        container.addView(listCol)
+
+        fun doLoad() {
+            listCol.removeAllViews()
+            listCol.addView(textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt()))
+            activity.lifecycleScope.launch {
+                try {
+                    val root = withContext(Dispatchers.IO) { api.get(path) }
+                    val arr = toArray(root)
+                    listCol.removeAllViews()
+                    if (arr == null || arr.length() == 0) {
+                        listCol.addView(textView(activity, "暂无数据", 13f, 0xFF9AA0A6.toInt()))
+                        return@launch
+                    }
                     for (i in 0 until arr.length()) {
                         val o = arr.optJSONObject(i) ?: continue
-                        rows.add(itemMapper?.invoke(o) ?: Triple(itemTitle(o), itemSubtitle(o), null))
+                        val mapped = itemMapper?.invoke(o)
+                            ?: Triple(itemTitle(o), itemSubtitle(o), null)
+                        listCol.addView(makeCard(activity, mapped.first, mapped.second, mapped.third))
                     }
+                } catch (e: Exception) {
+                    listCol.removeAllViews()
+                    listCol.addView(textView(activity, "加载失败：" + e.message, 13f, 0xFFE57373.toInt()))
                 }
-                listDialog(activity, title, rows)
-            } catch (e: Exception) {
-                Toast.makeText(activity, "加载失败：" + e.message, Toast.LENGTH_LONG).show()
             }
         }
+        refresh.setOnClickListener { doLoad() }
+        doLoad()
     }
 
-    // ==================== 各功能 ====================
+    /** 任务中心（页面）：完成的点一下领取 */
+    fun renderTasksPage(activity: AppCompatActivity, container: LinearLayout) {
+        container.removeAllViews()
+        val listCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+        val head = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(0, dp(activity, 4), 0, dp(activity, 12))
+        }
+        head.addView(textView(activity, "任务中心", 18f, 0xFFA0C4FF.toInt(), bold = true).apply {
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        val refresh = MaterialButton(activity).apply {
+            text = "刷新"
+            textSize = 12f
+            minWidth = 0
+            setTextColor(0xFF10131A.toInt())
+            setBackgroundColor(0xFFA0C4FF.toInt())
+            setPadding(dp(activity, 16), 0, dp(activity, 16), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 36)
+            )
+        }
+        head.addView(refresh)
+        container.addView(head)
+        container.addView(listCol)
 
-    /** 论坛分类 /forum/categories */
-    fun showCategories(activity: AppCompatActivity) = load(
-        activity, "正在加载分类…", "/forum/categories", "论坛分类"
-    )
-
-    /** 纪念堂 /memorials */
-    fun showMemorials(activity: AppCompatActivity) = load(
-        activity, "正在加载纪念堂…", "/memorials", "纪念堂"
-    )
-
-    /** 在线玩家 /server/players */
-    fun showPlayers(activity: AppCompatActivity) = load(
-        activity, "正在查询在线玩家…", "/server/players", "在线玩家"
-    )
-
-    /** 我的物品 /user/items */
-    fun showMyItems(activity: AppCompatActivity) = load(
-        activity, "正在加载物品…", "/user/items", "我的物品"
-    )
-
-    /** 任务中心 /tasks，点击可领取奖励 */
-    fun showTasks(activity: AppCompatActivity) {
-        Toast.makeText(activity, "正在加载任务…", Toast.LENGTH_SHORT).show()
-        activity.lifecycleScope.launch {
-            try {
-                val root = withContext(Dispatchers.IO) { api.get("/tasks") }
-                val arr = toArray(root)
-                val rows = mutableListOf<Triple<String, String, (() -> Unit)?>>()
-                if (arr != null) {
+        fun doLoad() {
+            listCol.removeAllViews()
+            listCol.addView(textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt()))
+            activity.lifecycleScope.launch {
+                try {
+                    val root = withContext(Dispatchers.IO) { api.get("/tasks") }
+                    val arr = toArray(root)
+                    listCol.removeAllViews()
+                    if (arr == null || arr.length() == 0) {
+                        listCol.addView(textView(activity, "暂无任务", 13f, 0xFF9AA0A6.toInt()))
+                        return@launch
+                    }
                     for (i in 0 until arr.length()) {
                         val o = arr.optJSONObject(i) ?: continue
                         val id = o.optInt("id", -1)
@@ -199,39 +223,110 @@ object FeatureDialogs {
                         val claimed = o.optInt("claimed", 0) == 1 || o.optBoolean("claimed", false)
                         val sub = buildString {
                             append(itemSubtitle(o))
-                            if (claimed) append(" · 已领取") else if (done) append(" · ✅ 可领取")
+                            if (claimed) append(" · 已领取")
+                            else if (done) append(" · ✅ 点击领取")
                         }
-                        rows.add(
-                            Triple(
-                                itemTitle(o), sub,
+                        listCol.addView(
+                            makeCard(
+                                activity, itemTitle(o), sub,
                                 if (done && !claimed && id > 0) {
-                                    {
-                                        claimTask(activity, id, itemTitle(o))
-                                    }
+                                    { claimTask(activity, id, itemTitle(o)); }
                                 } else null
                             )
                         )
                     }
+                } catch (e: Exception) {
+                    listCol.removeAllViews()
+                    listCol.addView(textView(activity, "加载失败：" + e.message, 13f, 0xFFE57373.toInt()))
                 }
-                listDialog(activity, "任务中心", rows)
-            } catch (e: Exception) {
-                Toast.makeText(activity, "加载失败：" + e.message, Toast.LENGTH_LONG).show()
             }
+        }
+        refresh.setOnClickListener { doLoad() }
+        doLoad()
+    }
+
+    /** 我的称号（页面）：点一下佩戴 */
+    fun renderTitlesPage(activity: AppCompatActivity, container: LinearLayout) {
+        renderPage(activity, container, "我的称号（点击佩戴）", "/titles/mine") { o ->
+            val id = o.optInt("id", -1)
+            val worn = o.optInt("worn", 0) == 1 || o.optBoolean("worn", false)
+            val sub = buildString {
+                append(itemSubtitle(o))
+                if (worn) append(" · 佩戴中")
+            }
+            Triple(
+                itemTitle(o), sub,
+                if (!worn && id > 0) ({ wearTitle(activity, id, itemTitle(o)); }) else null
+            )
         }
     }
 
-    private fun claimTask(activity: AppCompatActivity, id: Int, name: String) {
-        activity.lifecycleScope.launch {
-            try {
-                val r = api.request("POST", "/tasks/$id/claim").toString()
-                Toast.makeText(activity, "已领取：$name\n$r", Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                Toast.makeText(activity, "领取失败：" + e.message, Toast.LENGTH_LONG).show()
+    /** 账户信息（页面）：改用户名 / 改密码 */
+    fun renderAccountPage(activity: AppCompatActivity, container: LinearLayout) {
+        container.removeAllViews()
+        container.addView(
+            textView(activity, "更改账户信息", 18f, 0xFFA0C4FF.toInt(), bold = true).apply {
+                setPadding(0, dp(activity, 4), 0, dp(activity, 12))
             }
-        }
+        )
+        container.addView(
+            makeCard(activity, "修改用户名", "修改你的账号昵称", { changeUsername(activity) })
+        )
+        container.addView(
+            makeCard(activity, "修改密码", "修改登录密码", { changePassword(activity) })
+        )
     }
 
-    /** 我的称号 /titles/mine */
+    /** 在线玩家（页面） */
+    fun renderPlayersPage(activity: AppCompatActivity, container: LinearLayout) =
+        renderPage(activity, container, "在线玩家", "/server/players")
+
+    /** 纪念堂（页面） */
+    fun renderMemorialsPage(activity: AppCompatActivity, container: LinearLayout) =
+        renderPage(activity, container, "纪念堂", "/memorials")
+
+    /** 我的物品（页面） */
+    fun renderMyItemsPage(activity: AppCompatActivity, container: LinearLayout) =
+        renderPage(activity, container, "我的物品", "/user/items")
+
+    /** 论坛分类（页面） */
+    fun renderCategoriesPage(activity: AppCompatActivity, container: LinearLayout) =
+        renderPage(activity, container, "论坛分类", "/forum/categories")
+
+    /** 称号商店（页面） */
+    fun renderTitleShopPage(activity: AppCompatActivity, container: LinearLayout) =
+        renderPage(activity, container, "称号商店（点击购买）", "/titles/catalog") { o ->
+            val id = o.optInt("id", -1)
+            Triple(itemTitle(o), itemSubtitle(o), { buyTitle(activity, id, itemTitle(o)); })
+        }
+
+    // ==================== 弹窗模式（保留） ====================
+
+    fun listDialog(
+        activity: AppCompatActivity,
+        title: String,
+        rows: List<Triple<String, String, (() -> Unit)?>>
+    ) {
+        val col = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(activity, 20), dp(activity, 8), dp(activity, 20), dp(activity, 8))
+        }
+        val scroll = ScrollView(activity).apply { addView(col) }
+        val dialog = MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
+            .setTitle(title)
+            .setView(scroll)
+            .setNegativeButton("关闭", null)
+            .create()
+        if (rows.isEmpty()) {
+            col.addView(textView(activity, "暂无数据", 14f, 0xFF9AA0A6.toInt()))
+        }
+        for ((t, s, onClick) in rows) {
+            col.addView(makeCard(activity, t, s, onClick))
+        }
+        dialog.show()
+    }
+
+    /** 我的称号（弹窗版，供「我的」页称号胶囊点击使用） */
     fun showMyTitles(activity: AppCompatActivity) {
         Toast.makeText(activity, "正在加载称号…", Toast.LENGTH_SHORT).show()
         activity.lifecycleScope.launch {
@@ -251,17 +346,13 @@ object FeatureDialogs {
                         rows.add(
                             Triple(
                                 itemTitle(o), sub,
-                                if (!worn && id > 0) {
-                                    { wearTitle(activity, id, itemTitle(o)) }
-                                } else null
+                                if (!worn && id > 0) ({ wearTitle(activity, id, itemTitle(o)); }) else null
                             )
                         )
                     }
                 }
                 if (rows.isEmpty()) {
-                    rows.add(Triple("还没有称号", "去称号商店看看吧", {
-                        showTitleShop(activity)
-                    }))
+                    rows.add(Triple("还没有称号", "点下面进称号商店看看", { showTitleShop(activity) }))
                 } else {
                     rows.add(0, Triple("🏪 称号商店", "购买新的称号", { showTitleShop(activity) }))
                 }
@@ -272,13 +363,53 @@ object FeatureDialogs {
         }
     }
 
-    private fun showTitleShop(activity: AppCompatActivity) = load(
-        activity, "正在加载称号商店…", "/titles/catalog", "称号商店（点击购买）",
-        itemMapper = { o ->
-            val id = o.optInt("id", -1)
-            Triple(itemTitle(o), itemSubtitle(o), { buyTitle(activity, id, itemTitle(o)) })
+    /** 称号商店（弹窗版） */
+    private fun showTitleShop(activity: AppCompatActivity) {
+        Toast.makeText(activity, "正在加载称号商店…", Toast.LENGTH_SHORT).show()
+        activity.lifecycleScope.launch {
+            try {
+                val root = withContext(Dispatchers.IO) { api.get("/titles/catalog") }
+                val arr = toArray(root)
+                val rows = mutableListOf<Triple<String, String, (() -> Unit)?>>()
+                if (arr != null) {
+                    for (i in 0 until arr.length()) {
+                        val o = arr.optJSONObject(i) ?: continue
+                        val id = o.optInt("id", -1)
+                        rows.add(
+                            Triple(itemTitle(o), itemSubtitle(o), { buyTitle(activity, id, itemTitle(o)); })
+                        )
+                    }
+                }
+                listDialog(activity, "称号商店（点击购买）", rows)
+            } catch (e: Exception) {
+                Toast.makeText(activity, "加载失败：" + e.message, Toast.LENGTH_LONG).show()
+            }
         }
-    )
+    }
+
+    /** 账户设置（弹窗版，保留兼容） */
+    fun showAccountSettings(activity: AppCompatActivity) {
+        listDialog(
+            activity, "更改账户信息",
+            listOf(
+                Triple("修改用户名", "修改你的账号昵称", { changeUsername(activity) }),
+                Triple("修改密码", "修改登录密码", { changePassword(activity) })
+            )
+        )
+    }
+
+    // ==================== 动作实现 ====================
+
+    private fun claimTask(activity: AppCompatActivity, id: Int, name: String) {
+        activity.lifecycleScope.launch {
+            try {
+                val r = api.request("POST", "/tasks/$id/claim").toString()
+                Toast.makeText(activity, "已领取：$name\n$r", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(activity, "领取失败：" + e.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     private fun wearTitle(activity: AppCompatActivity, id: Int, name: String) {
         activity.lifecycleScope.launch {
@@ -302,17 +433,6 @@ object FeatureDialogs {
                 Toast.makeText(activity, "购买失败：" + e.message, Toast.LENGTH_LONG).show()
             }
         }
-    }
-
-    /** 账户设置：改用户名 / 改密码 */
-    fun showAccountSettings(activity: AppCompatActivity) {
-        listDialog(
-            activity, "账户设置",
-            listOf(
-                Triple("修改用户名", "修改你的账号昵称", { changeUsername(activity) }),
-                Triple("修改密码", "修改登录密码", { changePassword(activity) })
-            )
-        )
     }
 
     private fun changeUsername(activity: AppCompatActivity) {
@@ -359,7 +479,10 @@ object FeatureDialogs {
 
     /** 帖子打赏 /forum/post/{id}/tip */
     fun tipPost(activity: AppCompatActivity, postId: Int) {
-        val et = EditText(activity).apply { hint = "打赏金额（喵币）"; inputType = android.text.InputType.TYPE_CLASS_NUMBER }
+        val et = EditText(activity).apply {
+            hint = "打赏金额（喵币）"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        }
         MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setTitle("打赏帖子")
             .setView(et)

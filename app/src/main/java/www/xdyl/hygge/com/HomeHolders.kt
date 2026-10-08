@@ -41,6 +41,8 @@ object HomeHolders {
         val chipPlayers: TextView = root.findViewById(R.id.chipPlayers)
         val chipMemorials: TextView = root.findViewById(R.id.chipMemorials)
         val chipMyItems: TextView = root.findViewById(R.id.chipMyItems)
+        val featureScroll: android.view.View = root.findViewById(R.id.featureScroll)
+        val featureContainer: android.widget.LinearLayout = root.findViewById(R.id.featureContainer)
         val communityProgress: LinearProgressIndicator = root.findViewById(R.id.communityProgress)
         val communityEmpty: TextView = root.findViewById(R.id.communityEmpty)
         val communityRecycler: RecyclerView = root.findViewById(R.id.communityRecycler)
