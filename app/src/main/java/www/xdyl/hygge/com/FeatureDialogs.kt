@@ -18,8 +18,8 @@ import org.json.JSONObject
 
 /**
  * 社区功能集合（支持两种呈现方式）：
- *  · 页面模式：renderXxxPage(activity, container) —— 直接渲染进社区页内容容器（整页）
- *  · 弹窗模式：listDialog(...)                    —— 需要时弹出的列表
+ * · 页面模式：renderXxxPage(activity, container) —— 直接渲染进社区页内容容器（整页）
+ * · 弹窗模式：listDialog(...)                    —— 需要时弹出的列表
  *
  * 覆盖接口：
  *  /forum/categories  /memorials  /server/players  /tasks(+claim)  /user/items
@@ -224,7 +224,7 @@ object FeatureDialogs {
                         val sub = buildString {
                             append(itemSubtitle(o))
                             if (claimed) append(" · 已领取")
-                            else if (done) append(" · ✅ 点击领取")
+                            else if (done) append(" · 点击领取")
                         }
                         listCol.addView(
                             makeCard(
@@ -354,7 +354,7 @@ object FeatureDialogs {
                 if (rows.isEmpty()) {
                     rows.add(Triple("还没有称号", "点下面进称号商店看看", { showTitleShop(activity) }))
                 } else {
-                    rows.add(0, Triple("🏪 称号商店", "购买新的称号", { showTitleShop(activity) }))
+                    rows.add(0, Triple("称号商店", "购买新的称号", { showTitleShop(activity) }))
                 }
                 listDialog(activity, "我的称号（点击佩戴）", rows)
             } catch (e: Exception) {
