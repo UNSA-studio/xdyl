@@ -347,6 +347,18 @@ class ApiClient(private val session: SessionStore) {
         }
     }
 
+    /** 通用请求（自动携带 token，供扩展功能使用）
+     *  method: "GET" / "POST"，body 可为 null
+     */
+    suspend fun request(
+        method: String,
+        path: String,
+        body: JSONObject? = null,
+        requiresAuth: Boolean = true
+    ): JSONObject = withContext(Dispatchers.IO) {
+        execute(method, path, body ?: JSONObject(), requiresAuth, allowRefresh = false)
+    }
+
     private fun postRaw(path: String, body: JSONObject, requiresAuth: Boolean): JSONObject =
         execute("POST", path, body, requiresAuth, allowRefresh = false)
 
