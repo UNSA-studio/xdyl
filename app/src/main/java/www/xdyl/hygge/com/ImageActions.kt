@@ -5,8 +5,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.os.Environment
 import android.view.View
-import android.widget.EditText
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
@@ -19,21 +19,24 @@ import java.util.concurrent.TimeUnit
  * 图片长按操作菜单（类似 Windows 右键菜单）：
  *  - 查看 Markdown 源码
  *  - 下载（默认到 Download/NebulaImages）
- *  - 指定下载（自定义 Download 下的子目录）
+ *  - 指定下载（调用【文件管理器组件】选择任意目录）
  *  - 删除该资源缓存
  */
 object ImageActions {
 
     private val items = arrayOf("查看 Markdown 源码", "下载", "指定下载", "删除该资源缓存")
 
-    /** 在任意 Activity 中弹出图片操作菜单 */
-    fun showMenu(activity: androidx.appcompat.app.AppCompatActivity, url: String, markdown: String? = null) {
+    /** 在任意页面弹出图片操作菜单 */
+    fun showMenu(activity: AppCompatActivity, url: String, markdown: String? = null) {
         MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setTitle("图片操作")
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> showMarkdownSource(activity, url, markdown)
-                    1 -> download(activity, url, "NebulaImages")
+                    1 -> downloadTo(
+                        activity, url,
+                        File(Environment.getExternalStorageDirectory(), "Download/NebulaImages")
+                    )
                     2 -> askDownloadDir(activity, url)
                     3 -> {
                         SimpleImageLoader.removeCache(activity, url)
@@ -46,7 +49,7 @@ object ImageActions {
     }
 
     /** 查看 Markdown 源码（可复制） */
-    private fun showMarkdownSource(activity: androidx.appcompat.app.AppCompatActivity, url: String, markdown: String?) {
+    private fun showMarkdownSource(activity: AppCompatActivity, url: String, markdown: String?) {
         val md = markdown ?: "![图片]($url)"
         MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setTitle("Markdown 源码")
@@ -60,31 +63,22 @@ object ImageActions {
             .show()
     }
 
-    /** 指定下载目录（Download 下的子目录名） */
-    private fun askDownloadDir(activity: androidx.appcompat.app.AppCompatActivity, url: String) {
-        val et = EditText(activity).apply {
-            hint = "Download 下的子目录名"
-            setText("NebulaImages")
-            setSelection(text.length)
+    /**
+     * 指定下载：调用【文件管理器组件】选择目标目录。
+     * 组件调用形式：FolderBrowserFragment.pick(manager, 标题, 起始目录) { dir -> ... }
+     */
+    private fun askDownloadDir(activity: AppCompatActivity, url: String) {
+        FolderBrowserFragment.pick(
+            activity.supportFragmentManager,
+            title = "选择图片下载目录",
+            startDir = Environment.getExternalStorageDirectory().absolutePath + "/Download"
+        ) { dir ->
+            downloadTo(activity, url, dir)
         }
-        val wrapper = android.widget.FrameLayout(activity).apply {
-            setPadding(48, 16, 48, 0)
-            addView(et)
-        }
-        MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
-            .setTitle("指定下载目录")
-            .setMessage("将保存到 /sdcard/Download/<子目录>/")
-            .setView(wrapper)
-            .setPositiveButton("下载") { _, _ ->
-                val sub = et.text.toString().trim().ifBlank { "NebulaImages" }
-                download(activity, url, sub)
-            }
-            .setNegativeButton("取消", null)
-            .show()
     }
 
-    /** 下载图片到 /sdcard/Download/<subDir>/ */
-    fun download(activity: androidx.appcompat.app.AppCompatActivity, url: String, subDir: String = "NebulaImages") {
+    /** 下载图片到指定目录 */
+    fun downloadTo(activity: AppCompatActivity, url: String, dir: File) {
         Toast.makeText(activity, "正在下载…", Toast.LENGTH_SHORT).show()
         activity.lifecycleScope.launch {
             try {
@@ -101,10 +95,7 @@ object ImageActions {
                         resp.body?.bytes() ?: throw RuntimeException("响应为空")
                     }
                     val ext = url.substringAfterLast('.', "jpg").substringBefore('?').take(5)
-                    val dir = File(
-                        Environment.getExternalStorageDirectory(),
-                        "Download/$subDir"
-                    ).apply { mkdirs() }
+                    dir.mkdirs()
                     val out = File(dir, "img_${System.currentTimeMillis()}.$ext")
                     out.writeBytes(bytes)
                     out
@@ -117,7 +108,7 @@ object ImageActions {
     }
 
     /** 给 ImageView 绑定长按菜单 */
-    fun attachLongPress(activity: androidx.appcompat.app.AppCompatActivity, view: View, url: String, markdown: String? = null) {
+    fun attachLongPress(activity: AppCompatActivity, view: View, url: String, markdown: String? = null) {
         view.setOnLongClickListener {
             showMenu(activity, url, markdown)
             true
