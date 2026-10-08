@@ -154,6 +154,20 @@ object ForumPostDialog {
                         }
                     }
                     likeRow.addView(likeBtn)
+                    // 打赏按钮
+                    val tipBtn = MaterialButton(activity).apply {
+                        text = "打赏"
+                        textSize = 13f
+                        setTextColor(0xFFA0C4FF.toInt())
+                        setBackgroundColor(0xFF2A2A2A.toInt())
+                        minWidth = 0
+                        setPadding(dip(activity, 18), 0, dip(activity, 18), 0)
+                        layoutParams = LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT, dip(activity, 38)
+                        ).apply { leftMargin = dip(activity, 8) }
+                        setOnClickListener { FeatureDialogs.tipPost(activity, postId) }
+                    }
+                    likeRow.addView(tipBtn)
                     col.addView(likeRow)
                     // 回复区
                     col.addView(simpleText(activity, "回复（${replies?.length() ?: 0}）", 14f, 0xFFA0C4FF.toInt(), topMargin = 18, bold = true))

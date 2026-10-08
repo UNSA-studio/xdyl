@@ -160,6 +160,8 @@ class MainActivity : AppCompatActivity() {
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         session = SessionStore(this)
         api = ApiClient(session)
+        // 扩展功能模块共用同一个 API 客户端
+        FeatureDialogs.api = api
         // 内页 binding：include 的各页
         communityBinding = HomeHolders.Community(binding.viewFlipper.getChildAt(1))
         shopBinding = HomeHolders.Shop(binding.viewFlipper.getChildAt(2))
@@ -258,6 +260,13 @@ class MainActivity : AppCompatActivity() {
             profileBinding.tvProfileStatus.text = "资料已刷新"
         }
         profileBinding.btnNotifications.setOnClickListener { showNotifications() }
+        // ===== 扩展功能入口（按服务端接口清单） =====
+        profileBinding.btnMyTitles.setOnClickListener { FeatureDialogs.showMyTitles(this) }
+        profileBinding.btnTasks.setOnClickListener { FeatureDialogs.showTasks(this) }
+        profileBinding.btnMyItems.setOnClickListener { FeatureDialogs.showMyItems(this) }
+        profileBinding.btnPlayers.setOnClickListener { FeatureDialogs.showPlayers(this) }
+        profileBinding.btnMemorials.setOnClickListener { FeatureDialogs.showMemorials(this) }
+        profileBinding.btnAccountSettings.setOnClickListener { FeatureDialogs.showAccountSettings(this) }
         profileBinding.btnOpenSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
