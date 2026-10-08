@@ -45,7 +45,7 @@ class FileAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val file = files[position]
-        holder.textView.text = if (file.isDirectory) "📁 " + file.name else "📄 " + file.name
+        holder.textView.text = if (file.isDirectory) "" + file.name else "" + file.name
         holder.itemView.setOnClickListener { onItemClick(file) }
         holder.itemView.setOnLongClickListener {
             onFolderSelected?.invoke(file)

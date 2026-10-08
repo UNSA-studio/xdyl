@@ -999,7 +999,7 @@ class MainActivity : AppCompatActivity() {
                     val balance = data?.optString("balance", "") ?: ""
                     // 喵币数额显示在称号右侧
                     profileBinding.tvCoins.text =
-                        if (balance.isNotBlank()) "💰 $balance 喵币" else "💰 -- 喵币"
+                        if (balance.isNotBlank()) "$balance 喵币" else "-- 喵币"
                     val parts = mutableListOf<String>()
                     parts.add("已登录")
                     if (balance.isNotBlank()) parts.add("喵币 $balance")
@@ -1036,7 +1036,7 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                         profileBinding.tvMyTitle.text =
-                            if (wornName.isNotBlank()) "🏅 $wornName" else "点击设置称号"
+                            if (wornName.isNotBlank()) "$wornName" else "点击设置称号"
                     } catch (e: Exception) {
                         profileBinding.tvMyTitle.text = "点击设置称号"
                     }
@@ -1049,7 +1049,7 @@ class MainActivity : AppCompatActivity() {
             profileBinding.tvNickname.text = "未登录"
             profileBinding.tvBio.text = "登录星灯云浪，同步你的喵币与称号"
             profileBinding.tvMyTitle.text = "点击设置称号"
-            profileBinding.tvCoins.text = "💰 -- 喵币"
+            profileBinding.tvCoins.text = "-- 喵币"
             profileBinding.btnLogin.visibility = View.VISIBLE
             profileBinding.btnLogin.text = "登录 / 注册"
             profileBinding.btnLogout.visibility = View.GONE

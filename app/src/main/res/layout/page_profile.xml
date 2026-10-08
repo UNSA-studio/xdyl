@@ -73,7 +73,7 @@
                     android:paddingTop="3dp"
                     android:paddingEnd="10dp"
                     android:paddingBottom="3dp"
-                    android:text="💰 -- 喵币"
+                    android:text="-- 喵币"
                     android:textColor="#FFD54F"
                     android:textSize="12sp" />
             </LinearLayout>
