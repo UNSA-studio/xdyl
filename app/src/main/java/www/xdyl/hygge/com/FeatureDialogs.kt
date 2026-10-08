@@ -504,6 +504,21 @@ object FeatureDialogs {
         postJson(activity, "/notifications/read", body, "通知已读")
     }
 
+    /** 更换头像：本地选择 / 使用默认 */
+    fun pickAvatar(activity: AppCompatActivity) {
+        val items = arrayOf("从本地文件选择", "使用默认头像（无头像）")
+        MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
+            .setTitle("更换头像")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> (activity as? MainActivity)?.startAvatarPick()
+                    1 -> postJson(activity, "/user/avatar", JSONObject().put("avatar", ""), "使用默认头像")
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
     /** 通用 POST JSON */
     fun postJson(activity: AppCompatActivity, path: String, body: JSONObject, label: String) {
         activity.lifecycleScope.launch {

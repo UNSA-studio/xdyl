@@ -359,6 +359,30 @@ class ApiClient(private val session: SessionStore) {
         execute(method, path, body ?: JSONObject(), requiresAuth, allowRefresh = false)
     }
 
+    /** 上传图片（multipart/form-data，字段名 file） */
+    suspend fun uploadImage(bytes: ByteArray, fileName: String, path: String = "/upload/image"): JSONObject =
+        withContext(Dispatchers.IO) {
+            val body = okhttp3.MultipartBody.Builder()
+                .setType(okhttp3.MultipartBody.FORM)
+                .addFormDataPart(
+                    "file", fileName,
+                    okhttp3.RequestBody.create(okhttp3.MediaType.parse("image/*"), bytes)
+                )
+                .build()
+            val builder = okhttp3.Request.Builder()
+                .url(BASE + path)
+                .post(body)
+                .header("User-Agent", "NebulaUpdater-Android/1.0")
+            if (session.accessToken.isNotBlank()) {
+                builder.header("Authorization", "Bearer ${session.accessToken}")
+            }
+            client.newCall(builder.build()).execute().use { resp ->
+                val text = resp.body?.string() ?: ""
+                if (!resp.isSuccessful) throw ApiException(resp.code, text.take(300))
+                if (text.isBlank()) JSONObject() else JSONObject(text)
+            }
+        }
+
     private fun postRaw(path: String, body: JSONObject, requiresAuth: Boolean): JSONObject =
         execute("POST", path, body, requiresAuth, allowRefresh = false)
 

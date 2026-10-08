@@ -254,6 +254,8 @@ class MainActivity : AppCompatActivity() {
         profileBinding.btnLogin.setOnClickListener { showLoginDialog() }
         // 点头像卡片 → 查看账户详细信息
         profileBinding.profileCard.setOnClickListener { showProfileDetail() }
+        // 点击头像 → 更换头像（本地选择 / 默认无头像）
+        profileBinding.ivAvatar.setOnClickListener { FeatureDialogs.pickAvatar(this) }
         profileBinding.btnRefreshProfile.setOnClickListener {
             if (!session.isLoggedIn) { Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
             refreshProfileUI()
@@ -311,6 +313,40 @@ class MainActivity : AppCompatActivity() {
                 requestPermissionLauncher.launch(permissions)
             }
         }
+    }
+
+    /** 头像选择器（系统文件选择） */
+    private val avatarPicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        scope.launch {
+            try {
+                val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: throw RuntimeException("无法读取所选文件")
+                val up = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    api.uploadImage(bytes, "avatar_${System.currentTimeMillis()}.jpg")
+                }
+                LogManager.log("[AVATAR] upload=$up")
+                val data = up.optJSONObject("data")
+                var avatar = data?.optString("url", "") ?: ""
+                if (avatar.isBlank()) avatar = data?.optString("filename", "") ?: ""
+                if (avatar.isBlank()) avatar = up.optString("url", "")
+                if (avatar.isNotBlank()) {
+                    FeatureDialogs.postJson(
+                        this@MainActivity, "/user/avatar",
+                        JSONObject().put("avatar", avatar), "头像"
+                    )
+                } else {
+                    Toast.makeText(this@MainActivity, "上传返回异常：$up", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, "头像上传失败：" + e.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /** 由 FeatureDialogs 调用：打开系统文件选择器挑选头像图片 */
+    fun startAvatarPick() {
+        avatarPicker.launch("image/*")
     }
 
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
@@ -961,6 +997,9 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     val balance = data?.optString("balance", "") ?: ""
+                    // 喵币数额显示在称号右侧
+                    profileBinding.tvCoins.text =
+                        if (balance.isNotBlank()) "💰 $balance 喵币" else "💰 -- 喵币"
                     val parts = mutableListOf<String>()
                     parts.add("已登录")
                     if (balance.isNotBlank()) parts.add("喵币 $balance")
@@ -1010,6 +1049,7 @@ class MainActivity : AppCompatActivity() {
             profileBinding.tvNickname.text = "未登录"
             profileBinding.tvBio.text = "登录星灯云浪，同步你的喵币与称号"
             profileBinding.tvMyTitle.text = "点击设置称号"
+            profileBinding.tvCoins.text = "💰 -- 喵币"
             profileBinding.btnLogin.visibility = View.VISIBLE
             profileBinding.btnLogin.text = "登录 / 注册"
             profileBinding.btnLogout.visibility = View.GONE

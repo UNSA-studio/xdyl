@@ -64,6 +64,7 @@ object HomeHolders {
         val btnRefreshProfile: MaterialButton = root.findViewById(R.id.btnRefreshProfile)
         val btnNotifications: MaterialButton = root.findViewById(R.id.btnNotifications)
         val tvMyTitle: TextView = root.findViewById(R.id.tvMyTitle)
+        val tvCoins: TextView = root.findViewById(R.id.tvCoins)
         val btnAccountSettings: MaterialButton = root.findViewById(R.id.btnAccountSettings)
         val btnOpenSettings: MaterialButton = root.findViewById(R.id.btnOpenSettings)
         val btnLogout: MaterialButton = root.findViewById(R.id.btnLogout)
