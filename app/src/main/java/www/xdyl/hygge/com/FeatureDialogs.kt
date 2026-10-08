@@ -388,7 +388,7 @@ object FeatureDialogs {
                 val r = api.request("POST", path, body).toString()
                 Toast.makeText(activity, "$label：$r", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
-                Toast.makeText(activity, "$label失败：" + e.message, Toast.LENGTH_LONG).show()
+                Toast.makeText(activity, "${label}失败：" + e.message, Toast.LENGTH_LONG).show()
             }
         }
     }
