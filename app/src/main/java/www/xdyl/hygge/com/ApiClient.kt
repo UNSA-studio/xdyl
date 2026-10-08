@@ -1,4 +1,5 @@
 package www.xdyl.hygge.com
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -366,7 +367,7 @@ class ApiClient(private val session: SessionStore) {
                 .setType(okhttp3.MultipartBody.FORM)
                 .addFormDataPart(
                     "file", fileName,
-                    okhttp3.RequestBody.create(okhttp3.MediaType.parse("image/*"), bytes)
+                    okhttp3.RequestBody.create("image/*".toMediaTypeOrNull(), bytes)
                 )
                 .build()
             val builder = okhttp3.Request.Builder()
