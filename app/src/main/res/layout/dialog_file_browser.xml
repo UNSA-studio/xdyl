@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/background_dark">
 
-    <!-- 组件标题（由 FolderBrowserFragment.pick 的 title 参数注入） -->
+    <!-- 标题（由 FolderBrowserFragment.pick 的 title 参数注入；对话框场景可留空） -->
     <TextView
         android:id="@+id/tvBrowserTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingStart="16dp"
-        android:paddingTop="16dp"
+        android:paddingTop="12dp"
         android:paddingEnd="16dp"
-        android:text="选择文件夹"
+        android:text=""
         android:textColor="@color/primary_light_blue"
         android:textSize="18sp"
         android:textStyle="bold" />
@@ -46,35 +45,4 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
-
-    <!-- 底部操作栏（原有样式）：左「返回上一级」右「选择此文件夹」 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnUpDir"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_weight="1"
-            android:text="返回上一级"
-            android:textColor="@color/primary_light_blue"
-            app:cornerRadius="22dp"
-            app:strokeColor="@color/primary_light_blue" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnPickThisDir"
-            style="@style/Widget.Material3.Button"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:text="选择此文件夹"
-            android:textColor="@android:color/black"
-            app:backgroundTint="@color/primary_light_blue"
-            app:cornerRadius="22dp" />
-    </LinearLayout>
 </LinearLayout>

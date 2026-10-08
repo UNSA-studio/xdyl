@@ -57,18 +57,8 @@ class FolderBrowserFragment : BottomSheetDialogFragment() {
         recyclerView = view.findViewById(R.id.recyclerView)
         view.findViewById<TextView>(R.id.tvBrowserTitle)?.text = title
 
-        // 底部操作栏：选择此文件夹
-        view.findViewById<View>(R.id.btnPickThisDir)?.setOnClickListener {
-            onFolderSelected?.invoke(currentDir)
-            dismiss()
-        }
-        // 底部操作栏：返回上一级
-        view.findViewById<View>(R.id.btnUpDir)?.setOnClickListener {
-            val parent = currentDir.parentFile
-            if (parent != null && parent.canRead()) {
-                navigateToDirectory(parent)
-            }
-        }
+        // 说明：首页文件对话框自带「返回上级 / 选择此文件夹」按钮；
+        // 本组件（BottomSheet）通过 单击文件 / 长按条目 完成选择。
 
         adapter = FileAdapter(
             { file ->
