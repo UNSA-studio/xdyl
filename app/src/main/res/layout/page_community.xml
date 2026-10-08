@@ -22,8 +22,8 @@
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="返回"
-            android:src="@drawable/ic_arrow_back"
+            android:contentDescription="社区"
+            android:src="@drawable/ic_community"
             android:tint="@color/primary_light_blue" />
 
         <TextView
@@ -208,4 +208,26 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tabScroll" />
+
+    <!-- 功能页面容器（任务中心 / 在线玩家 / 纪念堂 / 我的物品 等整页展示） -->
+    <ScrollView
+        android:id="@+id/featureScroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:visibility="gone"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tabScroll">
+
+        <LinearLayout
+            android:id="@+id/featureContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="4dp" />
+    </ScrollView>
 </androidx.constraintlayout.widget.ConstraintLayout>
