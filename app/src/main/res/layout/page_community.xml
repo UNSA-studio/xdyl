@@ -6,6 +6,7 @@
     android:background="@color/background_dark"
     android:padding="12dp">
 
+    <!-- 顶栏：返回箭头 + 标题 -->
     <LinearLayout
         android:id="@+id/topBar"
         android:layout_width="0dp"
@@ -22,9 +23,8 @@
             android:layout_height="44dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="返回"
-            android:src="@drawable/ic_settings"
-            android:tint="@color/primary_light_blue"
-            android:rotation="180" />
+            android:src="@drawable/ic_arrow_back"
+            android:tint="@color/primary_light_blue" />
 
         <TextView
             android:layout_width="0dp"
@@ -37,60 +37,141 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <LinearLayout
-        android:id="@+id/tabBar"
+    <!-- 可横向滚动的选择栏（可移动） -->
+    <HorizontalScrollView
+        android:id="@+id/tabScroll"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:orientation="horizontal"
+        android:scrollbars="none"
+        android:fillViewport="false"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/topBar">
 
-        <TextView
-            android:id="@+id/tabAnnounce"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:id="@+id/tabBar"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:padding="10dp"
-            android:text="公告"
-            android:tag="ANNOUNCEMENTS"
-            android:textColor="@color/primary_light_blue" />
+            android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/tabForum"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:padding="10dp"
-            android:text="论坛"
-            android:tag="FORUM"
-            android:textColor="@color/primary_light_blue" />
+            <TextView
+                android:id="@+id/tabAnnounce"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_tab_pill"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="公告"
+                android:tag="ANNOUNCEMENTS"
+                android:textColor="@color/primary_light_blue" />
 
-        <TextView
-            android:id="@+id/tabRank"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:padding="10dp"
-            android:text="喵币榜"
-            android:tag="RANK"
-            android:textColor="@color/primary_light_blue" />
+            <TextView
+                android:id="@+id/tabForum"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_tab_pill"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="论坛"
+                android:tag="FORUM"
+                android:textColor="@color/primary_light_blue" />
 
-        <TextView
-            android:id="@+id/tabPlaytime"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:padding="10dp"
-            android:text="时长榜"
-            android:tag="PLAYTIME"
-            android:textColor="@color/primary_light_blue" />
-    </LinearLayout>
+            <TextView
+                android:id="@+id/tabRank"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_tab_pill"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="喵币榜"
+                android:tag="RANK"
+                android:textColor="@color/primary_light_blue" />
+
+            <TextView
+                android:id="@+id/tabPlaytime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_tab_pill"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="时长榜"
+                android:tag="PLAYTIME"
+                android:textColor="@color/primary_light_blue" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="12dp"
+                android:background="#33FFFFFF" />
+
+            <TextView
+                android:id="@+id/chipTasks"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_tab_pill"
+                android:drawablePadding="6dp"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="任务中心"
+                android:textColor="@color/secondary_light_blue" />
+
+            <TextView
+                android:id="@+id/chipPlayers"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_tab_pill"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="在线玩家"
+                android:textColor="@color/secondary_light_blue" />
+
+            <TextView
+                android:id="@+id/chipMemorials"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_tab_pill"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="纪念堂"
+                android:textColor="@color/secondary_light_blue" />
+
+            <TextView
+                android:id="@+id/chipMyItems"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_tab_pill"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="我的物品"
+                android:textColor="@color/secondary_light_blue" />
+        </LinearLayout>
+    </HorizontalScrollView>
 
     <com.google.android.material.progressindicator.LinearProgressIndicator
         android:id="@+id/communityProgress"
@@ -102,7 +183,7 @@
         app:indicatorColor="@color/primary_light_blue"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tabBar" />
+        app:layout_constraintTop_toBottomOf="@id/tabScroll" />
 
     <TextView
         android:id="@+id/communityEmpty"
@@ -114,7 +195,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tabBar" />
+        app:layout_constraintTop_toBottomOf="@id/tabScroll" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/communityRecycler"
@@ -126,5 +207,5 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tabBar" />
+        app:layout_constraintTop_toBottomOf="@id/tabScroll" />
 </androidx.constraintlayout.widget.ConstraintLayout>

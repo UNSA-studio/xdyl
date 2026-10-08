@@ -260,13 +260,10 @@ class MainActivity : AppCompatActivity() {
             profileBinding.tvProfileStatus.text = "资料已刷新"
         }
         profileBinding.btnNotifications.setOnClickListener { showNotifications() }
-        // ===== 扩展功能入口（按服务端接口清单） =====
-        profileBinding.btnMyTitles.setOnClickListener { FeatureDialogs.showMyTitles(this) }
-        profileBinding.btnTasks.setOnClickListener { FeatureDialogs.showTasks(this) }
-        profileBinding.btnMyItems.setOnClickListener { FeatureDialogs.showMyItems(this) }
-        profileBinding.btnPlayers.setOnClickListener { FeatureDialogs.showPlayers(this) }
-        profileBinding.btnMemorials.setOnClickListener { FeatureDialogs.showMemorials(this) }
+        // 账户数据更改统一入口（改用户名 / 改密码 / 换头像）
         profileBinding.btnAccountSettings.setOnClickListener { FeatureDialogs.showAccountSettings(this) }
+        // 点击昵称下的称号 → 选择 / 切换称号
+        profileBinding.tvMyTitle.setOnClickListener { FeatureDialogs.showMyTitles(this) }
         profileBinding.btnOpenSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
@@ -749,6 +746,11 @@ class MainActivity : AppCompatActivity() {
         tab(communityBinding.tabRank, "RANK")
         tab(communityBinding.tabPlaytime, "PLAYTIME")
         communityBinding.tabAnnounce.alpha = 1f
+        // ===== 社区扩展功能入口（可横向滚动的选择栏） =====
+        communityBinding.chipTasks.setOnClickListener { FeatureDialogs.showTasks(this) }
+        communityBinding.chipPlayers.setOnClickListener { FeatureDialogs.showPlayers(this) }
+        communityBinding.chipMemorials.setOnClickListener { FeatureDialogs.showMemorials(this) }
+        communityBinding.chipMyItems.setOnClickListener { FeatureDialogs.showMyItems(this) }
     }
 
     private fun loadCommunityTab(key: String) {
@@ -951,6 +953,32 @@ class MainActivity : AppCompatActivity() {
                     }
                     profileBinding.tvBio.text = parts.joinToString(" · ")
                     LogManager.log("[PROFILE] qq=$qq balance=$balance")
+                    // 拉取当前佩戴的称号，显示在昵称下方
+                    try {
+                        val tRoot = api.get("/titles/mine")
+                        val tData = tRoot.opt("data")
+                        val arr = when (tData) {
+                            is org.json.JSONArray -> tData
+                            is org.json.JSONObject -> tData.optJSONArray("items")
+                                ?: tData.optJSONArray("titles") ?: tData.optJSONArray("list")
+                            else -> null
+                        }
+                        var wornName = ""
+                        if (arr != null) {
+                            for (i in 0 until arr.length()) {
+                                val o = arr.optJSONObject(i) ?: continue
+                                val worn = o.optInt("worn", 0) == 1 || o.optBoolean("worn", false)
+                                if (worn) {
+                                    wornName = api.firstString(o, "name", "title", "title_name") ?: ""
+                                    if (wornName.isNotBlank()) break
+                                }
+                            }
+                        }
+                        profileBinding.tvMyTitle.text =
+                            if (wornName.isNotBlank()) "🏅 $wornName" else "点击设置称号"
+                    } catch (e: Exception) {
+                        profileBinding.tvMyTitle.text = "点击设置称号"
+                    }
                 } catch (e: Exception) {
                     // 检测失败忽略（按钮保持可见）
                     LogManager.log("[PROFILE] 获取失败: ${e.message}")
@@ -959,6 +987,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             profileBinding.tvNickname.text = "未登录"
             profileBinding.tvBio.text = "登录星灯云浪，同步你的喵币与称号"
+            profileBinding.tvMyTitle.text = "点击设置称号"
             profileBinding.btnLogin.visibility = View.VISIBLE
             profileBinding.btnLogin.text = "登录 / 注册"
             profileBinding.btnLogout.visibility = View.GONE

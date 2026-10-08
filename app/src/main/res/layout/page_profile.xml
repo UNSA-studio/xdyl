@@ -6,6 +6,7 @@
     android:background="@color/background_dark"
     android:padding="16dp">
 
+    <!-- 用户卡片：头像 + 昵称 + 称号（可点击切换） + 简介 -->
     <LinearLayout
         android:id="@+id/profileCard"
         android:layout_width="0dp"
@@ -42,14 +43,29 @@
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
+            <!-- 当前称号：点击可切换 -->
+            <TextView
+                android:id="@+id/tvMyTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_tab_pill"
+                android:paddingStart="10dp"
+                android:paddingTop="3dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="3dp"
+                android:text="点击设置称号"
+                android:textColor="@color/secondary_light_blue"
+                android:textSize="12sp" />
+
             <TextView
                 android:id="@+id/tvBio"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:text="登录星灯云浪，同步你的喵币与称号"
                 android:textColor="@color/secondary_light_blue"
-                android:textSize="13sp" />
+                android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
 
@@ -69,7 +85,6 @@
             android:layout_width="match_parent"
             android:layout_height="52dp"
             android:layout_marginBottom="10dp"
-            android:text="登录 / 注册"
             android:textColor="@android:color/black"
             app:backgroundTint="@color/primary_light_blue"
             app:cornerRadius="16dp"
@@ -105,83 +120,14 @@
             app:iconTint="@color/primary_light_blue"
             app:strokeColor="@color/primary_light_blue" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnMyTitles"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="10dp"
-            android:text="我的称号"
-            android:textColor="@color/primary_light_blue"
-            app:cornerRadius="16dp"
-            app:icon="@drawable/ic_medal"
-            app:iconGravity="textStart"
-            app:iconTint="@color/primary_light_blue"
-            app:strokeColor="@color/primary_light_blue" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnTasks"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="10dp"
-            android:text="任务中心"
-            android:textColor="@color/primary_light_blue"
-            app:cornerRadius="16dp"
-            app:icon="@drawable/ic_task"
-            app:iconGravity="textStart"
-            app:iconTint="@color/primary_light_blue"
-            app:strokeColor="@color/primary_light_blue" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnMyItems"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="10dp"
-            android:text="我的物品"
-            android:textColor="@color/primary_light_blue"
-            app:cornerRadius="16dp"
-            app:icon="@drawable/ic_package"
-            app:iconGravity="textStart"
-            app:iconTint="@color/primary_light_blue"
-            app:strokeColor="@color/primary_light_blue" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnPlayers"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="10dp"
-            android:text="在线玩家"
-            android:textColor="@color/primary_light_blue"
-            app:cornerRadius="16dp"
-            app:icon="@drawable/ic_person"
-            app:iconGravity="textStart"
-            app:iconTint="@color/primary_light_blue"
-            app:strokeColor="@color/primary_light_blue" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnMemorials"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="10dp"
-            android:text="纪念堂"
-            android:textColor="@color/primary_light_blue"
-            app:cornerRadius="16dp"
-            app:icon="@drawable/ic_heart"
-            app:iconGravity="textStart"
-            app:iconTint="@color/primary_light_blue"
-            app:strokeColor="@color/primary_light_blue" />
-
+        <!-- 账户数据更改统一入口 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnAccountSettings"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginBottom="10dp"
-            android:text="账户设置"
+            android:text="更改账户信息"
             android:textColor="@color/primary_light_blue"
             app:cornerRadius="16dp"
             app:icon="@drawable/ic_person_detail"
