@@ -64,15 +64,16 @@ object ImageActions {
     }
 
     /**
-     * 指定下载：调用【文件管理器组件】选择目标目录。
-     * 组件调用形式：FolderBrowserFragment.pick(manager, 标题, 起始目录) { dir -> ... }
+     * 指定下载：调用【全局共用文件管理器】（与首页同款对话框）。
+     * 组件调用形式：FileManagerDialog.show(activity, 标题, 起始目录, 后缀过滤) { picked -> ... }
      */
     private fun askDownloadDir(activity: AppCompatActivity, url: String) {
-        FolderBrowserFragment.pick(
-            activity.supportFragmentManager,
+        FileManagerDialog.show(
+            activity,
             title = "选择图片下载目录",
             startDir = Environment.getExternalStorageDirectory().absolutePath + "/Download"
-        ) { dir ->
+        ) { picked ->
+            val dir = if (picked.isDirectory) picked else (picked.parentFile ?: picked)
             downloadTo(activity, url, dir)
         }
     }
