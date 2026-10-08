@@ -10,10 +10,10 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.io.File
-
 class FolderBrowserFragment : BottomSheetDialogFragment() {
 
     private var currentDir: File = Environment.getExternalStorageDirectory()
+    private var title: String = "选择文件夹"
     private lateinit var adapter: FileAdapter
     var onFolderSelected: ((File) -> Unit)? = null
     private var tvPath: TextView? = null
@@ -21,7 +21,8 @@ class FolderBrowserFragment : BottomSheetDialogFragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        currentDir = File(arguments?.getString("startDir") ?: Environment.getExternalStorageDirectory().absolutePath)
+        currentDir = File(arguments?.getString(ARG_START_DIR) ?: Environment.getExternalStorageDirectory().absolutePath)
+        title = arguments?.getString(ARG_TITLE) ?: "选择文件夹"
     }
 
     override fun onCreateView(
@@ -36,6 +37,12 @@ class FolderBrowserFragment : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         tvPath = view.findViewById(R.id.tvPath)
         recyclerView = view.findViewById(R.id.recyclerView)
+        view.findViewById<TextView>(R.id.tvBrowserTitle)?.text = title
+        view.findViewById<View>(R.id.btnPickThisDir)?.setOnClickListener {
+            onFolderSelected?.invoke(currentDir)
+            dismiss()
+        }
+
 
         adapter = FileAdapter { file ->
             if (file.isDirectory) {
@@ -78,5 +85,34 @@ class FolderBrowserFragment : BottomSheetDialogFragment() {
             ?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name })
             ?: emptyList()
         adapter.submitList(files)
+    }
+
+    companion object {
+        const val ARG_TITLE = "title"
+        const val ARG_START_DIR = "startDir"
+
+        /**
+         * 【组件入口】任意页面调用即可弹出文件选择器：
+         * ```
+         * FolderBrowserFragment.pick(supportFragmentManager, "选择下载目录") { dir ->
+         *     // dir 为用户选中的目录
+         * }
+         * ```
+         */
+        fun pick(
+            manager: androidx.fragment.app.FragmentManager,
+            title: String = "选择文件夹",
+            startDir: String? = null,
+            onPick: (File) -> Unit
+        ): FolderBrowserFragment {
+            val f = FolderBrowserFragment()
+            f.arguments = Bundle().apply {
+                putString(ARG_TITLE, title)
+                putString(ARG_START_DIR, startDir ?: Environment.getExternalStorageDirectory().absolutePath)
+            }
+            f.onFolderSelected = onPick
+            f.show(manager, "folder_browser")
+            return f
+        }
     }
 }

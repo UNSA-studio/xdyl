@@ -908,23 +908,43 @@ class MainActivity : AppCompatActivity() {
             profileBinding.btnLogin.visibility = View.VISIBLE
             profileBinding.btnLogin.text = "绑定 QQ"
             profileBinding.btnLogout.visibility = View.VISIBLE
-            // 检测 QQ 绑定状态与余额
+            // 检测 QQ 绑定状态与余额（字段名兼容：qq_nickname / qq / qqNickname / bound_qq…）
             scope.launch {
                 try {
                     val root = api.get("/user/profile")
                     val data = root.optJSONObject("data")
-                    val qq = data?.optString("qq_nickname", "") ?: ""
+                    // 遍历所有键，找出「含 qq 且值有效」的字段
+                    var qq = ""
+                    if (data != null) {
+                        val keys = data.keys()
+                        while (keys.hasNext()) {
+                            val k = keys.next()
+                            if (!k.contains("qq", ignoreCase = true)) continue
+                            val v = data.opt(k)?.toString()?.trim() ?: ""
+                            if (v.isNotEmpty() && v != "null" && v != "0" && v != "false") {
+                                qq = v
+                                break
+                            }
+                        }
+                    }
                     val balance = data?.optString("balance", "") ?: ""
                     val parts = mutableListOf<String>()
                     parts.add("已登录")
                     if (balance.isNotBlank()) parts.add("喵币 $balance")
                     if (qq.isNotBlank()) {
                         parts.add("已绑定 QQ：$qq")
+                        // 已绑定 → 隐藏绑定按钮
                         profileBinding.btnLogin.visibility = View.GONE
+                    } else {
+                        // 未绑定 → 显示绑定按钮
+                        profileBinding.btnLogin.visibility = View.VISIBLE
+                        profileBinding.btnLogin.text = "绑定 QQ"
                     }
                     profileBinding.tvBio.text = parts.joinToString(" · ")
+                    LogManager.log("[PROFILE] qq=$qq balance=$balance")
                 } catch (e: Exception) {
                     // 检测失败忽略（按钮保持可见）
+                    LogManager.log("[PROFILE] 获取失败: ${e.message}")
                 }
             }
         } else {
