@@ -27,7 +27,7 @@ class ApiClient(private val session: SessionStore) {
         private val JSON_TYPE = "application/json; charset=utf-8".toMediaType()
     }
 
-    private val client = OkHttpClient.Builder()
+    private val client = OkHttpClient.Builder().dns(NetDns)
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         // 统一携带客户端标识 UA（服务端可能按 UA 区分客户端下发令牌）

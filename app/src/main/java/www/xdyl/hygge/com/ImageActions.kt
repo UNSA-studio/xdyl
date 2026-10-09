@@ -84,7 +84,7 @@ object ImageActions {
         activity.lifecycleScope.launch {
             try {
                 val file = withContext(Dispatchers.IO) {
-                    val client = okhttp3.OkHttpClient.Builder()
+                    val client = okhttp3.OkHttpClient.Builder().dns(NetDns)
                         .connectTimeout(15, TimeUnit.SECONDS)
                         .readTimeout(60, TimeUnit.SECONDS)
                         .build()
