@@ -996,7 +996,11 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     }
-                    val balance = data?.optString("balance", "") ?: ""
+                    // 余额字段兼容：服务端实际使用 coins（历史上有 balance 写法）
+                    val balance = if (data != null)
+                        (api.firstString(data, "coins", "balance", "coin", "money", "points") ?: "")
+                    else ""
+                    LogManager.log("[PROFILE] raw=$data")
                     // 喵币数额显示在称号右侧
                     profileBinding.tvCoins.text =
                         if (balance.isNotBlank()) "$balance 喵币" else "-- 喵币"
