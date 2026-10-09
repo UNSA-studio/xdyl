@@ -525,7 +525,7 @@ object FeatureDialogs {
                 activity.lifecycleScope.launch {
                     try {
                         api.request(
-                            "POST", "/forum/posts",
+                            "POST", "/forum/post",
                             JSONObject().put("title", title).put("content", content)
                         )
                         Toast.makeText(activity, "发布成功", Toast.LENGTH_SHORT).show()
