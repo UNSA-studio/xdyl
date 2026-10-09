@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit
  */
 object SimpleImageLoader {
 
-    private val client = OkHttpClient.Builder()
+    private val client = OkHttpClient.Builder().dns(NetDns)
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()

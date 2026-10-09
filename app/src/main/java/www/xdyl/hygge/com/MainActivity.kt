@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity() {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.Main + job)
     private lateinit var prefs: SharedPreferences
-    private val client = OkHttpClient.Builder()
+    private val client = OkHttpClient.Builder().dns(NetDns)
         .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .build()

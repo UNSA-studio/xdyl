@@ -13,7 +13,7 @@ class DownloadManager(
     private val threadCount: Int = 20,
     private val useRange: Boolean = true  // 可以关闭 Range 请求
 ) {
-    private val client = OkHttpClient.Builder()
+    private val client = OkHttpClient.Builder().dns(NetDns)
         .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .followRedirects(true)

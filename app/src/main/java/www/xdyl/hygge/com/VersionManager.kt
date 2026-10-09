@@ -27,7 +27,7 @@ data class VersionDiff(
 
 class VersionManager(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("version", Context.MODE_PRIVATE)
-    private val client = OkHttpClient.Builder()
+    private val client = OkHttpClient.Builder().dns(NetDns)
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
