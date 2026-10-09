@@ -1024,32 +1024,33 @@ class MainActivity : AppCompatActivity() {
                     }
                     profileBinding.tvBio.text = parts.joinToString(" · ")
                     LogManager.log("[PROFILE] qq=$qq balance=$balance")
-                    // 拉取当前佩戴的称号，显示在昵称下方
-                    try {
-                        val tRoot = api.get("/titles/mine")
-                        val tData = tRoot.opt("data")
-                        val arr = when (tData) {
-                            is org.json.JSONArray -> tData
-                            is org.json.JSONObject -> tData.optJSONArray("items")
-                                ?: tData.optJSONArray("titles") ?: tData.optJSONArray("list")
-                            else -> null
-                        }
-                        var wornName = ""
-                        if (arr != null) {
-                            for (i in 0 until arr.length()) {
-                                val o = arr.optJSONObject(i) ?: continue
-                                val worn = o.optInt("worn", 0) == 1 || o.optBoolean("worn", false)
-                                if (worn) {
-                                    wornName = api.firstString(o, "name", "title", "title_name") ?: ""
-                                    if (wornName.isNotBlank()) break
+                    // 称号：优先 profile.title（服务端真实佩戴字段），兜底查 /titles/mine
+                    var wornName = data?.optString("title", "") ?: ""
+                    if (wornName.isBlank()) {
+                        try {
+                            val tRoot = api.get("/titles/mine")
+                            val tData = tRoot.opt("data")
+                            val arr = when (tData) {
+                                is org.json.JSONArray -> tData
+                                is org.json.JSONObject -> tData.optJSONArray("items")
+                                    ?: tData.optJSONArray("titles") ?: tData.optJSONArray("list")
+                                else -> null
+                            }
+                            if (arr != null) {
+                                for (i in 0 until arr.length()) {
+                                    val o = arr.optJSONObject(i) ?: continue
+                                    val worn = o.optInt("worn", 0) == 1 || o.optBoolean("worn", false)
+                                    if (worn) {
+                                        wornName = api.firstString(o, "name", "title", "title_name") ?: ""
+                                        if (wornName.isNotBlank()) break
+                                    }
                                 }
                             }
+                        } catch (e: Exception) {
+                            // 忽略，保持默认文案
                         }
-                        profileBinding.tvMyTitle.text =
-                            if (wornName.isNotBlank()) "$wornName" else "点击设置称号"
-                    } catch (e: Exception) {
-                        profileBinding.tvMyTitle.text = "点击设置称号"
                     }
+                    profileBinding.tvMyTitle.text = if (wornName.isNotBlank()) wornName else "点击设置称号"
                 } catch (e: Exception) {
                     // 检测失败忽略（按钮保持可见）
                     LogManager.log("[PROFILE] 获取失败: ${e.message}")
