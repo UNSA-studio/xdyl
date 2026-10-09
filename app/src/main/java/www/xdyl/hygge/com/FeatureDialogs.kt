@@ -491,11 +491,30 @@ object FeatureDialogs {
         postJson(activity, "/redeem/game-coins", JSONObject().put("amount", amount), "兑换游戏币")
     }
 
-    /** 发布帖子：POST /forum/posts {title, content} */
+    /** 发布帖子：POST /forum/post {title, content, category_id...} */
     fun showNewPost(activity: AppCompatActivity, onDone: () -> Unit = {}) {
+        var selectedCategoryId = -1
+        var selectedCategoryName = ""
+
         val col = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(activity, 20), dp(activity, 8), dp(activity, 20), 0)
+        }
+
+        // 版块选择（点击弹出列表）
+        val tvCategory = TextView(activity).apply {
+            text = "版块：加载中…"
+            textSize = 14f
+            setTextColor(0xFFEDEDED.toInt())
+            setPadding(dp(activity, 14), dp(activity, 12), dp(activity, 14), dp(activity, 12))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(activity, 10).toFloat()
+                setColor(0xFF2A2A2A.toInt())
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(activity, 10) }
         }
         val etTitle = EditText(activity).apply {
             hint = "标题"
@@ -509,8 +528,48 @@ object FeatureDialogs {
             minLines = 4
             gravity = android.view.Gravity.TOP
         }
+        col.addView(tvCategory)
         col.addView(etTitle)
         col.addView(etContent)
+
+        // 拉取版块列表
+        activity.lifecycleScope.launch {
+            try {
+                val root = withContext(Dispatchers.IO) { api.get("/forum/categories") }
+                val arr = toArray(root)
+                val names = mutableListOf<String>()
+                val ids = mutableListOf<Int>()
+                if (arr != null) {
+                    for (i in 0 until arr.length()) {
+                        val o = arr.optJSONObject(i) ?: continue
+                        val id = o.optInt("id", -1)
+                        if (id <= 0) continue
+                        ids.add(id)
+                        names.add(itemTitle(o))
+                    }
+                }
+                if (ids.isEmpty()) {
+                    tvCategory.text = "版块：无可用版块"
+                    return@launch
+                }
+                selectedCategoryId = ids[0]
+                selectedCategoryName = names[0]
+                tvCategory.text = "版块：${names[0]}"
+                tvCategory.setOnClickListener {
+                    MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
+                        .setTitle("选择版块")
+                        .setItems(names.toTypedArray()) { _, w ->
+                            selectedCategoryId = ids[w]
+                            selectedCategoryName = names[w]
+                            tvCategory.text = "版块：${names[w]}"
+                        }
+                        .setNegativeButton("取消", null)
+                        .show()
+                }
+            } catch (e: Exception) {
+                tvCategory.text = "版块：加载失败（" + e.message + "）"
+            }
+        }
 
         MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setTitle("发布帖子")
@@ -518,16 +577,26 @@ object FeatureDialogs {
             .setPositiveButton("发布") { _, _ ->
                 val title = etTitle.text.toString().trim()
                 val content = etContent.text.toString().trim()
+                if (selectedCategoryId <= 0) {
+                    Toast.makeText(activity, "请先选择版块", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
                 if (title.isEmpty() || content.isEmpty()) {
                     Toast.makeText(activity, "标题和正文都不能为空", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
+                // 服务端要求 版块+标题+内容；字段名做多别名兼容
+                val body = JSONObject()
+                    .put("title", title)
+                    .put("content", content)
+                    .put("category_id", selectedCategoryId)
+                    .put("category", selectedCategoryId)
+                    .put("board_id", selectedCategoryId)
+                    .put("board", selectedCategoryId)
+                    .put("section_id", selectedCategoryId)
                 activity.lifecycleScope.launch {
                     try {
-                        api.request(
-                            "POST", "/forum/post",
-                            JSONObject().put("title", title).put("content", content)
-                        )
+                        api.request("POST", "/forum/post", body)
                         Toast.makeText(activity, "发布成功", Toast.LENGTH_SHORT).show()
                         onDone()
                     } catch (e: Exception) {
