@@ -209,6 +209,20 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tabScroll" />
 
+    <!-- 发帖按钮（仅论坛 Tab 显示） -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabNewPost"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:contentDescription="发布帖子"
+        android:src="@drawable/ic_edit"
+        android:visibility="gone"
+        app:backgroundTint="@color/primary_light_blue"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:tint="@android:color/black" />
+
     <!-- 功能页面容器（任务中心 / 在线玩家 / 纪念堂 / 我的物品 等整页展示） -->
     <ScrollView
         android:id="@+id/featureScroll"
