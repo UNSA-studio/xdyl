@@ -788,6 +788,10 @@ class MainActivity : AppCompatActivity() {
         communityBinding.chipPlayers.setOnClickListener { openCommunityFeature("players") }
         communityBinding.chipMemorials.setOnClickListener { openCommunityFeature("memorials") }
         communityBinding.chipMyItems.setOnClickListener { openCommunityFeature("items") }
+        // 发帖按钮
+        communityBinding.fabNewPost.setOnClickListener {
+            FeatureDialogs.showNewPost(this) { loadCommunityTab("FORUM") }
+        }
     }
 
     /** 打开社区功能页（整页展示，不是弹窗） */
@@ -812,6 +816,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadCommunityTab(key: String) {
+        // 发帖按钮仅在论坛 Tab 显示
+        communityBinding.fabNewPost.visibility = if (key == "FORUM") View.VISIBLE else View.GONE
         communityBinding.communityProgress.visibility = View.VISIBLE
         communityBinding.communityEmpty.visibility = View.GONE
         scope.launch {

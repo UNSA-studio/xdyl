@@ -57,10 +57,10 @@ object FeatureDialogs {
 
     private fun itemSubtitle(o: JSONObject): String {
         val parts = mutableListOf<String>()
-        firstNonBlank(o, "description", "desc", "content", "subtitle")?.let { parts.add(it.take(80)) }
-        firstNonBlank(o, "reward", "coins", "price", "cost")?.let { parts.add("奖励/价格：$it") }
-        firstNonBlank(o, "status", "state")?.let { parts.add(it) }
-        if (parts.isEmpty()) parts.add(o.toString().take(100))
+        firstNonBlank(o, "description", "desc", "content", "subtitle", "detail")?.let { parts.add(it.take(80)) }
+        firstNonBlank(o, "reward_coins", "reward")?.let { parts.add("奖励 $it 喵币") }
+        firstNonBlank(o, "price", "cost")?.let { parts.add("价格 $it") }
+        firstNonBlank(o, "created_at", "time", "date")?.let { parts.add(it) }
         return parts.joinToString(" · ")
     }
 
@@ -221,10 +221,19 @@ object FeatureDialogs {
                         val id = o.optInt("id", -1)
                         val done = o.optInt("completed", 0) == 1 || o.optBoolean("completed", false)
                         val claimed = o.optInt("claimed", 0) == 1 || o.optBoolean("claimed", false)
+                        val desc = firstNonBlank(o, "description", "desc", "content") ?: ""
+                        val reward = firstNonBlank(o, "reward_coins", "reward", "coins")
                         val sub = buildString {
-                            append(itemSubtitle(o))
-                            if (claimed) append(" · 已领取")
-                            else if (done) append(" · 点击领取")
+                            append(desc)
+                            if (!reward.isNullOrBlank()) {
+                                if (isNotEmpty()) append(" · ")
+                                append("奖励 $reward 喵币")
+                            }
+                            if (claimed) {
+                                append(if (isNotEmpty()) " · 已领取" else "已领取")
+                            } else if (done) {
+                                append(if (isNotEmpty()) " · 可点击领取" else "可点击领取")
+                            }
                         }
                         listCol.addView(
                             makeCard(
@@ -277,9 +286,14 @@ object FeatureDialogs {
         )
     }
 
-    /** 在线玩家（页面） */
+    /** 在线玩家（页面）：显示 name / username */
     fun renderPlayersPage(activity: AppCompatActivity, container: LinearLayout) =
-        renderPage(activity, container, "在线玩家", "/server/players")
+        renderPage(activity, container, "在线玩家", "/server/players") { o ->
+            val name = firstNonBlank(o, "name", "player_name", "nickname", "username") ?: "未知玩家"
+            val account = firstNonBlank(o, "username", "account") ?: ""
+            val sub = if (account.isNotBlank() && account != name) "账号：$account" else ""
+            Triple(name, sub, null)
+        }
 
     /** 纪念堂（页面） */
     fun renderMemorialsPage(activity: AppCompatActivity, container: LinearLayout) =
@@ -475,6 +489,54 @@ object FeatureDialogs {
     /** 兑换游戏币 /redeem/game-coins */
     fun redeemGameCoins(activity: AppCompatActivity, amount: Int) {
         postJson(activity, "/redeem/game-coins", JSONObject().put("amount", amount), "兑换游戏币")
+    }
+
+    /** 发布帖子：POST /forum/posts {title, content} */
+    fun showNewPost(activity: AppCompatActivity, onDone: () -> Unit = {}) {
+        val col = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(activity, 20), dp(activity, 8), dp(activity, 20), 0)
+        }
+        val etTitle = EditText(activity).apply {
+            hint = "标题"
+            setTextColor(0xFFEDEDED.toInt())
+            setHintTextColor(0xFF6B6B6B.toInt())
+        }
+        val etContent = EditText(activity).apply {
+            hint = "正文（支持 Markdown 图片语法）"
+            setTextColor(0xFFEDEDED.toInt())
+            setHintTextColor(0xFF6B6B6B.toInt())
+            minLines = 4
+            gravity = android.view.Gravity.TOP
+        }
+        col.addView(etTitle)
+        col.addView(etContent)
+
+        MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
+            .setTitle("发布帖子")
+            .setView(col)
+            .setPositiveButton("发布") { _, _ ->
+                val title = etTitle.text.toString().trim()
+                val content = etContent.text.toString().trim()
+                if (title.isEmpty() || content.isEmpty()) {
+                    Toast.makeText(activity, "标题和正文都不能为空", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                activity.lifecycleScope.launch {
+                    try {
+                        api.request(
+                            "POST", "/forum/posts",
+                            JSONObject().put("title", title).put("content", content)
+                        )
+                        Toast.makeText(activity, "发布成功", Toast.LENGTH_SHORT).show()
+                        onDone()
+                    } catch (e: Exception) {
+                        Toast.makeText(activity, "发布失败：" + e.message, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     /** 帖子打赏 /forum/post/{id}/tip */
