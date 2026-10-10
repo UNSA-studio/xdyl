@@ -13,7 +13,6 @@ import okhttp3.Request
 import pl.droidsonroids.gif.GifDrawable
 import java.io.File
 import java.security.MessageDigest
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -21,12 +20,15 @@ import java.util.concurrent.TimeUnit
  * 图片加载器（OkHttp + 内存 LRU + 磁盘缓存）。
  *
  * 解码策略：
- *  - **GIF**：使用第三方库 android-gif-drawable 的 [GifDrawable]（自带 native 解码器），
- *    刻意**不用**系统 AnimatedImageDrawable —— 它在部分 GIF 上会在渲染线程
- *    native crash（libhwui: AnimatedImageDrawable::decodeNextFrame），无法捕获。
+ *  - **GIF**：android-gif-drawable 的 [GifDrawable]（自带 native 解码器）。
+ *    刻意不用系统 AnimatedImageDrawable —— 它在部分 GIF 上会 native crash。
  *  - 静态图：BitmapFactory。
  *
- * 其它：三级缓存（内存->磁盘->网络）、磁盘缓存自愈、失败保持占位。
+ * GIF 实例策略（重要）：
+ *  每个 ImageView **各持一个独立 GifDrawable**，不跨 View 共享。
+ *  原因：共享实例时，任一 View 被销毁都会触发 drawable.setVisible(false)，
+ *  把其它 View 的动画一起停掉（例如关闭详情后列表里的 GIF 变静态）。
+ *  旧实例在换图时 recycle，避免 native 内存泄漏。
  */
 object SimpleImageLoader {
 
@@ -39,17 +41,10 @@ object SimpleImageLoader {
     private val executor = Executors.newFixedThreadPool(4)
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    /** 静态图内存缓存（按条目数限制） */
+    /** 静态图内存缓存（按条目数限制；GIF 不在此缓存） */
     private val cache = object : LruCache<String, Drawable>(80) {
         override fun sizeOf(key: String, value: Drawable): Int = 1
     }
-
-    /**
-     * GIF 专用缓存：GifDrawable 持有 native 内存、需要 recycle，
-     * 若参与 LRU 淘汰可能被回收掉仍在显示的实例，所以单独存放、不淘汰。
-     * 同一个 GIF 只构造一次。
-     */
-    private val gifCache = ConcurrentHashMap<String, GifDrawable>()
 
     private fun diskDir(context: Context): File =
         File(context.cacheDir, "imgcache").apply { mkdirs() }
@@ -74,10 +69,9 @@ object SimpleImageLoader {
         return false
     }
 
-    /** 移除某个 URL 的内存 + 磁盘缓存 */
+    /** 移除某个 URL 的缓存（内存 + 磁盘） */
     fun removeCache(context: Context, url: String) {
         cache.remove(url)
-        gifCache.remove(url)?.let { runCatching { it.recycle() } }
         runCatching { diskFile(context, url).delete() }
     }
 
@@ -85,32 +79,34 @@ object SimpleImageLoader {
     fun load(context: Context, url: String, imageView: ImageView) {
         if (url.isBlank()) return
 
-        // 复用/换图时，先停掉上一个 GIF（避免不可见也一直跑，省电省 CPU）
+        // 这个 View 已经显示同一张 GIF：保持播放，什么都不做
+        if (imageView.tag == url && imageView.drawable is GifDrawable) return
+        // 同一个 View 已经显示同一张静态图：无需重设
+        if (imageView.tag == url && imageView.drawable != null && !isGifUrl(url)) return
+
+        // 换图：回收本 View 的旧 GIF（独立实例，回收安全），避免 native 内存泄漏
         if (imageView.tag != null && imageView.tag != url) {
             (imageView.drawable as? GifDrawable)?.let { old ->
                 runCatching { old.setVisible(false, false) }
+                runCatching { old.recycle() }
             }
+            imageView.setImageDrawable(null)
         }
         imageView.tag = url
 
-        // 0) GIF 缓存（同一对象复用，动画状态连续）
-        gifCache[url]?.let {
-            imageView.setImageDrawable(it)
-            // GifDrawable 需要 visible 才会播放动画（普通 ImageView 不自动触发）
-            runCatching { it.setVisible(true, true) }
-            return
-        }
-        // 1) 静态图内存缓存
-        cache.get(url)?.let {
-            imageView.setImageDrawable(it)
-            return
+        // 静态图内存缓存命中
+        if (!isGifUrl(url)) {
+            cache.get(url)?.let {
+                imageView.setImageDrawable(it)
+                return
+            }
         }
 
         executor.execute {
             try {
                 val file = diskFile(context, url)
 
-                // 2) 磁盘缓存
+                // 磁盘缓存
                 var bytes: ByteArray? = null
                 if (file.exists() && file.length() > 0) {
                     bytes = runCatching { file.readBytes() }.getOrNull()
@@ -120,7 +116,7 @@ object SimpleImageLoader {
                     }
                 }
 
-                // 3) 网络
+                // 网络
                 if (bytes == null) {
                     val req = Request.Builder().url(url)
                         .header("User-Agent", "NebulaUpdater-Android/1.0")
@@ -140,22 +136,21 @@ object SimpleImageLoader {
 
                 val data = bytes ?: return@execute
 
-                // 4) 解码
+                // 解码
                 var drawable: Drawable? = null
                 if (isGif(url, data)) {
+                    // 每个 View 独立实例（不复用缓存，避免 setVisible 互相干扰）
                     val gif = runCatching { GifDrawable(data) }.getOrNull()
                     if (gif != null) {
-                        gif.loopCount = 0   // 无限循环
-                        runCatching { gif.start() }
+                        gif.loopCount = 0
                         drawable = gif
-                        gifCache[url] = gif
                     }
                 }
                 if (drawable == null) {
                     val bmp = BitmapFactory.decodeByteArray(data, 0, data.size)
                     if (bmp != null) {
                         drawable = BitmapDrawable(context.resources, bmp)
-                        cache.put(url, drawable!!)
+                        cache.put(url, drawable)
                     }
                 }
                 val result = drawable ?: return@execute
@@ -163,15 +158,20 @@ object SimpleImageLoader {
                 mainHandler.post {
                     if (imageView.tag == url) {
                         imageView.setImageDrawable(result)
-                        // GIF：确保可见+重新开始播放（列表/详情都生效）
-                        (result as? GifDrawable)?.let { g ->
-                            runCatching { g.setVisible(true, true) }
+                        if (result is GifDrawable) {
+                            runCatching { result.setVisible(true, true) }
+                            runCatching { result.start() }
                         }
+                    } else if (result is GifDrawable) {
+                        // 结果已过期（View 已换图）：回收，避免泄漏
+                        runCatching { result.recycle() }
                     }
                 }
             } catch (e: Exception) {
-                // 加载失败：保持占位背景，不残留错图
+                // 加载失败：保持占位背景
             }
         }
     }
+
+    private fun isGifUrl(url: String) = url.lowercase().contains(".gif")
 }
