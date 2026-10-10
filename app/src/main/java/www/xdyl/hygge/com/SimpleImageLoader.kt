@@ -46,6 +46,14 @@ object SimpleImageLoader {
         override fun sizeOf(key: String, value: Drawable): Int = 1
     }
 
+    /**
+     * GIF 原始字节内存缓存（4MB）。
+     * 避免每次打开详情都重新读磁盘/下载并解码，明显加快弹窗加载。
+     */
+    private val gifBytesCache = object : LruCache<String, ByteArray>(4 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: ByteArray): Int = value.size
+    }
+
     private fun diskDir(context: Context): File =
         File(context.cacheDir, "imgcache").apply { mkdirs() }
 
@@ -102,6 +110,27 @@ object SimpleImageLoader {
             }
         }
 
+        // GIF 字节缓存命中：跳过磁盘/网络，直接解码（明显加快详情弹窗）
+        if (isGifUrl(url)) {
+            val cachedBytes = gifBytesCache.get(url)
+            if (cachedBytes != null) {
+                executor.execute {
+                    val gif = runCatching { GifDrawable(cachedBytes) }.getOrNull() ?: return@execute
+                    gif.loopCount = 0
+                    mainHandler.post {
+                        if (imageView.tag == url) {
+                            imageView.setImageDrawable(gif)
+                            runCatching { gif.setVisible(true, true) }
+                            runCatching { gif.start() }
+                        } else {
+                            runCatching { gif.recycle() }
+                        }
+                    }
+                }
+                return
+            }
+        }
+
         executor.execute {
             try {
                 val file = diskFile(context, url)
@@ -139,6 +168,8 @@ object SimpleImageLoader {
                 // 解码
                 var drawable: Drawable? = null
                 if (isGif(url, data)) {
+                    // 字节入内存缓存：下次打开直接解码（免磁盘 IO）
+                    gifBytesCache.put(url, data)
                     // 每个 View 独立实例（不复用缓存，避免 setVisible 互相干扰）
                     val gif = runCatching { GifDrawable(data) }.getOrNull()
                     if (gif != null) {
