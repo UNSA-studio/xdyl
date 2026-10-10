@@ -255,7 +255,7 @@ object ForumPostDialog {
             adjustViewBounds = true
             maxHeight = dip(activity, 360)
             // 兜底最小高度：避免某些图片（如动图/尺寸异常）高度算成 0 而看不见
-            minHeight = dip(activity, 100)
+            minimumHeight = dip(activity, 100)
             scaleType = ImageView.ScaleType.FIT_CENTER
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
