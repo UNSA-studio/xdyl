@@ -2,18 +2,14 @@ package www.xdyl.hygge.com
 
 import android.content.Context
 import android.graphics.BitmapFactory
-import android.graphics.ImageDecoder
-import android.graphics.drawable.AnimatedImageDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.LruCache
 import android.widget.ImageView
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.ByteArrayInputStream
 import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.Executors
@@ -113,20 +109,12 @@ object SimpleImageLoader {
 
                 val data = bytes ?: return@execute
 
-                // 4) 解码：优先 ImageDecoder（GIF 可动图），回退 BitmapFactory
-                var drawable: Drawable? = null
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    drawable = runCatching {
-                        val source = ImageDecoder.createSource(java.nio.ByteBuffer.wrap(data))
-                        ImageDecoder.decodeDrawable(source).also {
-                            if (it is AnimatedImageDrawable) it.start()
-                        }
-                    }.getOrNull()
-                }
-                if (drawable == null) {
-                    val bmp = BitmapFactory.decodeByteArray(data, 0, data.size)
-                    if (bmp != null) drawable = BitmapDrawable(context.resources, bmp)
-                }
+                // 注意：这里刻意【不使用】AnimatedImageDrawable / ImageDecoder 解码动图。
+                // 系统实现在部分 GIF 上会在渲染线程 native crash
+                // （libhwui: AnimatedImageDrawable::decodeNextFrame），无法用 try/catch 捕获，
+                // 会导致整个 App 崩溃。因此统一按「静态首帧」解码。
+                val bmp = BitmapFactory.decodeByteArray(data, 0, data.size)
+                if (bmp != null) drawable = BitmapDrawable(context.resources, bmp)
                 val result = drawable ?: return@execute
 
                 cache.put(url, result)
