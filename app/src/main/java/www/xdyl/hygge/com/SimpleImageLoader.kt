@@ -84,11 +84,20 @@ object SimpleImageLoader {
     /** 异步加载图片（GIF 会动） */
     fun load(context: Context, url: String, imageView: ImageView) {
         if (url.isBlank()) return
+
+        // 复用/换图时，先停掉上一个 GIF（避免不可见也一直跑，省电省 CPU）
+        if (imageView.tag != null && imageView.tag != url) {
+            (imageView.drawable as? GifDrawable)?.let { old ->
+                runCatching { old.setVisible(false, false) }
+            }
+        }
         imageView.tag = url
 
         // 0) GIF 缓存（同一对象复用，动画状态连续）
         gifCache[url]?.let {
             imageView.setImageDrawable(it)
+            // GifDrawable 需要 visible 才会播放动画（普通 ImageView 不自动触发）
+            runCatching { it.setVisible(true, true) }
             return
         }
         // 1) 静态图内存缓存
@@ -152,7 +161,13 @@ object SimpleImageLoader {
                 val result = drawable ?: return@execute
 
                 mainHandler.post {
-                    if (imageView.tag == url) imageView.setImageDrawable(result)
+                    if (imageView.tag == url) {
+                        imageView.setImageDrawable(result)
+                        // GIF：确保可见+重新开始播放（列表/详情都生效）
+                        (result as? GifDrawable)?.let { g ->
+                            runCatching { g.setVisible(true, true) }
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 // 加载失败：保持占位背景，不残留错图
