@@ -24,6 +24,10 @@ android {
         targetSdk = 28
         versionCode = 1
         versionName = "1.0"
+        // GIF 库自带 native 解码，仅保留常用 ABI 控制体积
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     buildTypes {
@@ -64,4 +68,5 @@ dependencies {
     implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("com.google.code.gson:gson:2.10.1")   // 新增
     implementation("dev.mobile:dadb:2.0.0")            // ADB 客户端库
+    implementation("pl.droidsonroids.gif:android-gif-drawable:1.2.28") // GIF 动图（自带 native 解码，避开系统 AnimatedImageDrawable 崩溃）
 }
