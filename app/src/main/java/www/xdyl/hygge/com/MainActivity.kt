@@ -155,7 +155,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         instance = this
-        binding.pageHome.tvTitleLine1.text = "Nebula updater-NU"
+        binding.pageHome.tvTitleLine1.text = "Nebula Updater-NU"
         binding.pageHome.tvTitleLine2.text = "星云更新器-Android端"
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         session = SessionStore(this)
