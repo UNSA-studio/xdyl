@@ -774,6 +774,11 @@ class MainActivity : AppCompatActivity() {
             view.setOnClickListener {
                 val tabs: List<TextView> = listOf(communityBinding.tabAnnounce, communityBinding.tabForum, communityBinding.tabRank, communityBinding.tabPlaytime)
                 tabs.forEach { tb -> tb.alpha = if (tb == view) 1f else 0.5f }
+                // 功能 chip 全部变暗
+                communityBinding.chipTasks.alpha = 0.5f
+                communityBinding.chipPlayers.alpha = 0.5f
+                communityBinding.chipMemorials.alpha = 0.5f
+                communityBinding.chipMyItems.alpha = 0.5f
                 showCommunityList()
                 loadCommunityTab(key)
             }
@@ -782,7 +787,15 @@ class MainActivity : AppCompatActivity() {
         tab(communityBinding.tabForum, "FORUM")
         tab(communityBinding.tabRank, "RANK")
         tab(communityBinding.tabPlaytime, "PLAYTIME")
+        // 初始状态：第一个 Tab 选中（高亮），其余变暗
         communityBinding.tabAnnounce.alpha = 1f
+        communityBinding.tabForum.alpha = 0.5f
+        communityBinding.tabRank.alpha = 0.5f
+        communityBinding.tabPlaytime.alpha = 0.5f
+        communityBinding.chipTasks.alpha = 0.5f
+        communityBinding.chipPlayers.alpha = 0.5f
+        communityBinding.chipMemorials.alpha = 0.5f
+        communityBinding.chipMyItems.alpha = 0.5f
         // ===== 社区扩展功能入口（点击后整页展示，不是弹窗） =====
         communityBinding.chipTasks.setOnClickListener { openCommunityFeature("tasks") }
         communityBinding.chipPlayers.setOnClickListener { openCommunityFeature("players") }
@@ -796,6 +809,22 @@ class MainActivity : AppCompatActivity() {
 
     /** 打开社区功能页（整页展示，不是弹窗） */
     private fun openCommunityFeature(type: String) {
+        // 高亮：4 个 Tab 与其它 chip 变暗，当前 chip 变亮
+        val all = listOf(
+            communityBinding.tabAnnounce, communityBinding.tabForum,
+            communityBinding.tabRank, communityBinding.tabPlaytime,
+            communityBinding.chipTasks, communityBinding.chipPlayers,
+            communityBinding.chipMemorials, communityBinding.chipMyItems
+        )
+        all.forEach { it.alpha = 0.5f }
+        val active = when (type) {
+            "tasks" -> communityBinding.chipTasks
+            "players" -> communityBinding.chipPlayers
+            "memorials" -> communityBinding.chipMemorials
+            else -> communityBinding.chipMyItems
+        }
+        active.alpha = 1f
+
         communityBinding.communityRecycler.visibility = View.GONE
         communityBinding.communityEmpty.visibility = View.GONE
         communityBinding.communityProgress.visibility = View.GONE
