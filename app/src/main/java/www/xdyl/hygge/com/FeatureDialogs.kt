@@ -52,8 +52,15 @@ object FeatureDialogs {
         }
     }
 
+    /** 剥离服务端数据里自带的 emoji / 装饰符号（版块名等） */
+    private fun stripEmoji(s: String): String =
+        s.replace(
+            Regex("[\\u{1F000}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{2B00}-\\u{2BFF}\\u{FE0F}\\u{200D}\\u{2190}-\\u{21FF}\\u{1F1E6}-\\u{1F1FF}]"),
+            ""
+        ).trim()
+
     private fun itemTitle(o: JSONObject): String =
-        firstNonBlank(o, "title", "name", "nickname", "username", "player_name", "id") ?: "条目"
+        stripEmoji(firstNonBlank(o, "title", "name", "nickname", "username", "player_name", "id") ?: "条目")
 
     private fun itemSubtitle(o: JSONObject): String {
         val parts = mutableListOf<String>()

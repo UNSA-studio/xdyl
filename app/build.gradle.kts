@@ -29,10 +29,15 @@ android {
     buildTypes {
         debug {
             signingConfig = signingConfigs.getByName("release")
+            // CI 分发的就是这个 debug 包：开启 R8 + 资源压缩以显著减小体积
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
