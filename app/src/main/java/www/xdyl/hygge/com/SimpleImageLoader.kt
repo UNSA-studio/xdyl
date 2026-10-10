@@ -55,7 +55,8 @@ object SimpleImageLoader {
     }
 
     private fun diskDir(context: Context): File =
-        File(context.cacheDir, "imgcache").apply { mkdirs() }
+        // 放在 filesDir（App 私有、不会被系统当缓存清理），cacheDir 常被系统清掉导致"每次都重新下载"
+        File(context.filesDir, "imgcache").apply { mkdirs() }
 
     private fun diskFile(context: Context, url: String): File {
         val sha = try {
@@ -115,15 +116,23 @@ object SimpleImageLoader {
             val cachedBytes = gifBytesCache.get(url)
             if (cachedBytes != null) {
                 executor.execute {
-                    val gif = runCatching { GifDrawable(cachedBytes) }.getOrNull() ?: return@execute
-                    gif.loopCount = 0
+                    var d: Drawable? = runCatching { GifDrawable(cachedBytes) }.getOrNull()
+                    if (d == null) {
+                        // 动图解码失败：回退静态首帧，避免整块空白
+                        val bmp = BitmapFactory.decodeByteArray(cachedBytes, 0, cachedBytes.size)
+                        if (bmp != null) d = BitmapDrawable(context.resources, bmp)
+                    }
+                    val result = d ?: return@execute
+                    if (result is GifDrawable) result.loopCount = 0
                     mainHandler.post {
                         if (imageView.tag == url) {
-                            imageView.setImageDrawable(gif)
-                            runCatching { gif.setVisible(true, true) }
-                            runCatching { gif.start() }
-                        } else {
-                            runCatching { gif.recycle() }
+                            imageView.setImageDrawable(result)
+                            if (result is GifDrawable) {
+                                runCatching { result.setVisible(true, true) }
+                                runCatching { result.start() }
+                            }
+                        } else if (result is GifDrawable) {
+                            runCatching { result.recycle() }
                         }
                     }
                 }
@@ -155,11 +164,10 @@ object SimpleImageLoader {
                         bytes = resp.body?.bytes() ?: return@execute
                     }
                     val d = bytes ?: return@execute
+                    // 直接写盘（tmp+rename 在部分机型/时机下会失败，导致缓存永不命中）
                     runCatching {
-                        val tmp = File(file.parentFile, file.name + ".part")
-                        tmp.writeBytes(d)
-                        if (file.exists()) file.delete()
-                        tmp.renameTo(file)
+                        file.parentFile?.mkdirs()
+                        file.writeBytes(d)
                     }
                 }
 
