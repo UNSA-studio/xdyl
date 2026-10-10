@@ -80,6 +80,9 @@ object ForumPostDialog {
             .setNegativeButton("关闭", null)
             .create()
 
+        // 点赞状态（接口是 toggle）：服务端有 liked 字段则以其为准，否则保留本地状态
+        var likedByMe = false
+
         // ---- 局部函数：重新加载帖子内容（定义在 sendBtn 监听之前）----
         fun reload() {
             activity.lifecycleScope.launch {
@@ -124,13 +127,19 @@ object ForumPostDialog {
                     IMAGE_REGEX.findAll(content).forEach { m ->
                         addImage(activity, col, m.groupValues[1])
                     }
-                    // 点赞行
+                    // 点赞行（接口是 toggle：再点即取消）
+                    // 状态同步：服务端返回 liked / is_liked 时以其为准，否则保留本地状态
+                    if (post.has("liked")) {
+                        likedByMe = post.optBoolean("liked", false) || post.optInt("liked", 0) == 1
+                    } else if (post.has("is_liked")) {
+                        likedByMe = post.optBoolean("is_liked", false) || post.optInt("is_liked", 0) == 1
+                    }
                     val likeRow = LinearLayout(activity).apply {
                         orientation = LinearLayout.HORIZONTAL
                         setPadding(0, dip(activity, 12), 0, 0)
                     }
                     val likeBtn = MaterialButton(activity).apply {
-                        text = "赞 ${post.optInt("likes", 0)}"
+                        text = if (likedByMe) "已赞 ${post.optInt("likes", 0)}" else "赞 ${post.optInt("likes", 0)}"
                         textSize = 13f
                         setTextColor(0xFF10131A.toInt())
                         setBackgroundColor(0xFFA0C4FF.toInt())
@@ -142,13 +151,31 @@ object ForumPostDialog {
                         setOnClickListener {
                             activity.lifecycleScope.launch {
                                 try {
-                                    withContext(Dispatchers.IO) {
+                                    val resp = withContext(Dispatchers.IO) {
                                         api.post("/forum/post/$postId/like", JSONObject())
                                     }
-                                    Toast.makeText(activity, "已点赞", Toast.LENGTH_SHORT).show()
+                                    // 判断本次操作是「点赞」还是「取消」
+                                    val d = resp.optJSONObject("data")
+                                    val nowLiked: Boolean = when {
+                                        d != null && d.has("liked") ->
+                                            d.optBoolean("liked", false) || d.optInt("liked", 0) == 1
+                                        d != null && d.has("is_liked") ->
+                                            d.optBoolean("is_liked", false) || d.optInt("is_liked", 0) == 1
+                                        d != null && d.has("status") ->
+                                            d.optString("status") == "liked"
+                                        resp.has("liked") ->
+                                            resp.optBoolean("liked", false)
+                                        else -> !likedByMe // 服务端无状态字段（toggle）：本地翻转
+                                    }
+                                    likedByMe = nowLiked
+                                    Toast.makeText(
+                                        activity,
+                                        if (nowLiked) "已点赞" else "已取消点赞",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                     reload()
                                 } catch (e: Exception) {
-                                    Toast.makeText(activity, "点赞失败：" + e.message, Toast.LENGTH_LONG).show()
+                                    Toast.makeText(activity, "操作失败：" + e.message, Toast.LENGTH_LONG).show()
                                 }
                             }
                         }
