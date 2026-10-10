@@ -109,6 +109,7 @@ object SimpleImageLoader {
 
                 val data = bytes ?: return@execute
 
+                var drawable: Drawable? = null
                 // 注意：这里刻意【不使用】AnimatedImageDrawable / ImageDecoder 解码动图。
                 // 系统实现在部分 GIF 上会在渲染线程 native crash
                 // （libhwui: AnimatedImageDrawable::decodeNextFrame），无法用 try/catch 捕获，
