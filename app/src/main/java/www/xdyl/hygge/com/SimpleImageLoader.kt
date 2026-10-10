@@ -117,7 +117,7 @@ object SimpleImageLoader {
                 var drawable: Drawable? = null
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     drawable = runCatching {
-                        val source = ImageDecoder.createSource(ByteArrayInputStream(data))
+                        val source = ImageDecoder.createSource(java.nio.ByteBuffer.wrap(data))
                         ImageDecoder.decodeDrawable(source).also {
                             if (it is AnimatedImageDrawable) it.start()
                         }
