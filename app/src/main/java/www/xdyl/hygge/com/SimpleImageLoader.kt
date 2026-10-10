@@ -1,31 +1,37 @@
 package www.xdyl.hygge.com
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.graphics.drawable.AnimatedImageDrawable
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.LruCache
 import android.widget.ImageView
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
- * 极简图片加载器（OkHttp + 内存 LRU + 磁盘缓存）。
+ * 图片加载器（OkHttp + 内存 LRU + 磁盘缓存）。
  *
- * 缓存策略：
- *  1) 内存 LRU 命中 → 直接显示（最快）
- *  2) 磁盘缓存命中（以 URL 的 sha256 命名） → 解码显示，不再走网络
- *  3) 都没有 → 下载 → 写入磁盘缓存 → 显示
- *
- * 下次相同 URL 直接吃本地缓存，解决"加载挺慢"的问题。
+ * 特性：
+ *  - **支持 GIF 动图**（API 28+ 用 ImageDecoder 解码为 AnimatedImageDrawable 并播放）
+ *  - 三级缓存：内存 -> 磁盘（URL 的 sha256 命名）-> 网络
+ *  - 磁盘缓存损坏自动删除并重新下载
+ *  - 加载失败静默保持占位（不崩溃、不残留错图）
  */
 object SimpleImageLoader {
 
-    private val client = OkHttpClient.Builder().dns(NetDns)
+    private val client = OkHttpClient.Builder()
+        .dns(NetDns)
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
@@ -33,15 +39,14 @@ object SimpleImageLoader {
     private val executor = Executors.newFixedThreadPool(4)
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private val cache = object : android.util.LruCache<String, Bitmap>(8 * 1024 * 1024) {
-        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
+    /** 内存缓存：按条目数限制（Drawable 不便统计字节数） */
+    private val cache = object : LruCache<String, Drawable>(80) {
+        override fun sizeOf(key: String, value: Drawable): Int = 1
     }
 
-    /** 磁盘缓存目录（App cacheDir 下，系统可自动清理） */
     private fun diskDir(context: Context): File =
         File(context.cacheDir, "imgcache").apply { mkdirs() }
 
-    /** 以 URL 的 sha256 作为磁盘文件名（与"资源按 sha 复用"同一思路） */
     private fun diskFile(context: Context, url: String): File {
         val sha = try {
             MessageDigest.getInstance("SHA-256").digest(url.toByteArray())
@@ -62,58 +67,74 @@ object SimpleImageLoader {
         }
     }
 
-    /** 异步加载图片到 ImageView（tag 校验防止复用错位） */
+    /** 异步加载图片（支持 GIF 动图） */
     fun load(context: Context, url: String, imageView: ImageView) {
         if (url.isBlank()) return
         imageView.tag = url
 
         // 1) 内存缓存
         cache.get(url)?.let {
-            imageView.setImageBitmap(it)
+            imageView.setImageDrawable(it)
             return
         }
 
         executor.execute {
             try {
-                // 2) 磁盘缓存
                 val file = diskFile(context, url)
+
+                // 2) 磁盘缓存
+                var bytes: ByteArray? = null
                 if (file.exists() && file.length() > 0) {
-                    val bmp = BitmapFactory.decodeFile(file.absolutePath)
-                    if (bmp != null) {
-                        cache.put(url, bmp)
-                        mainHandler.post {
-                            if (imageView.tag == url) imageView.setImageBitmap(bmp)
-                        }
-                        return@execute
+                    bytes = runCatching { file.readBytes() }.getOrNull()
+                    if (bytes == null || bytes.isEmpty()) {
+                        file.delete()
+                        bytes = null
                     }
-                    // 缓存损坏：删除后走网络
-                    file.delete()
                 }
 
                 // 3) 网络下载
-                val req = Request.Builder().url(url)
-                    .header("User-Agent", "NebulaUpdater-Android/1.0")
-                    .build()
-                client.newCall(req).execute().use { resp ->
-                    if (!resp.isSuccessful) return@execute
-                    val bytes = resp.body?.bytes() ?: return@execute
-                    val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@execute
+                if (bytes == null) {
+                    val req = Request.Builder().url(url)
+                        .header("User-Agent", "NebulaUpdater-Android/1.0")
+                        .build()
+                    client.newCall(req).execute().use { resp ->
+                        if (!resp.isSuccessful) return@execute
+                        bytes = resp.body?.bytes() ?: return@execute
+                    }
+                    val data = bytes ?: return@execute
                     // 写入磁盘缓存
-                    try {
+                    runCatching {
                         val tmp = File(file.parentFile, file.name + ".part")
-                        tmp.writeBytes(bytes)
+                        tmp.writeBytes(data)
                         if (file.exists()) file.delete()
                         tmp.renameTo(file)
-                    } catch (e: Throwable) {
-                        // 缓存写入失败不影响显示
-                    }
-                    cache.put(url, bmp)
-                    mainHandler.post {
-                        if (imageView.tag == url) imageView.setImageBitmap(bmp)
                     }
                 }
+
+                val data = bytes ?: return@execute
+
+                // 4) 解码：优先 ImageDecoder（GIF 可动图），回退 BitmapFactory
+                var drawable: Drawable? = null
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    drawable = runCatching {
+                        val source = ImageDecoder.createSource(ByteArrayInputStream(data))
+                        ImageDecoder.decodeDrawable(source).also {
+                            if (it is AnimatedImageDrawable) it.start()
+                        }
+                    }.getOrNull()
+                }
+                if (drawable == null) {
+                    val bmp = BitmapFactory.decodeByteArray(data, 0, data.size)
+                    if (bmp != null) drawable = BitmapDrawable(context.resources, bmp)
+                }
+                val result = drawable ?: return@execute
+
+                cache.put(url, result)
+                mainHandler.post {
+                    if (imageView.tag == url) imageView.setImageDrawable(result)
+                }
             } catch (e: Exception) {
-                // 加载失败静默
+                // 加载失败：保持占位背景，不残留错图
             }
         }
     }
