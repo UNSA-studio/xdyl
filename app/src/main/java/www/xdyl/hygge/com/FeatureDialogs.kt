@@ -52,12 +52,26 @@ object FeatureDialogs {
         }
     }
 
-    /** 剥离服务端数据里自带的 emoji / 装饰符号（版块名等） */
-    private fun stripEmoji(s: String): String =
-        s.replace(
-            Regex("[\\u{1F000}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{2B00}-\\u{2BFF}\\u{FE0F}\\u{200D}\\u{2190}-\\u{21FF}\\u{1F1E6}-\\u{1F1FF}]"),
-            ""
-        ).trim()
+    /** 剥离服务端数据里自带的 emoji / 装饰符号（按 Unicode 码点过滤，避免正则转义问题） */
+    private fun stripEmoji(s: String): String {
+        val sb = StringBuilder()
+        var i = 0
+        while (i < s.length) {
+            val cp = s.codePointAt(i)
+            if (!isEmojiOrSymbol(cp)) sb.appendCodePoint(cp)
+            i += Character.charCount(cp)
+        }
+        return sb.toString().trim()
+    }
+
+    private fun isEmojiOrSymbol(cp: Int): Boolean =
+        cp in 0x1F000..0x1FAFF ||   // Emoji 区
+        cp in 0x2600..0x27BF ||     // 杂项符号 / 装饰符号
+        cp in 0x2B00..0x2BFF ||     // 杂项符号与箭头
+        cp in 0xFE00..0xFE0F ||     // 变体选择符
+        cp == 0x200D ||             // 零宽连接符
+        cp in 0x1F1E6..0x1F1FF ||   // 区域指示符（旗帜）
+        cp in 0x2190..0x21FF        // 箭头
 
     private fun itemTitle(o: JSONObject): String =
         stripEmoji(firstNonBlank(o, "title", "name", "nickname", "username", "player_name", "id") ?: "条目")
