@@ -801,6 +801,11 @@ class MainActivity : AppCompatActivity() {
         communityBinding.chipPlayers.setOnClickListener { openCommunityFeature("players") }
         communityBinding.chipMemorials.setOnClickListener { openCommunityFeature("memorials") }
         communityBinding.chipMyItems.setOnClickListener { openCommunityFeature("items") }
+        communityBinding.chipPlaytime.setOnClickListener { openCommunityFeature("playtime") }
+        communityBinding.chipMarket.setOnClickListener { openCommunityFeature("market") }
+        communityBinding.chipPolls.setOnClickListener { openCommunityFeature("polls") }
+        communityBinding.chipSeasons.setOnClickListener { openCommunityFeature("seasons") }
+        communityBinding.chipSuggestions.setOnClickListener { openCommunityFeature("suggestions") }
         // 发帖按钮
         communityBinding.fabNewPost.setOnClickListener {
             FeatureDialogs.showNewPost(this) { loadCommunityTab("FORUM") }
@@ -814,14 +819,22 @@ class MainActivity : AppCompatActivity() {
             communityBinding.tabAnnounce, communityBinding.tabForum,
             communityBinding.tabRank, communityBinding.tabPlaytime,
             communityBinding.chipTasks, communityBinding.chipPlayers,
-            communityBinding.chipMemorials, communityBinding.chipMyItems
+            communityBinding.chipMemorials, communityBinding.chipMyItems,
+            communityBinding.chipPlaytime, communityBinding.chipMarket,
+            communityBinding.chipPolls, communityBinding.chipSeasons,
+            communityBinding.chipSuggestions
         )
         all.forEach { it.alpha = 0.5f }
         val active = when (type) {
             "tasks" -> communityBinding.chipTasks
             "players" -> communityBinding.chipPlayers
             "memorials" -> communityBinding.chipMemorials
-            else -> communityBinding.chipMyItems
+            "items" -> communityBinding.chipMyItems
+            "playtime" -> communityBinding.chipPlaytime
+            "market" -> communityBinding.chipMarket
+            "polls" -> communityBinding.chipPolls
+            "seasons" -> communityBinding.chipSeasons
+            else -> communityBinding.chipSuggestions
         }
         active.alpha = 1f
 
@@ -835,6 +848,11 @@ class MainActivity : AppCompatActivity() {
             "players" -> FeatureDialogs.renderPlayersPage(this, c)
             "memorials" -> FeatureDialogs.renderMemorialsPage(this, c)
             "items" -> FeatureDialogs.renderMyItemsPage(this, c)
+            "playtime" -> FeatureDialogs.renderPlaytimeRewardsPage(this, c)
+            "market" -> FeatureDialogs.renderMarketPage(this, c)
+            "polls" -> FeatureDialogs.renderPollsPage(this, c)
+            "seasons" -> FeatureDialogs.renderSeasonsPage(this, c)
+            "suggestions" -> FeatureDialogs.renderSuggestionsPage(this, c)
         }
     }
 

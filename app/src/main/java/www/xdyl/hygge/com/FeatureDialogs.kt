@@ -403,6 +403,144 @@ object FeatureDialogs {
     fun renderMyItemsPage(activity: AppCompatActivity, container: LinearLayout) =
         renderPage(activity, container, "我的物品", "/user/items")
 
+    // ==================== 第一批新功能 ====================
+
+    /** 时长奖励（页面 + 领取按钮） /playtime/rewards */
+    fun renderPlaytimeRewardsPage(activity: AppCompatActivity, container: LinearLayout) =
+        renderPage(activity, container, "时长奖励", "/playtime/rewards", actionText = "领取") { o ->
+            val id = o.optInt("id", -1)
+            val claimed = o.optInt("claimed", 0) == 1 || o.optBoolean("claimed", false)
+            val sub = buildString {
+                append(itemSubtitle(o))
+                if (claimed) append(" · 已领取")
+            }
+            Triple(
+                itemTitle(o), sub,
+                if (!claimed && id > 0) {
+                    { postJsonThen(activity, "/playtime/rewards/claim", JSONObject().put("reward_id", id), "领取奖励", null) }
+                } else null
+            )
+        }
+
+    /** 市场行情（页面） /market/preview */
+    fun renderMarketPage(activity: AppCompatActivity, container: LinearLayout) =
+        renderPage(activity, container, "市场行情", "/market/preview") { o ->
+            val name = firstNonBlank(o, "name", "item_name", "id") ?: "物品"
+            val buy = o.optDouble("buy", 0.0)
+            val change = o.optDouble("change", 0.0)
+            val arrow = if (change > 0) "↑" else if (change < 0) "↓" else "—"
+            val sub = "买价 " + String.format(java.util.Locale.US, "%.3f", buy) +
+                    " · " + arrow + " " + String.format(java.util.Locale.US, "%.2f", kotlin.math.abs(change)) + "%"
+            Triple(name, sub, null)
+        }
+
+    /** 投票（页面 + 投票按钮） /polls */
+    fun renderPollsPage(activity: AppCompatActivity, container: LinearLayout) =
+        renderPage(activity, container, "投票", "/polls", actionText = "投票") { o ->
+            val id = o.optInt("id", -1)
+            Triple(itemTitle(o), itemSubtitle(o), {
+                listDialog(
+                    activity, "投票：" + itemTitle(o),
+                    listOf(
+                        Triple("赞成", "", { postJsonThen(activity, "/polls/$id", JSONObject().put("option", "yes"), "投票", null) }),
+                        Triple("反对", "", { postJsonThen(activity, "/polls/$id", JSONObject().put("option", "no"), "投票", null) })
+                    )
+                )
+            })
+        }
+
+    /** 周目（页面） /seasons */
+    fun renderSeasonsPage(activity: AppCompatActivity, container: LinearLayout) =
+        renderPage(activity, container, "周目", "/seasons")
+
+    /** 意见箱（页面 + 提交意见） /suggestions */
+    fun renderSuggestionsPage(activity: AppCompatActivity, container: LinearLayout) {
+        container.removeAllViews()
+        val head = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(0, dp(activity, 4), 0, dp(activity, 12))
+        }
+        head.addView(textView(activity, "意见箱", 18f, 0xFFA0C4FF.toInt(), bold = true).apply {
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        head.addView(MaterialButton(activity).apply {
+            text = "提交意见"
+            textSize = 12f
+            minWidth = 0
+            setTextColor(0xFF10131A.toInt())
+            setBackgroundColor(0xFFA0C4FF.toInt())
+            setPadding(dp(activity, 16), 0, dp(activity, 16), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 36)
+            )
+            setOnClickListener {
+                val et = EditText(activity).apply {
+                    hint = "写下你的建议…"
+                    minLines = 4
+                    gravity = android.view.Gravity.TOP
+                    setTextColor(0xFFEDEDED.toInt())
+                    setHintTextColor(0xFF6B6B6B.toInt())
+                }
+                MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
+                    .setTitle("提交意见")
+                    .setView(et)
+                    .setPositiveButton("提交") { _, _ ->
+                        val t = et.text.toString().trim()
+                        if (t.isEmpty()) return@setPositiveButton
+                        postJsonThen(activity, "/suggestions", JSONObject().put("content", t), "提交意见") {
+                            renderSuggestionsPage(activity, container)
+                        }
+                    }
+                    .setNegativeButton("取消", null)
+                    .show()
+            }
+        })
+        container.addView(head)
+
+        val listCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+        container.addView(listCol)
+        listCol.addView(textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt()))
+        activity.lifecycleScope.launch {
+            try {
+                val root = withContext(Dispatchers.IO) { api.get("/suggestions") }
+                LogManager.log("[PAGE] /suggestions => " + root.toString().take(400))
+                val arr = toArray(root)
+                listCol.removeAllViews()
+                if (arr == null || arr.length() == 0) {
+                    listCol.addView(textView(activity, "暂无意见", 13f, 0xFF9AA0A6.toInt()))
+                } else {
+                    for (i in 0 until arr.length()) {
+                        val o = arr.optJSONObject(i) ?: continue
+                        listCol.addView(makeCard(activity, itemTitle(o), itemSubtitle(o), null))
+                    }
+                }
+            } catch (e: Exception) {
+                listCol.removeAllViews()
+                listCol.addView(textView(activity, "加载失败：" + e.message, 13f, 0xFFE57373.toInt()))
+            }
+        }
+    }
+
+    /** POST 并支持成功回调 */
+    private fun postJsonThen(
+        activity: AppCompatActivity,
+        path: String,
+        body: JSONObject,
+        label: String,
+        onDone: (() -> Unit)?
+    ) {
+        activity.lifecycleScope.launch {
+            try {
+                val r = api.request("POST", path, body)
+                Toast.makeText(activity, "$label：" + friendly(r, "成功"), Toast.LENGTH_LONG).show()
+                onDone?.invoke()
+            } catch (e: Exception) {
+                Toast.makeText(activity, "${label}失败：" + e.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     /** 论坛分类（页面） */
     fun renderCategoriesPage(activity: AppCompatActivity, container: LinearLayout) =
         renderPage(activity, container, "论坛分类", "/forum/categories")
