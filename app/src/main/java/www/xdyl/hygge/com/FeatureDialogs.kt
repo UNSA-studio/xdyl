@@ -80,7 +80,8 @@ object FeatureDialogs {
         val parts = mutableListOf<String>()
         firstNonBlank(o, "description", "desc", "content", "subtitle", "detail")?.let { parts.add(it.take(80)) }
         firstNonBlank(o, "reward_coins", "reward")?.let { parts.add("奖励 $it 喵币") }
-        firstNonBlank(o, "price", "cost")?.let { parts.add("价格 $it") }
+        firstNonBlank(o, "price", "cost", "price_coins", "need_coins", "coin_cost", "cost_coins")
+            ?.let { parts.add("价格 $it 喵币") }
         firstNonBlank(o, "created_at", "time", "date")?.let { parts.add(it) }
         return parts.joinToString(" · ")
     }
@@ -131,6 +132,53 @@ object FeatureDialogs {
         return card
     }
 
+    /** 带操作按钮的卡片：左侧文字 + 右侧按钮（任务领取 / 购买 / 佩戴） */
+    private fun makeCardWithAction(
+        a: AppCompatActivity,
+        title: String,
+        subtitle: String,
+        actionText: String,
+        onAction: () -> Unit
+    ): LinearLayout {
+        val card = LinearLayout(a).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(dp(a, 18), dp(a, 14), dp(a, 18), dp(a, 14))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(a, 14).toFloat()
+                setColor(0xFF2A2A2A.toInt())
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(a, 10) }
+        }
+        val textCol = LinearLayout(a).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        textCol.addView(textView(a, title, 15f, 0xFFA0C4FF.toInt(), bold = true))
+        if (subtitle.isNotBlank()) {
+            textCol.addView(textView(a, subtitle, 12f, 0xFF9AA0A6.toInt()).apply {
+                setPadding(0, dp(a, 6), 0, 0)
+            })
+        }
+        card.addView(textCol)
+        card.addView(MaterialButton(a).apply {
+            text = actionText
+            textSize = 13f
+            minWidth = 0
+            setTextColor(0xFF10131A.toInt())
+            setBackgroundColor(0xFFA0C4FF.toInt())
+            setPadding(dp(a, 16), 0, dp(a, 16), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(a, 38)
+            )
+            setOnClickListener { onAction() }
+        })
+        return card
+    }
+
     // ==================== 页面模式（整页渲染） ====================
 
     /**
@@ -142,6 +190,7 @@ object FeatureDialogs {
         container: LinearLayout,
         title: String,
         path: String,
+        actionText: String? = null,
         itemMapper: ((JSONObject) -> Triple<String, String, (() -> Unit)?>)? = null
     ) {
         container.removeAllViews()
@@ -186,7 +235,17 @@ object FeatureDialogs {
                         val o = arr.optJSONObject(i) ?: continue
                         val mapped = itemMapper?.invoke(o)
                             ?: Triple(itemTitle(o), itemSubtitle(o), null)
-                        listCol.addView(makeCard(activity, mapped.first, mapped.second, mapped.third))
+                        if (mapped.third != null && actionText != null) {
+                            // 带按钮（购买 / 佩戴等）
+                            listCol.addView(
+                                makeCardWithAction(
+                                    activity, mapped.first, mapped.second, actionText,
+                                    mapped.third!!
+                                )
+                            )
+                        } else {
+                            listCol.addView(makeCard(activity, mapped.first, mapped.second, mapped.third))
+                        }
                     }
                 } catch (e: Exception) {
                     listCol.removeAllViews()
@@ -262,14 +321,17 @@ object FeatureDialogs {
                                 append(if (isNotEmpty()) " · 可点击领取" else "可点击领取")
                             }
                         }
-                        listCol.addView(
-                            makeCard(
-                                activity, itemTitle(o), sub,
-                                if (done && !claimed && id > 0) {
-                                    { claimTask(activity, id, itemTitle(o)); }
-                                } else null
+                        val claimAction: (() -> Unit)? = if (done && !claimed && id > 0) {
+                            { claimTask(activity, id, itemTitle(o)); }
+                        } else null
+                        if (claimAction != null) {
+                            // 可领取：显示明确的「领取」按钮
+                            listCol.addView(
+                                makeCardWithAction(activity, itemTitle(o), sub, "领取", claimAction)
                             )
-                        )
+                        } else {
+                            listCol.addView(makeCard(activity, itemTitle(o), sub, null))
+                        }
                     }
                 } catch (e: Exception) {
                     listCol.removeAllViews()
@@ -283,7 +345,7 @@ object FeatureDialogs {
 
     /** 我的称号（页面）：点一下佩戴 */
     fun renderTitlesPage(activity: AppCompatActivity, container: LinearLayout) {
-        renderPage(activity, container, "我的称号（点击佩戴）", "/titles/mine") { o ->
+        renderPage(activity, container, "我的称号", "/titles/mine", actionText = "佩戴") { o ->
             val id = o.optInt("id", -1)
             val worn = o.optInt("worn", 0) == 1 || o.optBoolean("worn", false)
             val sub = buildString {
@@ -336,7 +398,7 @@ object FeatureDialogs {
 
     /** 称号商店（页面） */
     fun renderTitleShopPage(activity: AppCompatActivity, container: LinearLayout) =
-        renderPage(activity, container, "称号商店（点击购买）", "/titles/catalog") { o ->
+        renderPage(activity, container, "称号商店", "/titles/catalog", actionText = "购买") { o ->
             val id = o.optInt("id", -1)
             Triple(itemTitle(o), itemSubtitle(o), { buyTitle(activity, id, itemTitle(o)); })
         }

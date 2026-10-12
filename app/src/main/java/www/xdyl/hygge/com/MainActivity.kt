@@ -964,9 +964,18 @@ class MainActivity : AppCompatActivity() {
                 val items = api.extractList(root)
                 val list: List<JSONObject> = (0 until items.length()).map { idx -> items.getJSONObject(idx) }
                 val rendered: List<InlineItem> = list.map { obj ->
+                    val price = obj.optInt("price", -1)
+                    val desc = api.firstString(obj, "description") ?: ""
+                    val sub = buildString {
+                        append(desc)
+                        if (price >= 0) {
+                            if (isNotEmpty()) append(" · ")
+                            append("价格 ").append(price).append(" 喵币")
+                        }
+                    }
                     InlineItem(
                         api.firstString(obj, "name") ?: "商品",
-                        api.firstString(obj, "description") ?: "",
+                        sub,
                         "id=" + obj.optInt("id", 0)
                     )
                 }
@@ -979,14 +988,7 @@ class MainActivity : AppCompatActivity() {
                                 .setTitle("确认购买")
                                 .setMessage("购买「" + item.title + "」？\n\n" + item.subtitle)
                                 .setPositiveButton("购买") { _, _ ->
-                                    scope.launch {
-                                        try {
-                                            api.post("/shop/buy", JSONObject().put("item_id", id))
-                                            Toast.makeText(this@MainActivity, "购买成功", Toast.LENGTH_SHORT).show()
-                                        } catch (e: Exception) {
-                                            Toast.makeText(this@MainActivity, "购买失败：" + e.message, Toast.LENGTH_LONG).show()
-                                        }
-                                    }
+                                    FeatureDialogs.buyShopItem(this@MainActivity, id, item.title)
                                 }
                                 .setNegativeButton("取消", null)
                                 .show()
