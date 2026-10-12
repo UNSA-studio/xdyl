@@ -438,8 +438,8 @@ object FeatureDialogs {
     private fun claimTask(activity: AppCompatActivity, id: Int, name: String) {
         activity.lifecycleScope.launch {
             try {
-                val r = api.request("POST", "/tasks/$id/claim").toString()
-                Toast.makeText(activity, "已领取：$name\n$r", Toast.LENGTH_LONG).show()
+                val r = api.request("POST", "/tasks/$id/claim")
+                Toast.makeText(activity, "已领取：$name（" + friendly(r, "成功") + "）", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(activity, "领取失败：" + e.message, Toast.LENGTH_LONG).show()
             }
@@ -450,8 +450,8 @@ object FeatureDialogs {
         activity.lifecycleScope.launch {
             try {
                 val body = JSONObject().put("title_id", id)
-                val r = api.request("POST", "/titles/wear", body).toString()
-                Toast.makeText(activity, "已佩戴：$name\n$r", Toast.LENGTH_LONG).show()
+                val r = api.request("POST", "/titles/wear", body)
+                Toast.makeText(activity, "已佩戴：$name（" + friendly(r, "成功") + "）", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(activity, "佩戴失败：" + e.message, Toast.LENGTH_LONG).show()
             }
@@ -462,8 +462,8 @@ object FeatureDialogs {
         activity.lifecycleScope.launch {
             try {
                 val body = JSONObject().put("title_id", id)
-                val r = api.request("POST", "/titles/buy", body).toString()
-                Toast.makeText(activity, "购买：$name\n$r", Toast.LENGTH_LONG).show()
+                val r = api.request("POST", "/titles/buy", body)
+                Toast.makeText(activity, "购买：$name（" + friendly(r, "成功") + "）", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(activity, "购买失败：" + e.message, Toast.LENGTH_LONG).show()
             }
@@ -671,12 +671,28 @@ object FeatureDialogs {
             .show()
     }
 
+    /** 把服务端响应解析成可读文案（取 message，并附带余额等附加信息） */
+    private fun friendly(resp: JSONObject, fallback: String): String {
+        val data = resp.optJSONObject("data")
+        val msg = resp.optString("message", "").ifBlank {
+            data?.optString("message", "") ?: ""
+        }.ifBlank { fallback }
+        // 附带余额（服务端可能返回 new_coins / coins / balance）
+        val coins = when {
+            resp.has("new_coins") -> resp.optInt("new_coins", -1)
+            data?.has("new_coins") == true -> data.optInt("new_coins", -1)
+            data?.has("coins") == true -> data.optInt("coins", -1)
+            else -> -1
+        }
+        return if (coins >= 0) "$msg（余额 $coins 喵币）" else msg
+    }
+
     /** 通用 POST JSON */
     fun postJson(activity: AppCompatActivity, path: String, body: JSONObject, label: String) {
         activity.lifecycleScope.launch {
             try {
-                val r = api.request("POST", path, body).toString()
-                Toast.makeText(activity, "$label：$r", Toast.LENGTH_LONG).show()
+                val r = api.request("POST", path, body)
+                Toast.makeText(activity, "$label：" + friendly(r, "成功"), Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(activity, "${label}失败：" + e.message, Toast.LENGTH_LONG).show()
             }
