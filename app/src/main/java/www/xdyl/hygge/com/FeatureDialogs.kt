@@ -37,7 +37,7 @@ object FeatureDialogs {
     private fun dp(a: AppCompatActivity, v: Int): Int =
         (v * a.resources.displayMetrics.density).toInt()
 
-    /** 归一化 data → JSONArray */
+    /** 归一化 data → JSONArray（兼容多种包裹方式） */
     private fun toArray(root: JSONObject): JSONArray? {
         val data = root.opt("data")
         return when (data) {
@@ -47,7 +47,17 @@ object FeatureDialogs {
                 ?: data.optJSONArray("posts")
                 ?: data.optJSONArray("players")
                 ?: data.optJSONArray("titles")
+                ?: data.optJSONArray("catalog")
+                ?: data.optJSONArray("shop")
                 ?: data.optJSONArray("data")
+                ?: run {
+                    // 兜底：取 data 里第一个非空数组
+                    for (k in data.keys()) {
+                        val a = data.optJSONArray(k)
+                        if (a != null && a.length() > 0) return a
+                    }
+                    null
+                }
             else -> root.optJSONArray("data")
         }
     }
@@ -225,6 +235,7 @@ object FeatureDialogs {
             activity.lifecycleScope.launch {
                 try {
                     val root = withContext(Dispatchers.IO) { api.get(path) }
+                    LogManager.log("[PAGE] $path => " + root.toString().take(500))
                     val arr = toArray(root)
                     listCol.removeAllViews()
                     if (arr == null || arr.length() == 0) {
@@ -620,6 +631,41 @@ object FeatureDialogs {
         col.addView(tvCategory)
         col.addView(etTitle)
         col.addView(etContent)
+
+        // 标记提示 + 插入颜色按钮
+        val hintRow = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(0, dp(activity, 8), 0, 0)
+        }
+        hintRow.addView(textView(activity, "支持 &#RRGGBB 颜色 / **加粗** / ~~删除线~~", 11f, 0xFF6B6B6B.toInt()).apply {
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        hintRow.addView(MaterialButton(activity).apply {
+            text = "插入颜色"
+            textSize = 12f
+            minWidth = 0
+            setTextColor(0xFF10131A.toInt())
+            setBackgroundColor(0xFFA0C4FF.toInt())
+            setPadding(dp(activity, 14), 0, dp(activity, 14), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 34)
+            )
+            setOnClickListener {
+                val names = arrayOf("红 FF0000", "橙 FF8800", "黄 FFD700", "绿 00CC66", "蓝 3399FF", "紫 AA66FF", "白 FFFFFF")
+                val hexes = arrayOf("FF0000", "FF8800", "FFD700", "00CC66", "3399FF", "AA66FF", "FFFFFF")
+                MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
+                    .setTitle("插入颜色")
+                    .setItems(names) { _, w ->
+                        val mark = "&#" + hexes[w]
+                        val start = etContent.selectionStart
+                        if (start >= 0) etContent.text.insert(start, mark) else etContent.append(mark)
+                    }
+                    .setNegativeButton("取消", null)
+                    .show()
+            }
+        })
+        col.addView(hintRow)
 
         // 拉取版块列表
         activity.lifecycleScope.launch {
