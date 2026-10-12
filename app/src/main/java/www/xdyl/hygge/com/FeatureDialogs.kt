@@ -95,9 +95,9 @@ object FeatureDialogs {
 
     private fun textView(a: AppCompatActivity, s: String, size: Float, color: Int, bold: Boolean = false) =
         TextView(a).apply {
-            text = s
             textSize = size
             setTextColor(color)
+            RichText.apply(this, s)
             if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
         }
 
@@ -240,8 +240,14 @@ object FeatureDialogs {
                     for (i in 0 until arr.length()) {
                         val o = arr.optJSONObject(i) ?: continue
                         val id = o.optInt("id", -1)
-                        val done = o.optInt("completed", 0) == 1 || o.optBoolean("completed", false)
-                        val claimed = o.optInt("claimed", 0) == 1 || o.optBoolean("claimed", false)
+                        // 完成/领取状态：兼容服务端多种字段名
+                        val done = o.optInt("completed", 0) == 1 || o.optBoolean("completed", false) ||
+                                o.optInt("finished", 0) == 1 || o.optBoolean("finished", false) ||
+                                o.optBoolean("done", false) || o.optInt("is_completed", 0) == 1
+                        val claimed = o.optInt("claimed", 0) == 1 || o.optBoolean("claimed", false) ||
+                                o.optInt("received", 0) == 1 || o.optBoolean("received", false) ||
+                                o.optBoolean("is_claimed", false)
+                        LogManager.log("[TASK] $o")
                         val desc = firstNonBlank(o, "description", "desc", "content") ?: ""
                         val reward = firstNonBlank(o, "reward_coins", "reward", "coins")
                         val sub = buildString {

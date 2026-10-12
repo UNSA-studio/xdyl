@@ -285,9 +285,10 @@ object ForumPostDialog {
         topMargin: Int = 0,
         bold: Boolean = false
     ): TextView = TextView(activity).apply {
-        this.text = text
         textSize = size
         setTextColor(color)
+        // 支持服务端颜色标记 &#RRGGBB（要在 setTextColor 之后调用）
+        RichText.apply(this, text)
         if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
         movementMethod = LinkMovementMethod.getInstance()
         layoutParams = LinearLayout.LayoutParams(

@@ -1290,16 +1290,16 @@ class MainActivity : AppCompatActivity() {
             holder.row.removeAllViews()
             val ctx = holder.row.context
             holder.row.addView(TextView(ctx).apply {
-                text = item.title
                 setTextColor(0xFFA0C4FF.toInt())
                 textSize = 16f
+                RichText.apply(this, item.title)
             })
             if (item.subtitle.isNotBlank()) {
                 holder.row.addView(TextView(ctx).apply {
-                    text = item.subtitle
                     setTextColor(0xCCFFFFFF.toInt())
                     textSize = 13f
                     setPadding(0, 6, 0, 0)
+                    RichText.apply(this, item.subtitle)
                 })
             }
             if (item.detail.isNotBlank() && !item.detail.startsWith("id=")) {
@@ -1308,10 +1308,10 @@ class MainActivity : AppCompatActivity() {
                 val textOnly = item.detail.replace(imgRegex, "").trim()
                 if (textOnly.isNotBlank()) {
                     holder.row.addView(TextView(ctx).apply {
-                        text = if (textOnly.length > 80) textOnly.take(80) + "…" else textOnly
                         setTextColor(0x99FFFFFF.toInt())
                         textSize = 12f
                         setPadding(0, 6, 0, 0)
+                        RichText.apply(this, if (textOnly.length > 80) textOnly.take(80) + "…" else textOnly)
                     })
                 }
                 imgRegex.findAll(item.detail).take(2).forEach { m ->
