@@ -357,12 +357,15 @@ class ApiClient(private val session: SessionStore) {
         body: JSONObject? = null,
         requiresAuth: Boolean = true
     ): JSONObject = withContext(Dispatchers.IO) {
-        execute(method, path, body ?: JSONObject(), requiresAuth, allowRefresh = false)
+        // allowRefresh = true：access_token 过期时自动用 refresh_token 续期并重放请求
+        execute(method, path, body ?: JSONObject(), requiresAuth, allowRefresh = true)
     }
 
     /** 上传图片（multipart/form-data，字段名 file） */
-    suspend fun uploadImage(bytes: ByteArray, fileName: String, path: String = "/upload/image"): JSONObject =
-        withContext(Dispatchers.IO) {
+    suspend fun uploadImage(bytes: ByteArray, fileName: String, path: String = "/upload/image"): JSONObject {
+        // 上传前先确保 token 有效（若已过期会自动用 refresh_token 续期），避免上传直接 401
+        runCatching { get("/user/profile") }
+        return withContext(Dispatchers.IO) {
             val body = okhttp3.MultipartBody.Builder()
                 .setType(okhttp3.MultipartBody.FORM)
                 .addFormDataPart(
@@ -383,6 +386,7 @@ class ApiClient(private val session: SessionStore) {
                 if (text.isBlank()) JSONObject() else JSONObject(text)
             }
         }
+    }
 
     private fun postRaw(path: String, body: JSONObject, requiresAuth: Boolean): JSONObject =
         execute("POST", path, body, requiresAuth, allowRefresh = false)
