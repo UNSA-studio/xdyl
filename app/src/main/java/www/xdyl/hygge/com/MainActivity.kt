@@ -775,10 +775,16 @@ class MainActivity : AppCompatActivity() {
                 val tabs: List<TextView> = listOf(communityBinding.tabAnnounce, communityBinding.tabForum, communityBinding.tabRank, communityBinding.tabPlaytime)
                 tabs.forEach { tb -> tb.alpha = if (tb == view) 1f else 0.5f }
                 // 功能 chip 全部变暗
-                communityBinding.chipTasks.alpha = 0.5f
-                communityBinding.chipPlayers.alpha = 0.5f
-                communityBinding.chipMemorials.alpha = 0.5f
-                communityBinding.chipMyItems.alpha = 0.5f
+                listOf(
+                    communityBinding.chipTasks, communityBinding.chipPlayers,
+                    communityBinding.chipMemorials, communityBinding.chipMyItems,
+                    communityBinding.chipPlaytime, communityBinding.chipMarket,
+                    communityBinding.chipPolls, communityBinding.chipSeasons,
+                    communityBinding.chipSuggestions,
+                    communityBinding.chipPvp,
+                    communityBinding.chipBindings,
+                    communityBinding.chipAfdian
+                ).forEach { it.alpha = 0.5f }
                 showCommunityList()
                 loadCommunityTab(key)
             }
@@ -787,15 +793,14 @@ class MainActivity : AppCompatActivity() {
         tab(communityBinding.tabForum, "FORUM")
         tab(communityBinding.tabRank, "RANK")
         tab(communityBinding.tabPlaytime, "PLAYTIME")
-        // 初始状态：第一个 Tab 选中（高亮），其余变暗
+        // 初始状态：第一个 Tab 选中（高亮），其余全部变暗
         communityBinding.tabAnnounce.alpha = 1f
-        communityBinding.tabForum.alpha = 0.5f
-        communityBinding.tabRank.alpha = 0.5f
-        communityBinding.tabPlaytime.alpha = 0.5f
-        communityBinding.chipTasks.alpha = 0.5f
-        communityBinding.chipPlayers.alpha = 0.5f
-        communityBinding.chipMemorials.alpha = 0.5f
-        communityBinding.chipMyItems.alpha = 0.5f
+        listOf(
+            communityBinding.tabForum, communityBinding.tabRank, communityBinding.tabPlaytime,
+            communityBinding.chipTasks, communityBinding.chipPlayers, communityBinding.chipMemorials,
+            communityBinding.chipMyItems, communityBinding.chipPlaytime, communityBinding.chipMarket,
+            communityBinding.chipPolls, communityBinding.chipSeasons, communityBinding.chipSuggestions
+        ).forEach { it.alpha = 0.5f }
         // ===== 社区扩展功能入口（点击后整页展示，不是弹窗） =====
         communityBinding.chipTasks.setOnClickListener { openCommunityFeature("tasks") }
         communityBinding.chipPlayers.setOnClickListener { openCommunityFeature("players") }
@@ -806,6 +811,9 @@ class MainActivity : AppCompatActivity() {
         communityBinding.chipPolls.setOnClickListener { openCommunityFeature("polls") }
         communityBinding.chipSeasons.setOnClickListener { openCommunityFeature("seasons") }
         communityBinding.chipSuggestions.setOnClickListener { openCommunityFeature("suggestions") }
+        communityBinding.chipPvp.setOnClickListener { openCommunityFeature("pvp") }
+        communityBinding.chipBindings.setOnClickListener { openCommunityFeature("bindings") }
+        communityBinding.chipAfdian.setOnClickListener { openCommunityFeature("afdian") }
         // 发帖按钮
         communityBinding.fabNewPost.setOnClickListener {
             FeatureDialogs.showNewPost(this) { loadCommunityTab("FORUM") }
@@ -822,7 +830,10 @@ class MainActivity : AppCompatActivity() {
             communityBinding.chipMemorials, communityBinding.chipMyItems,
             communityBinding.chipPlaytime, communityBinding.chipMarket,
             communityBinding.chipPolls, communityBinding.chipSeasons,
-            communityBinding.chipSuggestions
+            communityBinding.chipSuggestions,
+            communityBinding.chipPvp,
+            communityBinding.chipBindings,
+            communityBinding.chipAfdian
         )
         all.forEach { it.alpha = 0.5f }
         val active = when (type) {
@@ -834,7 +845,10 @@ class MainActivity : AppCompatActivity() {
             "market" -> communityBinding.chipMarket
             "polls" -> communityBinding.chipPolls
             "seasons" -> communityBinding.chipSeasons
-            else -> communityBinding.chipSuggestions
+            "suggestions" -> communityBinding.chipSuggestions
+            "pvp" -> communityBinding.chipPvp
+            "bindings" -> communityBinding.chipBindings
+            else -> communityBinding.chipAfdian
         }
         active.alpha = 1f
 
@@ -853,6 +867,9 @@ class MainActivity : AppCompatActivity() {
             "polls" -> FeatureDialogs.renderPollsPage(this, c)
             "seasons" -> FeatureDialogs.renderSeasonsPage(this, c)
             "suggestions" -> FeatureDialogs.renderSuggestionsPage(this, c)
+            "pvp" -> FeatureDialogs.renderPvpPage(this, c)
+            "bindings" -> FeatureDialogs.renderGameBindingsPage(this, c)
+            "afdian" -> FeatureDialogs.renderAfdianPage(this, c)
         }
     }
 
@@ -1175,6 +1192,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle("登录星灯云浪")
             .setView(input)
             .setPositiveButton("登录", null)
+            .setNeutralButton("忘记密码") { _, _ -> FeatureDialogs.showPasswordReset(this) }
             .setNegativeButton("取消", null)
             .create()
 

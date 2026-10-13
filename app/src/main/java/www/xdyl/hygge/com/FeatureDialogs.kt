@@ -541,6 +541,154 @@ object FeatureDialogs {
         }
     }
 
+    // ==================== 第二批新功能 ====================
+
+    /** 在容器末尾追加一个"标题 + 列表"区块（不清空容器，用于多区块页面） */
+    private fun appendSection(
+        activity: AppCompatActivity,
+        container: LinearLayout,
+        title: String,
+        path: String,
+        actionText: String? = null,
+        itemMapper: ((JSONObject) -> Triple<String, String, (() -> Unit)?>)? = null
+    ) {
+        container.addView(textView(activity, title, 16f, 0xFFA0C4FF.toInt(), bold = true).apply {
+            setPadding(0, dp(activity, 12), 0, dp(activity, 8))
+        })
+        val listCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+        container.addView(listCol)
+        listCol.addView(textView(activity, "加载中…", 12f, 0xFF9AA0A6.toInt()))
+        activity.lifecycleScope.launch {
+            try {
+                val root = withContext(Dispatchers.IO) { api.get(path) }
+                LogManager.log("[PAGE] $path => " + root.toString().take(300))
+                val arr = toArray(root)
+                listCol.removeAllViews()
+                if (arr == null || arr.length() == 0) {
+                    listCol.addView(textView(activity, "暂无数据", 12f, 0xFF9AA0A6.toInt()))
+                    return@launch
+                }
+                for (i in 0 until arr.length()) {
+                    val o = arr.optJSONObject(i) ?: continue
+                    val m = itemMapper?.invoke(o) ?: Triple(itemTitle(o), itemSubtitle(o), null)
+                    if (m.third != null && actionText != null) {
+                        listCol.addView(makeCardWithAction(activity, m.first, m.second, actionText, m.third!!))
+                    } else {
+                        listCol.addView(makeCard(activity, m.first, m.second, m.third))
+                    }
+                }
+            } catch (e: Exception) {
+                listCol.removeAllViews()
+                listCol.addView(textView(activity, "加载失败：" + e.message, 12f, 0xFFE57373.toInt()))
+            }
+        }
+    }
+
+    /** 决斗场（页面）：我的战绩 / 在线对手 / 决斗排行 */
+    fun renderPvpPage(activity: AppCompatActivity, container: LinearLayout) {
+        container.removeAllViews()
+        appendSection(activity, container, "我的战绩", "/pvp/me")
+        appendSection(activity, container, "在线对手", "/pvp/online")
+        appendSection(activity, container, "决斗排行", "/pvp/rank")
+    }
+
+    /** 游戏账号绑定（页面 + 解除按钮） */
+    fun renderGameBindingsPage(activity: AppCompatActivity, container: LinearLayout) =
+        renderPage(activity, container, "游戏账号绑定", "/user/game-bindings", actionText = "解除") { o ->
+            val id = o.optInt("id", -1)
+            Triple(
+                itemTitle(o), itemSubtitle(o),
+                if (id > 0) ({ postJsonThen(activity, "/user/game-bindings/delete", JSONObject().put("id", id), "解除绑定", null) }) else null
+            )
+        }
+
+    /** 爱发电（页面 + 领取按钮） */
+    fun renderAfdianPage(activity: AppCompatActivity, container: LinearLayout) {
+        container.removeAllViews()
+        container.addView(textView(activity, "爱发电", 18f, 0xFFA0C4FF.toInt(), bold = true).apply {
+            setPadding(0, dp(activity, 4), 0, dp(activity, 10))
+        })
+        val tv = textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt())
+        container.addView(tv)
+        container.addView(MaterialButton(activity).apply {
+            text = "领取赞助奖励"
+            textSize = 13f
+            minWidth = 0
+            setTextColor(0xFF10131A.toInt())
+            setBackgroundColor(0xFFA0C4FF.toInt())
+            setPadding(dp(activity, 18), 0, dp(activity, 18), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 40)
+            ).apply { topMargin = dp(activity, 10) }
+            setOnClickListener {
+                postJsonThen(activity, "/afdian/claim", JSONObject(), "领取赞助奖励", null)
+            }
+        })
+        activity.lifecycleScope.launch {
+            try {
+                val root = withContext(Dispatchers.IO) { api.get("/afdian/status") }
+                LogManager.log("[PAGE] /afdian/status => " + root.toString().take(300))
+                tv.text = friendly(root, "已加载")
+            } catch (e: Exception) {
+                tv.text = "加载失败：" + e.message
+            }
+        }
+    }
+
+    /** 密码找回（弹窗：邮箱 → 验证码 → 新密码） */
+    fun showPasswordReset(activity: AppCompatActivity) {
+        val col = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(activity, 20), dp(activity, 8), dp(activity, 20), 0)
+        }
+        val etEmail = EditText(activity).apply {
+            hint = "邮箱"
+            setTextColor(0xFFEDEDED.toInt())
+            setHintTextColor(0xFF6B6B6B.toInt())
+        }
+        val etCode = EditText(activity).apply {
+            hint = "验证码"
+            setTextColor(0xFFEDEDED.toInt())
+            setHintTextColor(0xFF6B6B6B.toInt())
+        }
+        val etNew = EditText(activity).apply {
+            hint = "新密码"
+            setTextColor(0xFFEDEDED.toInt())
+            setHintTextColor(0xFF6B6B6B.toInt())
+        }
+        col.addView(etEmail)
+        col.addView(etCode)
+        col.addView(etNew)
+
+        MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
+            .setTitle("重置密码")
+            .setView(col)
+            .setNeutralButton("发送验证码") { _, _ ->
+                val em = etEmail.text.toString().trim()
+                if (em.isNotEmpty()) {
+                    postJsonThen(activity, "/send-verify-code", JSONObject().put("email", em), "发送验证码", null)
+                } else {
+                    Toast.makeText(activity, "请先填写邮箱", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setPositiveButton("重置") { _, _ ->
+                val em = etEmail.text.toString().trim()
+                val code = etCode.text.toString().trim()
+                val np = etNew.text.toString().trim()
+                if (em.isEmpty() || code.isEmpty() || np.isEmpty()) {
+                    Toast.makeText(activity, "邮箱/验证码/新密码都不能为空", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                postJsonThen(
+                    activity, "/reset-password",
+                    JSONObject().put("email", em).put("code", code).put("password", np),
+                    "重置密码", null
+                )
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
     /** 论坛分类（页面） */
     fun renderCategoriesPage(activity: AppCompatActivity, container: LinearLayout) =
         renderPage(activity, container, "论坛分类", "/forum/categories")

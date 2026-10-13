@@ -235,6 +235,45 @@
                 android:paddingBottom="8dp"
                 android:text="意见箱"
                 android:textColor="@color/secondary_light_blue" />
+
+            <TextView
+                android:id="@+id/chipPvp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_tab_pill"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="决斗场"
+                android:textColor="@color/secondary_light_blue" />
+
+            <TextView
+                android:id="@+id/chipBindings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_tab_pill"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="账号绑定"
+                android:textColor="@color/secondary_light_blue" />
+
+            <TextView
+                android:id="@+id/chipAfdian"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_tab_pill"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="爱发电"
+                android:textColor="@color/secondary_light_blue" />
         </LinearLayout>
     </HorizontalScrollView>
 
