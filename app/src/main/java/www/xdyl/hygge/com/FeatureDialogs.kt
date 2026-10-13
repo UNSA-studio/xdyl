@@ -614,21 +614,30 @@ object FeatureDialogs {
 
         // 1) 我的排位
         appendSection(activity, container, "我的排位", "/pvp/me") { o ->
-            val rank = o.optInt("rank", o.optInt("position", 0))
-            val name = firstNonBlank(o, "nickname", "username", "player_name", "name") ?: ""
-            val tier = firstNonBlank(o, "tier", "rank_name", "dan", "level_name", "level") ?: ""
-            val pts = o.optInt("points", o.optInt("score", o.optInt("rating", o.optInt("mmr", 0))))
-            val wins = o.optInt("wins", o.optInt("win_count", o.optInt("wins_count", 0)))
-            val losses = o.optInt("losses", o.optInt("lose_count", o.optInt("loss_count", 0)))
-            val total = o.optInt("total", o.optInt("games", o.optInt("matches", o.optInt("total_matches", 0))))
-            val maxP = o.optInt("max_points", o.optInt("highest", o.optInt("max_score", o.optInt("best", 0))))
+            val rank = o.optInt("rank_position", o.optInt("rank", o.optInt("position", 0)))
+            val name = firstNonBlank(o, "name", "nickname", "username", "player_name") ?: ""
+            val tier = firstNonBlank(o, "tier", "rank_name", "dan") ?: ""
+            val pts = o.optInt("rating", o.optInt("points", o.optInt("score", 0)))
+            val peak = o.optInt("peak_rating", o.optInt("max_points", o.optInt("highest", 0)))
+            val wins = o.optInt("wins", o.optInt("win_count", 0))
+            val losses = o.optInt("losses", o.optInt("lose_count", 0))
+            val matches = o.optInt("matches", o.optInt("total", o.optInt("games", 0)))
+            val totalPlayers = o.optInt("total_players", 0)
+            val nextTier = o.optJSONObject("next_tier")
+            val nextTierName = nextTier?.optString("tier", "") ?: ""
+            val nextNeed = nextTier?.optInt("need", 0) ?: 0
             val title = buildString {
                 append("#").append(rank)
+                if (totalPlayers > 0) append(" / ").append(totalPlayers)
                 if (name.isNotBlank()) append(" ").append(name)
                 if (tier.isNotBlank()) append(" · ").append(tier)
                 append(" · ").append(pts).append(" 分")
             }
-            val sub = "$wins 胜 · $losses 负 · $total 场 · 最高 $maxP 分"
+            val sub = buildString {
+                append(wins).append("胜 · ").append(losses).append("负 · ").append(matches).append("场")
+                if (peak > 0) append(" · 最高 ").append(peak).append(" 分")
+                if (nextTierName.isNotBlank()) append(" · 距").append(nextTierName).append("还需 ").append(nextNeed)
+            }
             Triple(title, sub, null)
         }
 
@@ -665,7 +674,14 @@ object FeatureDialogs {
                 val d = root.optJSONObject("data") ?: root
                 val bound = d.optBoolean("bound", false) || d.optBoolean("game_bound", false)
                 val pref = firstNonBlank(d, "time_preference", "preference", "time") ?: "未设置"
-                val status = firstNonBlank(d, "status", "state") ?: "未在匹配"
+                val rawState = firstNonBlank(d, "state", "status") ?: ""
+                val status = when (rawState.lowercase()) {
+                    "idle" -> "未在匹配"
+                    "matching" -> "匹配中"
+                    "matched" -> "已匹配"
+                    "in_game", "playing" -> "对局中"
+                    else -> rawState.ifBlank { "未知" }
+                }
                 matchInfo.text = buildString {
                     if (!bound) append("请先在游戏内绑定游戏账号\n\n")
                     append("时间偏好：").append(pref).append("\n\n")
@@ -690,16 +706,52 @@ object FeatureDialogs {
             })
         }
 
-        // 5) 收到的挑战
-        appendSection(activity, container, "收到的挑战", "/pvp/incoming", actionText = "接受") { o ->
-            val id = o.optInt("id", -1)
-            Triple(itemTitle(o), itemSubtitle(o), {
-                postJsonThen(
-                    activity, "/pvp/challenge/respond",
-                    JSONObject().put("challenge_id", id).put("accept", true),
-                    "接受挑战", null
-                )
-            })
+        // 5) 挑战（收到的 / 已发出的）
+        container.addView(textView(activity, "挑战", 16f, 0xFFA0C4FF.toInt(), bold = true).apply {
+            setPadding(0, dp(activity, 12), 0, dp(activity, 8))
+        })
+        val chalCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+        container.addView(chalCol)
+        activity.lifecycleScope.launch {
+            try {
+                val root = withContext(Dispatchers.IO) { api.get("/pvp/incoming") }
+                LogManager.log("[PAGE] /pvp/incoming => " + root.toString().take(300))
+                val d = root.optJSONObject("data")
+                val incoming = d?.optJSONArray("incoming")
+                val outgoing = d?.optJSONArray("outgoing")
+
+                fun renderList(title: String, arr: org.json.JSONArray?, canAccept: Boolean) {
+                    chalCol.addView(textView(activity, title, 13f, 0xFF9AA0A6.toInt()).apply {
+                        setPadding(0, dp(activity, 8), 0, dp(activity, 4))
+                    })
+                    if (arr == null || arr.length() == 0) {
+                        chalCol.addView(textView(activity, "暂无", 12f, 0xFF6B6B6B.toInt()))
+                        return
+                    }
+                    for (i in 0 until arr.length()) {
+                        val o = arr.optJSONObject(i) ?: continue
+                        val id = o.optInt("id", -1)
+                        val t = itemTitle(o)
+                        val s = itemSubtitle(o)
+                        if (canAccept && id > 0) {
+                            chalCol.addView(makeCardWithAction(activity, t, s, "接受", {
+                                postJsonThen(
+                                    activity, "/pvp/challenge/respond",
+                                    JSONObject().put("challenge_id", id).put("accept", true),
+                                    "接受挑战", null
+                                )
+                            }))
+                        } else {
+                            chalCol.addView(makeCard(activity, t, s, null))
+                        }
+                    }
+                }
+                renderList("收到的挑战", incoming, true)
+                renderList("已发出的挑战", outgoing, false)
+            } catch (e: Exception) {
+                handleError(activity, e)
+                chalCol.addView(textView(activity, "加载失败：" + e.message, 12f, 0xFFE57373.toInt()))
+            }
         }
 
         // 6) 排行榜
