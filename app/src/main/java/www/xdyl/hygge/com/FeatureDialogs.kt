@@ -598,12 +598,106 @@ object FeatureDialogs {
         }
     }
 
-    /** 决斗场（页面）：我的战绩 / 在线对手 / 决斗排行 */
+    /** 决斗场（页面）：对齐朋友端布局 —— 我的排位 / 近期对局 / 排位匹配 / 在线对手 / 收到的挑战 / 排行榜 */
     fun renderPvpPage(activity: AppCompatActivity, container: LinearLayout) {
         container.removeAllViews()
-        appendSection(activity, container, "我的战绩", "/pvp/me")
-        appendSection(activity, container, "在线对手", "/pvp/online")
-        appendSection(activity, container, "决斗排行", "/pvp/rank")
+
+        // 1) 我的排位
+        appendSection(activity, container, "我的排位", "/pvp/me") { o ->
+            val rank = o.optInt("rank", 0)
+            val name = firstNonBlank(o, "nickname", "username", "player_name") ?: ""
+            val tier = firstNonBlank(o, "tier", "rank_name", "level_name", "dan") ?: ""
+            val pts = o.optInt("points", o.optInt("score", 0))
+            val wins = o.optInt("wins", 0)
+            val losses = o.optInt("losses", 0)
+            val total = o.optInt("total", o.optInt("games", o.optInt("matches", 0)))
+            val maxP = o.optInt("max_points", o.optInt("highest", o.optInt("max_score", 0)))
+            val title = "#$rank $name" + (if (tier.isNotBlank()) " · $tier" else "") + " · $pts 分"
+            val sub = "$wins 胜 · $losses 负 · $total 场 · 最高 $maxP 分"
+            Triple(title, sub, null)
+        }
+
+        // 2) 近期对局
+        appendSection(activity, container, "近期对局", "/pvp/history")
+
+        // 3) 排位匹配（自定义区块：绑定提示 + 偏好 + 状态 + 开始匹配）
+        container.addView(textView(activity, "排位匹配", 16f, 0xFFA0C4FF.toInt(), bold = true).apply {
+            setPadding(0, dp(activity, 12), 0, dp(activity, 8))
+        })
+        val matchInfo = textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt())
+        container.addView(matchInfo)
+        val matchBtn = MaterialButton(activity).apply {
+            text = "开始匹配"
+            textSize = 13f
+            minWidth = 0
+            setTextColor(0xFF10131A.toInt())
+            setBackgroundColor(0xFFA0C4FF.toInt())
+            setPadding(dp(activity, 18), 0, dp(activity, 18), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 40)
+            ).apply { topMargin = dp(activity, 10) }
+            setOnClickListener {
+                postJsonThen(activity, "/pvp/match/join", JSONObject(), "开始匹配") {
+                    renderPvpPage(activity, container)
+                }
+            }
+        }
+        container.addView(matchBtn)
+        activity.lifecycleScope.launch {
+            try {
+                val root = withContext(Dispatchers.IO) { api.get("/pvp/match/status") }
+                LogManager.log("[PAGE] /pvp/match/status => " + root.toString().take(300))
+                val d = root.optJSONObject("data") ?: root
+                val bound = d.optBoolean("bound", false) || d.optBoolean("game_bound", false)
+                val pref = firstNonBlank(d, "time_preference", "preference", "time") ?: "未设置"
+                val status = firstNonBlank(d, "status", "state") ?: "未在匹配"
+                matchInfo.text = buildString {
+                    if (!bound) append("请先在游戏内绑定游戏账号\n\n")
+                    append("时间偏好：").append(pref).append("\n\n")
+                    append("状态：").append(status)
+                }
+            } catch (e: Exception) {
+                handleError(activity, e)
+                matchInfo.text = "加载失败：" + e.message
+            }
+        }
+
+        // 4) 在线对手（发起挑战）
+        appendSection(activity, container, "发起挑战（在线对手）", "/pvp/online", actionText = "挑战") { o ->
+            val name = firstNonBlank(o, "player_name", "name", "nickname", "username") ?: "玩家"
+            val id = o.optInt("id", o.optInt("account_id", -1))
+            Triple(name, itemSubtitle(o), {
+                postJsonThen(
+                    activity, "/pvp/challenge",
+                    JSONObject().put("opponent_id", id).put("target_id", id),
+                    "发起挑战", null
+                )
+            })
+        }
+
+        // 5) 收到的挑战
+        appendSection(activity, container, "收到的挑战", "/pvp/incoming", actionText = "接受") { o ->
+            val id = o.optInt("id", -1)
+            Triple(itemTitle(o), itemSubtitle(o), {
+                postJsonThen(
+                    activity, "/pvp/challenge/respond",
+                    JSONObject().put("challenge_id", id).put("accept", true),
+                    "接受挑战", null
+                )
+            })
+        }
+
+        // 6) 排行榜
+        appendSection(activity, container, "排行榜", "/pvp/rank") { o ->
+            val rank = o.optInt("rank", 0)
+            val name = firstNonBlank(o, "nickname", "player_name", "username") ?: ""
+            val tier = firstNonBlank(o, "tier", "rank_name", "dan") ?: ""
+            val pts = o.optInt("points", o.optInt("score", 0))
+            Triple(
+                "#$rank $name" + (if (tier.isNotBlank()) " · $tier" else "") + " · $pts 分",
+                itemSubtitle(o), null
+            )
+        }
     }
 
     /** 游戏账号绑定（页面 + 解除按钮） */
