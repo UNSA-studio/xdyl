@@ -411,13 +411,23 @@ object FeatureDialogs {
     fun renderPlaytimeRewardsPage(activity: AppCompatActivity, container: LinearLayout) =
         renderPage(activity, container, "时长奖励", "/playtime/rewards", actionText = "领取") { o ->
             val id = o.optInt("id", -1)
-            val claimed = o.optInt("claimed", 0) == 1 || o.optBoolean("claimed", false)
+            val claimed = o.optInt("claimed", 0) == 1 || o.optBoolean("claimed", false) ||
+                    o.optInt("received", 0) == 1 || o.optBoolean("received", false)
+            // 名称字段做多别名兼容（服务端可能用 name/title/reward_name/label/desc）
+            val name = firstNonBlank(o, "name", "title", "reward_name", "label", "reward", "desc", "description")
+                ?: ("时长奖励" + (if (id > 0) " #$id" else ""))
             val sub = buildString {
-                append(itemSubtitle(o))
-                if (claimed) append(" · 已领取")
+                firstNonBlank(o, "seconds", "hours", "need_seconds", "required_seconds", "duration")?.let {
+                    append("时长要求 ").append(it)
+                }
+                firstNonBlank(o, "reward_coins", "coins", "reward", "amount")?.let {
+                    if (isNotEmpty()) append(" · ")
+                    append("奖励 ").append(it).append(" 喵币")
+                }
+                if (claimed) append(if (isNotEmpty()) " · 已领取" else "已领取")
             }
             Triple(
-                itemTitle(o), sub,
+                name, sub,
                 if (!claimed && id > 0) {
                     { postJsonThen(activity, "/playtime/rewards/claim", JSONObject().put("reward_id", id), "领取奖励", null) }
                 } else null
@@ -604,15 +614,20 @@ object FeatureDialogs {
 
         // 1) 我的排位
         appendSection(activity, container, "我的排位", "/pvp/me") { o ->
-            val rank = o.optInt("rank", 0)
-            val name = firstNonBlank(o, "nickname", "username", "player_name") ?: ""
-            val tier = firstNonBlank(o, "tier", "rank_name", "level_name", "dan") ?: ""
-            val pts = o.optInt("points", o.optInt("score", 0))
-            val wins = o.optInt("wins", 0)
-            val losses = o.optInt("losses", 0)
-            val total = o.optInt("total", o.optInt("games", o.optInt("matches", 0)))
-            val maxP = o.optInt("max_points", o.optInt("highest", o.optInt("max_score", 0)))
-            val title = "#$rank $name" + (if (tier.isNotBlank()) " · $tier" else "") + " · $pts 分"
+            val rank = o.optInt("rank", o.optInt("position", 0))
+            val name = firstNonBlank(o, "nickname", "username", "player_name", "name") ?: ""
+            val tier = firstNonBlank(o, "tier", "rank_name", "dan", "level_name", "level") ?: ""
+            val pts = o.optInt("points", o.optInt("score", o.optInt("rating", o.optInt("mmr", 0))))
+            val wins = o.optInt("wins", o.optInt("win_count", o.optInt("wins_count", 0)))
+            val losses = o.optInt("losses", o.optInt("lose_count", o.optInt("loss_count", 0)))
+            val total = o.optInt("total", o.optInt("games", o.optInt("matches", o.optInt("total_matches", 0))))
+            val maxP = o.optInt("max_points", o.optInt("highest", o.optInt("max_score", o.optInt("best", 0))))
+            val title = buildString {
+                append("#").append(rank)
+                if (name.isNotBlank()) append(" ").append(name)
+                if (tier.isNotBlank()) append(" · ").append(tier)
+                append(" · ").append(pts).append(" 分")
+            }
             val sub = "$wins 胜 · $losses 负 · $total 场 · 最高 $maxP 分"
             Triple(title, sub, null)
         }
@@ -689,14 +704,18 @@ object FeatureDialogs {
 
         // 6) 排行榜
         appendSection(activity, container, "排行榜", "/pvp/rank") { o ->
-            val rank = o.optInt("rank", 0)
-            val name = firstNonBlank(o, "nickname", "player_name", "username") ?: ""
-            val tier = firstNonBlank(o, "tier", "rank_name", "dan") ?: ""
-            val pts = o.optInt("points", o.optInt("score", 0))
-            Triple(
-                "#$rank $name" + (if (tier.isNotBlank()) " · $tier" else "") + " · $pts 分",
-                itemSubtitle(o), null
-            )
+            val rank = o.optInt("rank", o.optInt("position", 0))
+            val name = firstNonBlank(o, "nickname", "player_name", "username", "name", "player")
+                ?: ""
+            val tier = firstNonBlank(o, "tier", "rank_name", "dan", "level_name", "level") ?: ""
+            val pts = o.optInt("points", o.optInt("score", o.optInt("rating", o.optInt("mmr", 0))))
+            val title = buildString {
+                append("#").append(rank)
+                if (name.isNotBlank()) append(" ").append(name)
+                if (tier.isNotBlank()) append(" · ").append(tier)
+                append(" · ").append(pts).append(" 分")
+            }
+            Triple(title, itemSubtitle(o), null)
         }
     }
 
