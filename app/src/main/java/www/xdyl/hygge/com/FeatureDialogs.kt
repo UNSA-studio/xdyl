@@ -260,6 +260,7 @@ object FeatureDialogs {
                     }
                 } catch (e: Exception) {
                     listCol.removeAllViews()
+                    handleError(activity, e)
                     listCol.addView(textView(activity, "加载失败：" + e.message, 13f, 0xFFE57373.toInt()))
                 }
             }
@@ -346,6 +347,7 @@ object FeatureDialogs {
                     }
                 } catch (e: Exception) {
                     listCol.removeAllViews()
+                    handleError(activity, e)
                     listCol.addView(textView(activity, "加载失败：" + e.message, 13f, 0xFFE57373.toInt()))
                 }
             }
@@ -517,6 +519,7 @@ object FeatureDialogs {
                 }
             } catch (e: Exception) {
                 listCol.removeAllViews()
+                handleError(activity, e)
                 listCol.addView(textView(activity, "加载失败：" + e.message, 13f, 0xFFE57373.toInt()))
             }
         }
@@ -542,6 +545,16 @@ object FeatureDialogs {
     }
 
     // ==================== 第二批新功能 ====================
+
+    /** 统一错误处理：登录失效 → 清理会话并提示重新登录 */
+    private fun handleError(activity: AppCompatActivity, e: Exception) {
+        val msg = e.message ?: "未知错误"
+        if (msg.contains("登录已失效") || msg.contains("未登录") || msg.contains("token") || msg.contains("Token")) {
+            (activity as? MainActivity)?.onSessionExpired()
+        } else {
+            Toast.makeText(activity, msg, Toast.LENGTH_LONG).show()
+        }
+    }
 
     /** 在容器末尾追加一个"标题 + 列表"区块（不清空容器，用于多区块页面） */
     private fun appendSection(
@@ -579,6 +592,7 @@ object FeatureDialogs {
                 }
             } catch (e: Exception) {
                 listCol.removeAllViews()
+                handleError(activity, e)
                 listCol.addView(textView(activity, "加载失败：" + e.message, 12f, 0xFFE57373.toInt()))
             }
         }
@@ -626,7 +640,9 @@ object FeatureDialogs {
         })
         activity.lifecycleScope.launch {
             try {
-                val root = withContext(Dispatchers.IO) { api.get("/afdian/status") }
+                val root = withContext(Dispatchers.IO) {
+                    api.request("POST", "/afdian/status", JSONObject())
+                }
                 LogManager.log("[PAGE] /afdian/status => " + root.toString().take(300))
                 tv.text = friendly(root, "已加载")
             } catch (e: Exception) {
