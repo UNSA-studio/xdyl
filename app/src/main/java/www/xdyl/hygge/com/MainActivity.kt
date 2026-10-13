@@ -1134,6 +1134,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** 查看账户详细信息（/user/profile 全字段） */
+    /** 登录已过期（refresh 也失败）：清理会话并刷新界面，提示重新登录 */
+    fun onSessionExpired() {
+        if (!session.isLoggedIn) return
+        session.logout()
+        refreshProfileUI()
+        LogManager.log("[AUTH] 会话过期，已清理登录态")
+        Toast.makeText(this, "登录已过期，请重新登录", Toast.LENGTH_LONG).show()
+    }
+
     private fun showProfileDetail() {
         if (!session.isLoggedIn) {
             Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show()
