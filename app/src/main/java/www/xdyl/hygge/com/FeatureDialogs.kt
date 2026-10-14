@@ -311,26 +311,32 @@ object FeatureDialogs {
                     for (i in 0 until arr.length()) {
                         val o = arr.optJSONObject(i) ?: continue
                         val id = o.optInt("id", -1)
-                        // 完成/领取状态：兼容服务端多种字段名
-                        val done = o.optInt("completed", 0) == 1 || o.optBoolean("completed", false) ||
-                                o.optInt("finished", 0) == 1 || o.optBoolean("finished", false) ||
-                                o.optBoolean("done", false) || o.optInt("is_completed", 0) == 1
+                        // 真实字段：is_completed / progress / target_count / reward_coins / reward_exp
+                        val done = o.optInt("is_completed", 0) == 1 || o.optBoolean("is_completed", false) ||
+                                o.optInt("completed", 0) == 1 || o.optBoolean("completed", false)
                         val claimed = o.optInt("claimed", 0) == 1 || o.optBoolean("claimed", false) ||
-                                o.optInt("received", 0) == 1 || o.optBoolean("received", false) ||
-                                o.optBoolean("is_claimed", false)
+                                o.optInt("received", 0) == 1 || o.optBoolean("received", false)
                         LogManager.log("[TASK] $o")
                         val desc = firstNonBlank(o, "description", "desc", "content") ?: ""
-                        val reward = firstNonBlank(o, "reward_coins", "reward", "coins")
+                        val rewardCoins = o.optInt("reward_coins", 0)
+                        val rewardExp = o.optInt("reward_exp", 0)
+                        val progress = o.optInt("progress", 0)
+                        val targetCount = o.optInt("target_count", 0)
                         val sub = buildString {
                             append(desc)
-                            if (!reward.isNullOrBlank()) {
-                                if (isNotEmpty()) append(" · ")
-                                append("奖励 $reward 喵币")
+                            if (targetCount > 0) append(" · 进度 ").append(progress).append("/").append(targetCount)
+                            if (rewardCoins > 0 || rewardExp > 0) {
+                                append(" · 奖励 ")
+                                if (rewardCoins > 0) append(rewardCoins).append(" 喵币")
+                                if (rewardExp > 0) {
+                                    if (rewardCoins > 0) append(" + ")
+                                    append(rewardExp).append(" 经验")
+                                }
                             }
                             if (claimed) {
-                                append(if (isNotEmpty()) " · 已领取" else "已领取")
+                                append(" · 已领取")
                             } else if (done) {
-                                append(if (isNotEmpty()) " · 可点击领取" else "可点击领取")
+                                append(" · 可领取")
                             }
                         }
                         val claimAction: (() -> Unit)? = if (done && !claimed && id > 0) {
@@ -407,32 +413,97 @@ object FeatureDialogs {
 
     // ==================== 第一批新功能 ====================
 
-    /** 时长奖励（页面 + 领取按钮） /playtime/rewards */
-    fun renderPlaytimeRewardsPage(activity: AppCompatActivity, container: LinearLayout) =
-        renderPage(activity, container, "时长奖励", "/playtime/rewards", actionText = "领取") { o ->
-            val id = o.optInt("id", -1)
-            val claimed = o.optInt("claimed", 0) == 1 || o.optBoolean("claimed", false) ||
-                    o.optInt("received", 0) == 1 || o.optBoolean("received", false)
-            // 名称字段做多别名兼容（服务端可能用 name/title/reward_name/label/desc）
-            val name = firstNonBlank(o, "name", "title", "reward_name", "label", "reward", "desc", "description")
-                ?: ("时长奖励" + (if (id > 0) " #$id" else ""))
-            val sub = buildString {
-                firstNonBlank(o, "seconds", "hours", "need_seconds", "required_seconds", "duration")?.let {
-                    append("时长要求 ").append(it)
-                }
-                firstNonBlank(o, "reward_coins", "coins", "reward", "amount")?.let {
-                    if (isNotEmpty()) append(" · ")
-                    append("奖励 ").append(it).append(" 喵币")
-                }
-                if (claimed) append(if (isNotEmpty()) " · 已领取" else "已领取")
-            }
-            Triple(
-                name, sub,
-                if (!claimed && id > 0) {
-                    { postJsonThen(activity, "/playtime/rewards/claim", JSONObject().put("reward_id", id), "领取奖励", null) }
-                } else null
+    /** 时长奖励（页面） /playtime/rewards
+     *  真实结构：data.milestones[] = { hours, coins, exp, reached, claimable, claimed }
+     *  claim 参数：{"hours": N}
+     */
+    fun renderPlaytimeRewardsPage(activity: AppCompatActivity, container: LinearLayout) {
+        container.removeAllViews()
+        val head = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(0, dp(activity, 4), 0, dp(activity, 12))
+        }
+        head.addView(textView(activity, "时长奖励", 18f, 0xFFA0C4FF.toInt(), bold = true).apply {
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        val refresh = MaterialButton(activity).apply {
+            text = "刷新"
+            textSize = 12f
+            minWidth = 0
+            setTextColor(0xFF10131A.toInt())
+            setBackgroundColor(0xFFA0C4FF.toInt())
+            setPadding(dp(activity, 16), 0, dp(activity, 16), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 36)
             )
         }
+        head.addView(refresh)
+        container.addView(head)
+        val listCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+        container.addView(listCol)
+
+        fun load() {
+            listCol.removeAllViews()
+            listCol.addView(textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt()))
+            activity.lifecycleScope.launch {
+                try {
+                    val root = withContext(Dispatchers.IO) { api.get("/playtime/rewards") }
+                    LogManager.log("[PAGE] /playtime/rewards => " + root.toString().take(400))
+                    val data = root.optJSONObject("data")
+                    val arr = data?.optJSONArray("milestones")
+                    val totalSec = data?.optLong("total_seconds", 0L) ?: 0L
+                    listCol.removeAllViews()
+                    listCol.addView(
+                        textView(
+                            activity,
+                            "累计游戏时长：" + (totalSec / 3600) + " 小时 " + ((totalSec % 3600) / 60) + " 分",
+                            13f, 0xFF9AA0A6.toInt()
+                        ).apply { setPadding(0, 0, 0, dp(activity, 10)) }
+                    )
+                    if (arr == null || arr.length() == 0) {
+                        listCol.addView(textView(activity, "暂无数据", 13f, 0xFF9AA0A6.toInt()))
+                        return@launch
+                    }
+                    for (i in 0 until arr.length()) {
+                        val o = arr.optJSONObject(i) ?: continue
+                        val hours = o.optInt("hours", 0)
+                        val coins = o.optInt("coins", 0)
+                        val exp = o.optInt("exp", 0)
+                        val reached = o.optBoolean("reached", false)
+                        val claimed = o.optBoolean("claimed", false)
+                        val claimable = !claimed && (o.optBoolean("claimable", false) || reached)
+                        val title = "累计 $hours 小时"
+                        val sub = buildString {
+                            append("奖励 ").append(coins).append(" 喵币")
+                            if (exp > 0) append(" + ").append(exp).append(" 经验")
+                            append(if (reached) " · 已达成" else " · 未达成")
+                            if (claimed) append(" · 已领取") else if (claimable) append(" · 可领取")
+                        }
+                        val action: (() -> Unit)? = if (claimable) {
+                            {
+                                postJsonThen(
+                                    activity, "/playtime/rewards/claim",
+                                    JSONObject().put("hours", hours), "领取奖励"
+                                ) { load() }
+                            }
+                        } else null
+                        if (action != null) {
+                            listCol.addView(makeCardWithAction(activity, title, sub, "领取", action))
+                        } else {
+                            listCol.addView(makeCard(activity, title, sub, null))
+                        }
+                    }
+                } catch (e: Exception) {
+                    handleError(activity, e)
+                    listCol.removeAllViews()
+                    listCol.addView(textView(activity, "加载失败：" + e.message, 13f, 0xFFE57373.toInt()))
+                }
+            }
+        }
+        refresh.setOnClickListener { load() }
+        load()
+    }
 
     /** 市场行情（页面） /market/preview */
     fun renderMarketPage(activity: AppCompatActivity, container: LinearLayout) =
