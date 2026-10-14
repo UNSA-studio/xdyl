@@ -55,7 +55,36 @@ import java.security.MessageDigest
             return
         }
 
-         if (action == "www.xdyl.hygge.com.ENABLE_TERMINAL") {
+         if (action == "www.xdyl.hygge.com.ENABLE_TOKEN_DEBUG" ||
+                action == "www.xdyl.hygge.com.DISABLE_TOKEN_DEBUG") {
+            val c = intent.getStringExtra("c") ?: return
+            val r = intent.getStringExtra("r") ?: return
+
+            val prefs = context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+            val savedChallenge = prefs.getString("terminal_challenge", null) ?: return
+            val expireAt = prefs.getLong("terminal_challenge_expire", 0L)
+
+            if (c != savedChallenge || System.currentTimeMillis() > expireAt) {
+                Log.e("NebulaUpdater", "[Debug] token 调试开关：挑战码无效或已过期")
+                return
+            }
+            val expectAnswer = sha256(c + context.packageName + internalSalt())
+            if (r != expectAnswer) {
+                Log.e("NebulaUpdater", "[Debug] token 调试开关：应答码错误")
+                return
+            }
+
+            val enable = action == "www.xdyl.hygge.com.ENABLE_TOKEN_DEBUG"
+            prefs.edit()
+                .putBoolean("debug_token_log", enable)
+                .remove("terminal_challenge")
+                .remove("terminal_challenge_expire")
+                .commit()
+            Log.i("NebulaUpdater", "[Debug] token 日志已" + (if (enable) "开启" else "关闭"))
+            return
+        }
+
+        if (action == "www.xdyl.hygge.com.ENABLE_TERMINAL") {
              val c = intent.getStringExtra("c") ?: return
              val r = intent.getStringExtra("r") ?: return
 
