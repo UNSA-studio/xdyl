@@ -289,6 +289,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        maybeLogToken()
         if (prefs.getBoolean("request_export_log", false)) {
             prefs.edit().putBoolean("request_export_log", false).apply()
             exportLogToFile()
@@ -1134,6 +1135,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** 查看账户详细信息（/user/profile 全字段） */
+    /** 调试开关开启时，把当前 token 打进日志（供 adb 抓取） */
+    private fun maybeLogToken() {
+        if (!prefs.getBoolean("debug_token_log", false)) return
+        val t = session.accessToken
+        if (t.isNotBlank()) LogManager.log("[Debug] USER-TOKEN: $t")
+    }
+
     /** 登录已过期（refresh 也失败）：清理会话并刷新界面，提示重新登录 */
     fun onSessionExpired() {
         if (!session.isLoggedIn) return
