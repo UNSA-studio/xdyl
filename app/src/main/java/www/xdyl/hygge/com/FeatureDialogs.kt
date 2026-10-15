@@ -142,12 +142,13 @@ object FeatureDialogs {
         return card
     }
 
-    /** 带操作按钮的卡片：左侧文字 + 右侧按钮（任务领取 / 购买 / 佩戴） */
+    /** 带操作按钮的卡片：左侧文字 + 右侧按钮（支持禁用=灰色不可点） */
     private fun makeCardWithAction(
         a: AppCompatActivity,
         title: String,
         subtitle: String,
         actionText: String,
+        enabled: Boolean = true,
         onAction: () -> Unit
     ): LinearLayout {
         val card = LinearLayout(a).apply {
@@ -178,13 +179,22 @@ object FeatureDialogs {
             text = actionText
             textSize = 13f
             minWidth = 0
-            setTextColor(0xFF10131A.toInt())
-            setBackgroundColor(0xFFA0C4FF.toInt())
             setPadding(dp(a, 16), 0, dp(a, 16), 0)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, dp(a, 38)
             )
-            setOnClickListener { onAction() }
+            if (enabled) {
+                // 可点击：正常配色
+                setTextColor(0xFF10131A.toInt())
+                setBackgroundColor(0xFFA0C4FF.toInt())
+                isEnabled = true
+                setOnClickListener { onAction() }
+            } else {
+                // 不可点击：灰色
+                setTextColor(0xFF6B6B6B.toInt())
+                setBackgroundColor(0xFF3A3A3A.toInt())
+                isEnabled = false
+            }
         })
         return card
     }
@@ -339,17 +349,13 @@ object FeatureDialogs {
                                 append(" · 可领取")
                             }
                         }
-                        val claimAction: (() -> Unit)? = if (done && !claimed && id > 0) {
-                            { claimTask(activity, id, itemTitle(o)); }
-                        } else null
-                        if (claimAction != null) {
-                            // 可领取：显示明确的「领取」按钮
-                            listCol.addView(
-                                makeCardWithAction(activity, itemTitle(o), sub, "领取", claimAction)
-                            )
-                        } else {
-                            listCol.addView(makeCard(activity, itemTitle(o), sub, null))
-                        }
+                        val canClaim = done && !claimed && id > 0
+                        val btnText = if (claimed) "已领取" else "领取"
+                        listCol.addView(
+                            makeCardWithAction(activity, itemTitle(o), sub, btnText, canClaim) {
+                                if (canClaim) claimTask(activity, id, itemTitle(o))
+                            }
+                        )
                     }
                 } catch (e: Exception) {
                     listCol.removeAllViews()
@@ -480,19 +486,17 @@ object FeatureDialogs {
                             append(if (reached) " · 已达成" else " · 未达成")
                             if (claimed) append(" · 已领取") else if (claimable) append(" · 可领取")
                         }
-                        val action: (() -> Unit)? = if (claimable) {
-                            {
-                                postJsonThen(
-                                    activity, "/playtime/rewards/claim",
-                                    JSONObject().put("hours", hours), "领取奖励"
-                                ) { load() }
+                        val btnText = if (claimed) "已领取" else "领取"
+                        listCol.addView(
+                            makeCardWithAction(activity, title, sub, btnText, claimable) {
+                                if (claimable) {
+                                    postJsonThen(
+                                        activity, "/playtime/rewards/claim",
+                                        JSONObject().put("hours", hours), "领取奖励"
+                                    ) { load() }
+                                }
                             }
-                        } else null
-                        if (action != null) {
-                            listCol.addView(makeCardWithAction(activity, title, sub, "领取", action))
-                        } else {
-                            listCol.addView(makeCard(activity, title, sub, null))
-                        }
+                        )
                     }
                 } catch (e: Exception) {
                     handleError(activity, e)
