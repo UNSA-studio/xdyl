@@ -352,9 +352,11 @@ object FeatureDialogs {
                         val canClaim = done && !claimed && id > 0
                         val btnText = if (claimed) "已领取" else "领取"
                         listCol.addView(
-                            makeCardWithAction(activity, itemTitle(o), sub, btnText, enabled = canClaim) {
-                                if (canClaim) claimTask(activity, id, itemTitle(o))
-                            }
+                            makeCardWithAction(
+                                activity, itemTitle(o), sub, btnText,
+                                onAction = { if (canClaim) claimTask(activity, id, itemTitle(o)) },
+                                enabled = canClaim
+                            )
                         )
                     }
                 } catch (e: Exception) {
@@ -488,14 +490,18 @@ object FeatureDialogs {
                         }
                         val btnText = if (claimed) "已领取" else "领取"
                         listCol.addView(
-                            makeCardWithAction(activity, title, sub, btnText, enabled = claimable) {
-                                if (claimable) {
-                                    postJsonThen(
-                                        activity, "/playtime/rewards/claim",
-                                        JSONObject().put("hours", hours), "领取奖励"
-                                    ) { load() }
-                                }
-                            }
+                            makeCardWithAction(
+                                activity, title, sub, btnText,
+                                onAction = {
+                                    if (claimable) {
+                                        postJsonThen(
+                                            activity, "/playtime/rewards/claim",
+                                            JSONObject().put("hours", hours), "领取奖励"
+                                        ) { load() }
+                                    }
+                                },
+                                enabled = claimable
+                            )
                         )
                     }
                 } catch (e: Exception) {
