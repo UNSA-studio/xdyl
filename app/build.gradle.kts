@@ -45,6 +45,27 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
+    // 只保留中英文资源（去掉库里其它语言的 strings）
+    defaultConfig {
+        resourceConfigurations += listOf("zh", "en")
+    }
+
+    // 剔除无用的元数据文件
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/*.kotlin_module",
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE*",
+                "META-INF/NOTICE*",
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1",
+                "kotlin/**",
+                "DebugProbesKt.bin"
+            )
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
