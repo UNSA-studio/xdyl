@@ -148,8 +148,8 @@ object FeatureDialogs {
         title: String,
         subtitle: String,
         actionText: String,
-        enabled: Boolean = true,
-        onAction: () -> Unit
+        onAction: () -> Unit,
+        enabled: Boolean = true
     ): LinearLayout {
         val card = LinearLayout(a).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -352,7 +352,7 @@ object FeatureDialogs {
                         val canClaim = done && !claimed && id > 0
                         val btnText = if (claimed) "已领取" else "领取"
                         listCol.addView(
-                            makeCardWithAction(activity, itemTitle(o), sub, btnText, canClaim) {
+                            makeCardWithAction(activity, itemTitle(o), sub, btnText, enabled = canClaim) {
                                 if (canClaim) claimTask(activity, id, itemTitle(o))
                             }
                         )
@@ -488,7 +488,7 @@ object FeatureDialogs {
                         }
                         val btnText = if (claimed) "已领取" else "领取"
                         listCol.addView(
-                            makeCardWithAction(activity, title, sub, btnText, claimable) {
+                            makeCardWithAction(activity, title, sub, btnText, enabled = claimable) {
                                 if (claimable) {
                                     postJsonThen(
                                         activity, "/playtime/rewards/claim",
