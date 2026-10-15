@@ -800,7 +800,8 @@ class MainActivity : AppCompatActivity() {
             communityBinding.tabForum, communityBinding.tabRank, communityBinding.tabPlaytime,
             communityBinding.chipTasks, communityBinding.chipPlayers, communityBinding.chipMemorials,
             communityBinding.chipMyItems, communityBinding.chipPlaytime, communityBinding.chipMarket,
-            communityBinding.chipPolls, communityBinding.chipSeasons, communityBinding.chipSuggestions
+            communityBinding.chipPolls, communityBinding.chipSeasons, communityBinding.chipSuggestions,
+            communityBinding.chipPvp, communityBinding.chipBindings, communityBinding.chipAfdian
         ).forEach { it.alpha = 0.5f }
         // ===== 社区扩展功能入口（点击后整页展示，不是弹窗） =====
         communityBinding.chipTasks.setOnClickListener { openCommunityFeature("tasks") }
