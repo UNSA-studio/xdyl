@@ -362,7 +362,7 @@ object FeatureDialogs {
                                 activity, itemTitle(o), sub, btnText,
                                 onAction = { if (canClaim) claimTask(activity, id, itemTitle(o)) },
                                 enabled = canClaim,
-                                disabledTip = "完成之后再来领取吧"
+                                disabledTip = if (claimed) null else "完成之后再来领取吧"
                             )
                         )
                     }
@@ -508,7 +508,7 @@ object FeatureDialogs {
                                     }
                                 },
                                 enabled = claimable,
-                                disabledTip = "完成之后再来领取吧"
+                                disabledTip = if (claimed) null else "完成之后再来领取吧"
                             )
                         )
                     }
