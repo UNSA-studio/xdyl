@@ -784,7 +784,8 @@ class MainActivity : AppCompatActivity() {
                     communityBinding.chipSuggestions,
                     communityBinding.chipPvp,
                     communityBinding.chipBindings,
-                    communityBinding.chipAfdian
+                    communityBinding.chipAfdian,
+                    communityBinding.chipYsm
                 ).forEach { it.alpha = 0.5f }
                 showCommunityList()
                 loadCommunityTab(key)
@@ -816,6 +817,7 @@ class MainActivity : AppCompatActivity() {
         communityBinding.chipPvp.setOnClickListener { openCommunityFeature("pvp") }
         communityBinding.chipBindings.setOnClickListener { openCommunityFeature("bindings") }
         communityBinding.chipAfdian.setOnClickListener { openCommunityFeature("afdian") }
+        communityBinding.chipYsm.setOnClickListener { openCommunityFeature("ysm") }
         // 发帖按钮
         communityBinding.fabNewPost.setOnClickListener {
             FeatureDialogs.showNewPost(this) { loadCommunityTab("FORUM") }
@@ -835,7 +837,8 @@ class MainActivity : AppCompatActivity() {
             communityBinding.chipSuggestions,
             communityBinding.chipPvp,
             communityBinding.chipBindings,
-            communityBinding.chipAfdian
+            communityBinding.chipAfdian,
+            communityBinding.chipYsm
         )
         all.forEach { it.alpha = 0.5f }
         val active = when (type) {
@@ -850,7 +853,8 @@ class MainActivity : AppCompatActivity() {
             "suggestions" -> communityBinding.chipSuggestions
             "pvp" -> communityBinding.chipPvp
             "bindings" -> communityBinding.chipBindings
-            else -> communityBinding.chipAfdian
+            "afdian" -> communityBinding.chipAfdian
+            else -> communityBinding.chipYsm
         }
         active.alpha = 1f
 
@@ -872,6 +876,7 @@ class MainActivity : AppCompatActivity() {
             "pvp" -> FeatureDialogs.renderPvpPage(this, c)
             "bindings" -> FeatureDialogs.renderGameBindingsPage(this, c)
             "afdian" -> FeatureDialogs.renderAfdianPage(this, c)
+            "ysm" -> FeatureDialogs.renderYsmPage(this, c)
         }
     }
 

@@ -49,6 +49,7 @@ object HomeHolders {
         val chipPvp: TextView = root.findViewById(R.id.chipPvp)
         val chipBindings: TextView = root.findViewById(R.id.chipBindings)
         val chipAfdian: TextView = root.findViewById(R.id.chipAfdian)
+        val chipYsm: TextView = root.findViewById(R.id.chipYsm)
         val fabNewPost: com.google.android.material.floatingactionbutton.FloatingActionButton = root.findViewById(R.id.fabNewPost)
         val featureScroll: android.view.View = root.findViewById(R.id.featureScroll)
         val featureContainer: android.widget.LinearLayout = root.findViewById(R.id.featureContainer)
