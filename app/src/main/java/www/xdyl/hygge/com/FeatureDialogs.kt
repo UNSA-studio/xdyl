@@ -149,7 +149,8 @@ object FeatureDialogs {
         subtitle: String,
         actionText: String,
         onAction: () -> Unit,
-        enabled: Boolean = true
+        enabled: Boolean = true,
+        disabledTip: String? = null
     ): LinearLayout {
         val card = LinearLayout(a).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -190,10 +191,15 @@ object FeatureDialogs {
                 isEnabled = true
                 setOnClickListener { onAction() }
             } else {
-                // 不可点击：灰色
+                // 灰色外观，但仍可点击 → 弹出提示
                 setTextColor(0xFF6B6B6B.toInt())
                 setBackgroundColor(0xFF3A3A3A.toInt())
-                isEnabled = false
+                isEnabled = true
+                setOnClickListener {
+                    if (disabledTip != null) {
+                        AppDialogs.tip(a, "尚未完成任务目标", disabledTip)
+                    }
+                }
             }
         })
         return card
@@ -355,7 +361,8 @@ object FeatureDialogs {
                             makeCardWithAction(
                                 activity, itemTitle(o), sub, btnText,
                                 onAction = { if (canClaim) claimTask(activity, id, itemTitle(o)) },
-                                enabled = canClaim
+                                enabled = canClaim,
+                                disabledTip = "完成之后再来领取吧"
                             )
                         )
                     }
@@ -500,7 +507,8 @@ object FeatureDialogs {
                                         ) { load() }
                                     }
                                 },
-                                enabled = claimable
+                                enabled = claimable,
+                                disabledTip = "完成之后再来领取吧"
                             )
                         )
                     }
