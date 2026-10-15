@@ -860,6 +860,66 @@ object FeatureDialogs {
         }
     }
 
+    /** YSM 皮肤（页面）：刷新 / 上传 / 列表 */
+    fun renderYsmPage(activity: AppCompatActivity, container: LinearLayout) {
+        container.removeAllViews()
+        val head = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(0, dp(activity, 4), 0, dp(activity, 12))
+        }
+        head.addView(textView(activity, "YSM 皮肤", 18f, 0xFFA0C4FF.toInt(), bold = true).apply {
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        val listCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
+        container.addView(head)
+        container.addView(listCol)
+
+        fun load() {
+            listCol.removeAllViews()
+            listCol.addView(textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt()))
+            activity.lifecycleScope.launch {
+                try {
+                    val root = withContext(Dispatchers.IO) { api.get("/user/items") }
+                    LogManager.log("[PAGE] /user/items => " + root.toString().take(500))
+                    val arr = toArray(root)
+                    listCol.removeAllViews()
+                    if (arr == null || arr.length() == 0) {
+                        listCol.addView(textView(activity, "暂无 YSM 皮肤", 13f, 0xFF9AA0A6.toInt()))
+                        return@launch
+                    }
+                    for (i in 0 until arr.length()) {
+                        val o = arr.optJSONObject(i) ?: continue
+                        val name = firstNonBlank(o, "name", "title", "item_name", "filename") ?: "皮肤"
+                        val sub = itemSubtitle(o)
+                        listCol.addView(makeCard(activity, name, sub, null))
+                    }
+                } catch (e: Exception) {
+                    handleError(activity, e)
+                    listCol.removeAllViews()
+                    listCol.addView(textView(activity, "加载失败：" + e.message, 13f, 0xFFE57373.toInt()))
+                }
+            }
+        }
+
+        val uploadBtn = MaterialButton(activity).apply {
+            text = "上传 YSM 皮肤"
+            textSize = 13f
+            minWidth = 0
+            setTextColor(0xFF10131A.toInt())
+            setBackgroundColor(0xFFA0C4FF.toInt())
+            setPadding(dp(activity, 18), 0, dp(activity, 18), 0)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 40)
+            ).apply { bottomMargin = dp(activity, 12) }
+            setOnClickListener {
+                AppDialogs.tip(activity, "上传 YSM 皮肤", "请在游戏内使用上传功能，或联系服主开通 App 上传。")
+            }
+        }
+        listCol.addView(uploadBtn)
+        load()
+    }
+
     /** 游戏账号绑定（页面 + 解除按钮） */
     fun renderGameBindingsPage(activity: AppCompatActivity, container: LinearLayout) =
         renderPage(activity, container, "游戏账号绑定", "/user/game-bindings", actionText = "解除") { o ->
