@@ -49,9 +49,12 @@ object FileManagerDialog {
         mode: Int = MODE_DIR,
         onPick: (File) -> Unit
     ) {
+        val prefs = activity.getSharedPreferences("xdyl_settings", android.content.Context.MODE_PRIVATE)
+        val rootPath = Environment.getExternalStorageDirectory().absolutePath
         var currentDir = File(
-            startDir ?: Environment.getExternalStorageDirectory().absolutePath
+            startDir ?: prefs.getString("file_browser_last_path", rootPath) ?: rootPath
         )
+        if (!currentDir.exists() || !currentDir.canRead()) currentDir = File(rootPath)
 
         val view = activity.layoutInflater.inflate(R.layout.dialog_file_browser, null)
         val tvTitle = view.findViewById<TextView>(R.id.tvBrowserTitle)
@@ -66,6 +69,7 @@ object FileManagerDialog {
 
         fun load(dir: File) {
             currentDir = dir
+            prefs.edit().putString("file_browser_last_path", dir.absolutePath).apply()
             tvPath.text = dir.absolutePath
             // Android 11+ 受限目录提示（与首页一致）
             val restricted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
@@ -88,10 +92,40 @@ object FileManagerDialog {
         }
         val dialog = builder.create()
 
+        // 目录切换动画：前进向右滑出 + 左滑入，返回反向（与旧版 CSV 选择器一致）
+        fun navigateTo(dir: File, forward: Boolean) {
+            val rv2 = rv
+            val width = rv2.width.toFloat()
+            if (width <= 0f) { // 尚未布局时直接跳转
+                load(dir)
+                return
+            }
+            rv2.animate()
+                .translationX(if (forward) -width else width)
+                .setDuration(250)
+                .setListener(object : android.animation.AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: android.animation.Animator) {
+                        load(dir)
+                        rv2.translationX = if (forward) width else -width
+                        rv2.animate().translationX(0f).setDuration(250).setListener(null).start()
+                    }
+                })
+                .start()
+        }
+
+        // 返回上级按钮：根目录时置灰禁用（与旧版 CSV 选择器一致）
+        fun refreshUpButton(dir: File) {
+            val btn = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEGATIVE) ?: return
+            val isRoot = dir.absolutePath == rootPath
+            btn.isEnabled = !isRoot
+            btn.alpha = if (isRoot) 0.5f else 1.0f
+        }
+
         adapter = FileAdapter(
             { file ->
                 if (file.isDirectory) {
-                    load(file)
+                    navigateTo(file, true)
+                    refreshUpButton(file)
                 } else {
                     // 单击文件 = 选中
                     pickedFile = file
@@ -110,9 +144,12 @@ object FileManagerDialog {
         rv.adapter = adapter
 
         dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
                 val parent = currentDir.parentFile
-                if (parent != null && parent.canRead()) load(parent)
+                if (parent != null && parent.canRead()) {
+                    navigateTo(parent, false)
+                    refreshUpButton(parent)
+                }
             }
             if (isFileMode) {
                 // 文件模式 = 纯点击选择：不显示任何选择按钮，只留 “返回上级”
@@ -124,6 +161,7 @@ object FileManagerDialog {
                 }
             }
             load(currentDir)
+            refreshUpButton(currentDir)
         }
         dialog.show()
     }
