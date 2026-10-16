@@ -29,6 +29,9 @@
         <include
             android:id="@+id/pageProfile"
             layout="@layout/page_profile" />
+        <include
+            android:id="@+id/pageAudio"
+            layout="@layout/page_audio" />
     </ViewFlipper>
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
