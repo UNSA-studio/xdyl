@@ -1235,7 +1235,35 @@ class MainActivity : AppCompatActivity() {
     private fun maybeLogToken() {
         if (!prefs.getBoolean("debug_token_log", false)) return
         val t = session.accessToken
+        val r = session.refreshToken
         if (t.isNotBlank()) LogManager.log("[Debug] USER-TOKEN: $t")
+        if (r.isNotBlank()) LogManager.log("[Debug] USER-REFRESH: $r")
+        LogManager.log("[Debug] ACCESS-INFO: ${jwtInfo(t)}")
+        LogManager.log("[Debug] REFRESH-INFO: ${jwtInfo(r)}")
+    }
+
+    /** 解码 JWT payload（不校验签名）：输出 type / iat / exp / 有效期 / 剩余时间 */
+    private fun jwtInfo(token: String): String {
+        if (token.isBlank()) return "(空)"
+        return try {
+            val parts = token.split(".")
+            if (parts.size < 2) return "(非 JWT：$token)"
+            val payload = String(
+                android.util.Base64.decode(
+                    parts[1],
+                    android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING
+                )
+            )
+            val o = org.json.JSONObject(payload)
+            val exp = o.optLong("exp", 0L)
+            val iat = o.optLong("iat", 0L)
+            val now = System.currentTimeMillis() / 1000
+            val ttl = if (exp > 0 && iat > 0) "${(exp - iat) / 60} 分钟" else "未知"
+            val left = if (exp > 0) "${(exp - now) / 60} 分钟后过期" else "无 exp"
+            "type=${o.optString("type")} iat=$iat exp=$exp 有效期=$ttl 剩余=$left payload=$payload"
+        } catch (e: Exception) {
+            "解析失败: ${e.message}"
+        }
     }
 
     /** 登录已过期（refresh 也失败）：清理会话并刷新界面，提示重新登录 */
