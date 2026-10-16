@@ -22,10 +22,6 @@ import java.security.MessageDigest
 
 class ExtensionSettingsActivity : AppCompatActivity() {
     private lateinit var prefs: SharedPreferences
-    private var csvBrowseDialog: AlertDialog? = null
-    private var currentDir: File? = null
-    private var csvRecycler: RecyclerView? = null
-    private var csvTvPath: TextView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,7 +64,18 @@ class ExtensionSettingsActivity : AppCompatActivity() {
             btnPickCsv.visibility = if (isChecked) View.VISIBLE else View.GONE
             if (!isChecked) prefs.edit().remove("local_csv_path").apply()
         }
-        btnPickCsv.setOnClickListener { showCsvFilePicker() }
+        btnPickCsv.setOnClickListener {
+            FileManagerDialog.show(
+                this,
+                title = "选择 CSV 文件",
+                startDir = prefs.getString("file_browser_last_path", null),
+                extensions = arrayOf("csv"),
+                mode = FileManagerDialog.MODE_FILE
+            ) { f ->
+                prefs.edit().putString("local_csv_path", f.absolutePath).apply()
+                Toast.makeText(this, "已选择 CSV: ${f.name}", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         // 音频播放器（Beta）：开启后需重启，底部出现音频分页
         val swAudioPlayer = findViewById<SwitchMaterial>(R.id.swAudioPlayer)
@@ -231,91 +238,5 @@ class ExtensionSettingsActivity : AppCompatActivity() {
         prefs.edit().putStringSet("mod_whitelist", list.toSet()).apply()
     }
 
-    private fun showCsvFilePicker() {
-        val lastPath = prefs.getString("csv_browser_last_path", Environment.getExternalStorageDirectory().absolutePath) ?: Environment.getExternalStorageDirectory().absolutePath
-        currentDir = File(lastPath)
-        if (!currentDir!!.exists()) currentDir!!.mkdirs()
 
-        val view = layoutInflater.inflate(R.layout.dialog_file_browser, null)
-        csvTvPath = view.findViewById(R.id.tvPath)
-        csvRecycler = view.findViewById(R.id.recyclerView)
-        csvRecycler!!.layoutManager = LinearLayoutManager(this)
-
-        val dialog = MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
-            .setView(view)
-            .setNegativeButton("返回上级", null)
-            .create()
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
-                val parent = currentDir!!.parentFile ?: return@setOnClickListener
-                navigateCsvDir(parent, false)
-            }
-        }
-        csvBrowseDialog = dialog
-        // csvBrowseDialog 赋值后再加载，updateUpButton 才能正确设置按钮状态
-        loadCsvDir(currentDir!!)
-        dialog.show()
-        // show 后按钮视图已构建，再刷一次确保状态正确
-        updateUpButton(currentDir!!)
-    }
-
-    // 目录切换滑动动画：前进向右滑出+左滑入，返回反向
-    private fun navigateCsvDir(dir: File, forward: Boolean) {
-        val recycler = csvRecycler ?: return
-        val width = recycler.width.toFloat()
-        recycler.animate()
-            .translationX(if (forward) -width else width)
-            .setDuration(250)
-            .setListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) {
-                    currentDir = dir
-                    prefs.edit().putString("csv_browser_last_path", dir.absolutePath).apply()
-                    loadCsvDir(dir)
-                    recycler.translationX = if (forward) width else -width
-                    recycler.animate().translationX(0f).setDuration(250).setListener(null).start()
-                }
-            })
-            .start()
-    }
-
-    private fun loadCsvDir(dir: File) {
-        val tvPath = csvTvPath ?: return
-        val recycler = csvRecycler ?: return
-        // 只显示文件夹和 .csv 文件
-        val files = dir.listFiles()
-            ?.filter { it.isDirectory || it.name.endsWith(".csv") }
-            ?.sortedWith(compareBy<File> { it.isDirectory }.thenBy { it.name })
-            ?: emptyList()
-        tvPath.text = dir.absolutePath
-        val adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-                val tv = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false) as TextView
-                tv.setBackgroundColor(0xFF1E1E1E.toInt()); tv.setTextColor(0xFFFFFFFF.toInt())
-                return object : RecyclerView.ViewHolder(tv) {}
-            }
-            override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-                val f = files[position]
-                (holder.itemView as TextView).text = f.name
-                holder.itemView.setOnClickListener {
-                    if (f.isDirectory) {
-                        navigateCsvDir(f, true)
-                    } else {
-                        prefs.edit().putString("local_csv_path", f.absolutePath).apply()
-                        csvBrowseDialog?.dismiss()
-                        Toast.makeText(this@ExtensionSettingsActivity, "已选择 CSV: ${f.name}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-            override fun getItemCount(): Int = files.size
-        }
-        recycler.adapter = adapter
-        updateUpButton(dir)
-    }
-
-    private fun updateUpButton(dir: File) {
-        val btn = csvBrowseDialog?.getButton(AlertDialog.BUTTON_NEGATIVE) ?: return
-        val isRoot = dir.absolutePath == Environment.getExternalStorageDirectory().absolutePath
-        btn.isEnabled = !isRoot
-        btn.alpha = if (isRoot) 0.5f else 1.0f
-    }
 }
