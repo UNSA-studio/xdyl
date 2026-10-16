@@ -30,7 +30,7 @@
             android:label="设置"
             android:parentActivityName="www.xdyl.hygge.com.MainActivity" />
         <activity
-            android:name="www.xdyl.hygge.com.EasterEggActivity"
+            android:name="www.xdyl.hygge.com.ExtensionSettingsActivity"
             android:exported="true"
             android:label="扩展页面"
             android:theme="@style/Theme.Xdyl" />

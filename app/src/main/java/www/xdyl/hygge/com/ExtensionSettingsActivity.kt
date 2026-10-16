@@ -20,7 +20,7 @@ import com.google.android.material.textfield.TextInputEditText
 import java.io.File
 import java.security.MessageDigest
 
-class EasterEggActivity : AppCompatActivity() {
+class ExtensionSettingsActivity : AppCompatActivity() {
     private lateinit var prefs: SharedPreferences
     private var csvBrowseDialog: AlertDialog? = null
     private var currentDir: File? = null
@@ -29,7 +29,7 @@ class EasterEggActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_easter_egg)
+        setContentView(R.layout.activity_extension_settings)
         prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
 
         val btnBack = findViewById<ImageButton>(R.id.btnBack)
@@ -70,6 +70,17 @@ class EasterEggActivity : AppCompatActivity() {
         }
         btnPickCsv.setOnClickListener { showCsvFilePicker() }
 
+        // 音频播放器（Beta）：开启后需重启，底部出现音频分页
+        val swAudioPlayer = findViewById<SwitchMaterial>(R.id.swAudioPlayer)
+        swAudioPlayer.isChecked = prefs.getBoolean("audio_player_enabled", false)
+        swAudioPlayer.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("audio_player_enabled", isChecked).apply()
+            Toast.makeText(
+                this,
+                if (isChecked) "音频播放器已开启，重启软件后生效" else "音频播放器已关闭，重启软件后生效",
+                Toast.LENGTH_LONG
+            ).show()
+        }
         val btnWhitelist = findViewById<MaterialButton>(R.id.btnWhitelist)
         btnWhitelist.setOnClickListener { showWhitelistDialog() }
 
@@ -291,7 +302,7 @@ class EasterEggActivity : AppCompatActivity() {
                     } else {
                         prefs.edit().putString("local_csv_path", f.absolutePath).apply()
                         csvBrowseDialog?.dismiss()
-                        Toast.makeText(this@EasterEggActivity, "已选择 CSV: ${f.name}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@ExtensionSettingsActivity, "已选择 CSV: ${f.name}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }

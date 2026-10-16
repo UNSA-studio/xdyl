@@ -98,7 +98,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         binding.btnExtensionPage.setOnClickListener {
-            startActivity(Intent(this, EasterEggActivity::class.java))
+            startActivity(Intent(this, ExtensionSettingsActivity::class.java))
             @Suppress("DEPRECATION")
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }

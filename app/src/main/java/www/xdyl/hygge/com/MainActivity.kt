@@ -74,6 +74,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var communityBinding: HomeHolders.Community
     private lateinit var shopBinding: HomeHolders.Shop
     private lateinit var profileBinding: HomeHolders.Profile
+    private lateinit var audioBinding: HomeHolders.Audio
     private lateinit var session: SessionStore
     private lateinit var api: ApiClient
     private var communityLoaded = false
@@ -166,6 +167,12 @@ class MainActivity : AppCompatActivity() {
         communityBinding = HomeHolders.Community(binding.viewFlipper.getChildAt(1))
         shopBinding = HomeHolders.Shop(binding.viewFlipper.getChildAt(2))
         profileBinding = HomeHolders.Profile(binding.viewFlipper.getChildAt(3))
+        // 音频播放器分页（仅当扩展设置里开启后才显示导航入口）
+        audioBinding = HomeHolders.Audio(binding.viewFlipper.getChildAt(4))
+        if (prefs.getBoolean("audio_player_enabled", false)) {
+            binding.bottomNav.menu.add(0, R.id.nav_audio, 4, "音频").setIcon(R.drawable.ic_audio)
+        }
+        setupAudioPage()
         binding.pageHome.tvLog.movementMethod = ScrollingMovementMethod()
 
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
@@ -282,8 +289,57 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_community -> { binding.viewFlipper.displayedChild = 1; ensureCommunityLoaded(); true }
                 R.id.nav_shop -> { binding.viewFlipper.displayedChild = 2; ensureShopLoaded(); true }
                 R.id.nav_profile -> { binding.viewFlipper.displayedChild = 3; refreshProfileUI(); true }
+                R.id.nav_audio -> { binding.viewFlipper.displayedChild = 4; true }
                 else -> false
             }
+        }
+    }
+
+    /** 音频播放器页：选择文件 + 播放控制 + 进度同步 */
+    private fun setupAudioPage() {
+        AudioPlayer.onState = { st ->
+            runOnUiThread {
+                audioBinding.tvAudioState.text = when {
+                    st == "playing" -> "播放中"
+                    st == "paused" -> "已暂停"
+                    st == "stopped" -> "已停止"
+                    st == "completed" -> "播放结束"
+                    st.startsWith("error") -> "播放失败"
+                    else -> st
+                }
+                audioBinding.btnAudioPlay.text = if (AudioPlayer.isPlaying) "暂停" else "播放"
+            }
+        }
+        AudioPlayer.onProgress = { cur, total ->
+            if (total > 0) {
+                audioBinding.sbAudioProgress.progress = cur * 1000 / total
+                audioBinding.tvAudioTime.text = "${cur / 1000}s / ${total / 1000}s"
+            }
+        }
+        audioBinding.btnPickAudio.setOnClickListener {
+            FileManagerDialog.show(
+                this,
+                title = "选择音频文件",
+                startDir = android.os.Environment.getExternalStorageDirectory().absolutePath,
+                extensions = arrayOf("mp3", "flac", "wav", "ogg", "m4a", "aac")
+            ) { f ->
+                audioBinding.tvAudioTitle.text = f.name
+                audioBinding.tvAudioState.text = "加载中…"
+                AudioPlayer.play(this, f.absolutePath)
+            }
+        }
+        audioBinding.btnAudioPlay.setOnClickListener {
+            if (!AudioPlayer.isPlaying && AudioPlayer.currentPositionMs == 0 &&
+                audioBinding.tvAudioTitle.text == "未选择音频") {
+                Toast.makeText(this, "请先选择音频文件", Toast.LENGTH_SHORT).show()
+            } else {
+                AudioPlayer.toggle()
+            }
+        }
+        audioBinding.btnAudioStop.setOnClickListener {
+            AudioPlayer.stop()
+            audioBinding.sbAudioProgress.progress = 0
+            audioBinding.tvAudioTime.text = "0s / 0s"
         }
     }
 
