@@ -312,10 +312,25 @@ class MainActivity : AppCompatActivity() {
                 audioBinding.btnAudioPlay.text = if (AudioPlayer.isPlaying) "暂停" else "播放"
             }
         }
+        // 进度条：max 与计算公式必须同量级（默认 max=100 会造成快 10 倍）
+        audioBinding.sbAudioProgress.max = 1000
+        audioBinding.sbAudioProgress.setOnSeekBarChangeListener(
+            object : android.widget.SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                    if (fromUser && AudioPlayer.durationMs > 0) {
+                        AudioPlayer.seekTo(progress * AudioPlayer.durationMs / 1000)
+                    }
+                }
+                override fun onStartTrackingTouch(sb: android.widget.SeekBar?) {}
+                override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {}
+            }
+        )
         AudioPlayer.onProgress = { cur, total ->
             if (total > 0) {
                 audioBinding.sbAudioProgress.progress = cur * 1000 / total
-                audioBinding.tvAudioTime.text = "${cur / 1000}s / ${total / 1000}s"
+                val curS = cur / 1000
+                val totalS = total / 1000
+                audioBinding.tvAudioTime.text = "${curS / 60}:${(curS % 60).toString().padStart(2, '0')} / ${totalS / 60}:${(totalS % 60).toString().padStart(2, '0')}"
             }
         }
         audioBinding.btnPickAudio.setOnClickListener {
