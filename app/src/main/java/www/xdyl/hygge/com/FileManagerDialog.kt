@@ -77,6 +77,7 @@ object FileManagerDialog {
             adapter.submitList(files)
         }
 
+        var pickedFile: File? = null
         val isFileMode = mode == MODE_FILE
         val positiveText = if (isFileMode) "选择文件" else "选择此文件夹"
         val dialog = MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
@@ -106,7 +107,6 @@ object FileManagerDialog {
         }
         rv.adapter = adapter
 
-        var pickedFile: File? = null
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
                 val parent = currentDir.parentFile
