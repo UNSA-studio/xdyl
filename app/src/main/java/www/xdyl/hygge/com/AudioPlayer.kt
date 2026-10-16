@@ -37,11 +37,8 @@ object AudioPlayer {
     private val handler = Handler(Looper.getMainLooper())
 
     var isPlaying: Boolean = false
-        private set
     var durationMs: Int = 0
-        private set
     var currentPositionMs: Int = 0
-        private set
 
     /** 进度回调（主线程）：current, total */
     var onProgress: ((Int, Int) -> Unit)? = null
