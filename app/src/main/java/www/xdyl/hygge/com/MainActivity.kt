@@ -173,6 +173,21 @@ class MainActivity : AppCompatActivity() {
             binding.bottomNav.menu.add(0, R.id.nav_audio, 4, "音频").setIcon(R.drawable.ic_audio)
         }
         setupAudioPage()
+        // 恢复上次所在分页（避免重启后被强制拉回主页）
+        val lastPage = prefs.getInt("last_page", 0)
+        val audioOk = prefs.getBoolean("audio_player_enabled", false)
+        val target = if (lastPage == 4 && !audioOk) 0 else lastPage
+        if (target in 0..4) {
+            binding.viewFlipper.displayedChild = target
+            binding.bottomNav.selectedItemId = when (target) {
+                0 -> R.id.nav_home
+                1 -> R.id.nav_community
+                2 -> R.id.nav_shop
+                3 -> R.id.nav_profile
+                else -> R.id.nav_audio
+            }
+            if (target == 1) ensureCommunityLoaded()
+        }
         binding.pageHome.tvLog.movementMethod = ScrollingMovementMethod()
 
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
@@ -285,11 +300,11 @@ class MainActivity : AppCompatActivity() {
         // 底部导航切换
         binding.bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.nav_home -> { binding.viewFlipper.displayedChild = 0; true }
-                R.id.nav_community -> { binding.viewFlipper.displayedChild = 1; ensureCommunityLoaded(); true }
-                R.id.nav_shop -> { binding.viewFlipper.displayedChild = 2; ensureShopLoaded(); true }
-                R.id.nav_profile -> { binding.viewFlipper.displayedChild = 3; refreshProfileUI(); true }
-                R.id.nav_audio -> { binding.viewFlipper.displayedChild = 4; true }
+                R.id.nav_home -> { binding.viewFlipper.displayedChild = 0; prefs.edit().putInt("last_page", 0).apply(); true }
+                R.id.nav_community -> { binding.viewFlipper.displayedChild = 1; prefs.edit().putInt("last_page", 1).apply(); ensureCommunityLoaded(); true }
+                R.id.nav_shop -> { binding.viewFlipper.displayedChild = 2; prefs.edit().putInt("last_page", 2).apply(); ensureShopLoaded(); true }
+                R.id.nav_profile -> { binding.viewFlipper.displayedChild = 3; prefs.edit().putInt("last_page", 3).apply(); refreshProfileUI(); true }
+                R.id.nav_audio -> { binding.viewFlipper.displayedChild = 4; prefs.edit().putInt("last_page", 4).apply(); true }
                 else -> false
             }
         }
