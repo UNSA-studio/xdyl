@@ -79,12 +79,14 @@ object FileManagerDialog {
 
         var pickedFile: File? = null
         val isFileMode = mode == MODE_FILE
-        val positiveText = if (isFileMode) "选择文件" else "选择此文件夹"
-        val dialog = MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
+        val builder = MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setView(view)
-            .setPositiveButton(positiveText, null)
             .setNegativeButton("返回上级", null)
-            .create()
+        if (!isFileMode) {
+            // 文件夹模式：保留 “选择此文件夹”
+            builder.setPositiveButton("选择此文件夹", null)
+        }
+        val dialog = builder.create()
 
         adapter = FileAdapter(
             { file ->
@@ -112,16 +114,11 @@ object FileManagerDialog {
                 val parent = currentDir.parentFile
                 if (parent != null && parent.canRead()) load(parent)
             }
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                if (isFileMode) {
-                    val f = pickedFile
-                    if (f == null) {
-                        android.widget.Toast.makeText(activity, "请先点击一个文件", android.widget.Toast.LENGTH_SHORT).show()
-                    } else {
-                        onPick(f)
-                        dialog.dismiss()
-                    }
-                } else {
+            if (isFileMode) {
+                // 文件模式 = 纯点击选择：不显示任何选择按钮，只留 “返回上级”
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.visibility = View.GONE
+            } else {
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                     onPick(currentDir)
                     dialog.dismiss()
                 }
