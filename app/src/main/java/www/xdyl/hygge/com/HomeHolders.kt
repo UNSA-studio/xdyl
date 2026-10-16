@@ -84,7 +84,6 @@ object HomeHolders {
         val tvAudioTitle: TextView = root.findViewById(R.id.tvAudioTitle)
         val tvAudioState: TextView = root.findViewById(R.id.tvAudioState)
         val tvAudioTime: TextView = root.findViewById(R.id.tvAudioTime)
-        val tvAudioHint: TextView = root.findViewById(R.id.tvAudioHint)
         val sbAudioProgress: android.widget.SeekBar = root.findViewById(R.id.sbAudioProgress)
         val btnPickAudio: MaterialButton = root.findViewById(R.id.btnPickAudio)
         val btnAudioPlay: MaterialButton = root.findViewById(R.id.btnAudioPlay)

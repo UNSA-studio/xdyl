@@ -36,11 +36,17 @@ object FileManagerDialog {
      * @param extensions 后缀过滤（如 arrayOf("csv")）；null = 显示全部
      * @param onPick 回调：选中的目录（点“选择此文件夹”）或文件/条目（单击·长按）
      */
+    /** 选择模式：目录（默认，底部按钮为“选择此文件夹”） */
+    const val MODE_DIR = 0
+    /** 选择模式：文件（底部按钮为“选择文件”，点文件即选中） */
+    const val MODE_FILE = 1
+
     fun show(
         activity: AppCompatActivity,
         title: String = "选择文件夹",
         startDir: String? = null,
         extensions: Array<String>? = null,
+        mode: Int = MODE_DIR,
         onPick: (File) -> Unit
     ) {
         var currentDir = File(
@@ -71,9 +77,11 @@ object FileManagerDialog {
             adapter.submitList(files)
         }
 
+        val isFileMode = mode == MODE_FILE
+        val positiveText = if (isFileMode) "选择文件" else "选择此文件夹"
         val dialog = MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setView(view)
-            .setPositiveButton("选择此文件夹") { _, _ -> onPick(currentDir) }
+            .setPositiveButton(positiveText, null)
             .setNegativeButton("返回上级", null)
             .create()
 
@@ -83,6 +91,7 @@ object FileManagerDialog {
                     load(file)
                 } else {
                     // 单击文件 = 选中
+                    pickedFile = file
                     onPick(file)
                     dialog.dismiss()
                 }
@@ -91,15 +100,31 @@ object FileManagerDialog {
         )
         adapter.onFolderSelected = { file ->
             // 长按条目 = 选中
+            pickedFile = file
             onPick(file)
             dialog.dismiss()
         }
         rv.adapter = adapter
 
+        var pickedFile: File? = null
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
                 val parent = currentDir.parentFile
                 if (parent != null && parent.canRead()) load(parent)
+            }
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (isFileMode) {
+                    val f = pickedFile
+                    if (f == null) {
+                        android.widget.Toast.makeText(activity, "请先点击一个文件", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        onPick(f)
+                        dialog.dismiss()
+                    }
+                } else {
+                    onPick(currentDir)
+                    dialog.dismiss()
+                }
             }
             load(currentDir)
         }

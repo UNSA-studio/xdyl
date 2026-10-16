@@ -321,7 +321,8 @@ class MainActivity : AppCompatActivity() {
                 this,
                 title = "选择音频文件",
                 startDir = android.os.Environment.getExternalStorageDirectory().absolutePath,
-                extensions = arrayOf("mp3", "flac", "wav", "ogg", "m4a", "aac")
+                extensions = arrayOf("mp3", "flac", "wav", "ogg", "m4a", "aac"),
+                mode = FileManagerDialog.MODE_FILE
             ) { f ->
                 audioBinding.tvAudioTitle.text = f.name
                 audioBinding.tvAudioState.text = "加载中…"
