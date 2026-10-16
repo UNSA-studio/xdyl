@@ -56,31 +56,31 @@ object AudioPlayer {
         release()
         currentSource = source
         try {
-            player = MediaPlayer().apply {
-                setOnPreparedListener {
-                    durationMs = it.duration
-                    isPlaying = true
-                    start()
-                    onState?.invoke("playing")
-                    startProgressLoop()
-                }
-                setOnCompletionListener {
-                    isPlaying = false
-                    onState?.invoke("completed")
-                    handler.removeCallbacks(progressTask)
-                }
-                setOnErrorListener { _, what, extra ->
-                    isPlaying = false
-                    onState?.invoke("error:$what/$extra")
-                    true
-                }
-                if (source.startsWith("http://") || source.startsWith("https://")) {
-                    setDataSource(source)
-                } else {
-                    setDataSource(File(source).absolutePath)
-                }
-                prepareAsync()
+            val p = MediaPlayer()
+            p.setOnPreparedListener {
+                AudioPlayer.durationMs = it.duration
+                AudioPlayer.isPlaying = true
+                it.start()
+                AudioPlayer.onState?.invoke("playing")
+                startProgressLoop()
             }
+            p.setOnCompletionListener {
+                AudioPlayer.isPlaying = false
+                AudioPlayer.onState?.invoke("completed")
+                handler.removeCallbacks(progressTask)
+            }
+            p.setOnErrorListener { _, what, extra ->
+                AudioPlayer.isPlaying = false
+                AudioPlayer.onState?.invoke("error:$what/$extra")
+                true
+            }
+            if (source.startsWith("http://") || source.startsWith("https://")) {
+                p.setDataSource(source)
+            } else {
+                p.setDataSource(File(source).absolutePath)
+            }
+            player = p
+            p.prepareAsync()
         } catch (e: Exception) {
             onState?.invoke("error:${e.message}")
         }
