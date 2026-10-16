@@ -90,4 +90,5 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")   // 新增
     implementation("dev.mobile:dadb:2.0.0")            // ADB 客户端库
     implementation("pl.droidsonroids.gif:android-gif-drawable:1.2.28") // GIF 动图（自带 native 解码，避开系统 AnimatedImageDrawable 崩溃）
+    implementation("androidx.media3:media3-exoplayer:1.4.1")          // 音频播放内核（ExoPlayer，开源，格式支持比系统 MediaPlayer 全）
 }

@@ -1,38 +1,43 @@
 package www.xdyl.hygge.com
 
 import android.content.Context
-import android.media.MediaPlayer
 import android.os.Handler
 import android.os.Looper
 import android.widget.SeekBar
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import java.io.File
 
 /**
  * 【音频播放器模块】
  *
- * 基于 MediaPlayer，支持本地文件与网络 URL 播放。
+ * 内核：AndroidX Media3 **ExoPlayer**（Google 官方开源播放器内核）
+ *  - 不依赖系统 MediaPlayer 的厂商裁剪实现，格式支持一致且更全
+ *  - 支持本地文件与网络地址（含 HLS / 渐进式 mp3 等）
  *
- * 能力：
- *  - play / toggle / stop / seekTo / release
- *  - 进度回调（每 500ms 一次，主线程）
- *  - 状态回调：playing / paused / stopped / completed / error
- *  - 可选绑定 SeekBar（拖动跳转）
- *
- * 用法：
+ * 对外 API（与页面解耦）：
  * ```
- * AudioPlayer.onState = { st -> tvStatus.text = st }
- * AudioPlayer.onProgress = { cur, total -> tvTime.text = "${cur/1000}s / ${total/1000}s" }
+ * AudioPlayer.onState = { st -> ... }        // ready/loading/playing/paused/stopped/completed/error
+ * AudioPlayer.onProgress = { cur, total -> ... }
  * AudioPlayer.bindSeekBar(seekBar)
  *
- * AudioPlayer.play(this, "https://xxx/a.mp3")   // 或本地路径
- * AudioPlayer.toggle()                          // 播放/暂停
- * AudioPlayer.seekTo(30_000)
- * AudioPlayer.release()                         // 页面销毁时调用
+ * AudioPlayer.play(context, pathOrUrl)
+ * AudioPlayer.toggle()     // 播放 / 暂停
+ * AudioPlayer.stop()
+ * AudioPlayer.seekTo(ms)
+ * AudioPlayer.release()    // 页面销毁
  * ```
  */
 object AudioPlayer {
 
-    private var player: MediaPlayer? = null
+    /** 支持的音频后缀（供文件选择器过滤使用） */
+    val SUPPORTED_EXTENSIONS = arrayOf(
+        "mp3", "flac", "wav", "ogg", "oga", "opus", "m4a", "m4b", "aac", "mp4", "amr", "3gp"
+    )
+
+    private var player: ExoPlayer? = null
     private var currentSource: String = ""
     private val handler = Handler(Looper.getMainLooper())
 
@@ -43,10 +48,42 @@ object AudioPlayer {
     /** 进度回调（主线程）：current, total */
     var onProgress: ((Int, Int) -> Unit)? = null
 
-    /** 状态回调："playing" / "paused" / "stopped" / "completed" / "error:xxx" */
+    /** 状态回调：ready / loading / playing / paused / stopped / completed / error:xxx */
     var onState: ((String) -> Unit)? = null
 
-    /** 播放（同一源再次调用 = 播放/暂停切换） */
+    private val listener = object : Player.Listener {
+        override fun onPlaybackStateChanged(state: Int) {
+            when (state) {
+                Player.STATE_READY -> {
+                    val dur = player?.duration ?: 0L
+                    durationMs = if (dur > 0) dur.toInt() else 0
+                    onState?.invoke(if (player?.isPlaying == true) "playing" else "ready")
+                    if (player?.isPlaying == true) startProgressLoop()
+                }
+                Player.STATE_BUFFERING -> onState?.invoke("loading")
+                Player.STATE_ENDED -> {
+                    isPlaying = false
+                    onState?.invoke("completed")
+                    handler.removeCallbacks(progressTask)
+                }
+                else -> { /* STATE_IDLE：空闲 */ }
+            }
+        }
+
+        override fun onIsPlayingChanged(playing: Boolean) {
+            isPlaying = playing
+            onState?.invoke(if (playing) "playing" else "paused")
+            if (playing) startProgressLoop() else handler.removeCallbacks(progressTask)
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            isPlaying = false
+            onState?.invoke("error:${error.errorCodeName}")
+            handler.removeCallbacks(progressTask)
+        }
+    }
+
+    /** 播放（同一源再次调用 = 播放 / 暂停切换） */
     fun play(context: Context, source: String) {
         if (source.isBlank()) return
         if (source == currentSource && player != null) {
@@ -56,72 +93,64 @@ object AudioPlayer {
         release()
         currentSource = source
         try {
-            val p = MediaPlayer()
-            p.setOnPreparedListener {
-                AudioPlayer.durationMs = it.duration
-                AudioPlayer.isPlaying = true
-                it.start()
-                AudioPlayer.onState?.invoke("playing")
-                startProgressLoop()
-            }
-            p.setOnCompletionListener {
-                AudioPlayer.isPlaying = false
-                AudioPlayer.onState?.invoke("completed")
-                handler.removeCallbacks(progressTask)
-            }
-            p.setOnErrorListener { _, what, extra ->
-                AudioPlayer.isPlaying = false
-                AudioPlayer.onState?.invoke("error:$what/$extra")
-                true
-            }
-            if (source.startsWith("http://") || source.startsWith("https://")) {
-                p.setDataSource(source)
+            val p = ExoPlayer.Builder(context.applicationContext).build()
+            p.addListener(listener)
+            val uri = if (source.startsWith("http://") || source.startsWith("https://")) {
+                android.net.Uri.parse(source)
             } else {
-                p.setDataSource(File(source).absolutePath)
+                android.net.Uri.fromFile(File(source))
             }
+            p.setMediaItem(MediaItem.fromUri(uri))
+            p.prepare()
+            p.playWhenReady = true
             player = p
-            p.prepareAsync()
+            isPlaying = true
+            onState?.invoke("loading")
+            startProgressLoop()
         } catch (e: Exception) {
             onState?.invoke("error:${e.message}")
         }
     }
 
-    /** 播放/暂停切换 */
+    /** 播放 / 暂停切换 */
     fun toggle() {
         val p = player ?: return
         if (p.isPlaying) {
             p.pause()
-            isPlaying = false
-            onState?.invoke("paused")
-            handler.removeCallbacks(progressTask)
         } else {
-            p.start()
-            isPlaying = true
-            onState?.invoke("playing")
-            startProgressLoop()
+            if (p.playbackState == Player.STATE_ENDED) p.seekTo(0)
+            p.play()
         }
     }
 
-    /** 停止（保留实例） */
+    /** 停止（保留内核实例，进度归零） */
     fun stop() {
         handler.removeCallbacks(progressTask)
-        player?.let { if (it.isPlaying) runCatching { it.stop() } }
+        player?.let {
+            it.pause()
+            it.seekTo(0)
+        }
         isPlaying = false
+        currentPositionMs = 0
         onState?.invoke("stopped")
     }
 
     /** 跳转进度（毫秒） */
     fun seekTo(ms: Int) {
         player?.let {
-            runCatching { it.seekTo(ms.coerceIn(0, durationMs)) }
-            currentPositionMs = ms
+            val target = if (durationMs > 0) ms.coerceIn(0, durationMs) else ms.coerceAtLeast(0)
+            it.seekTo(target.toLong())
+            currentPositionMs = target
         }
     }
 
     /** 释放资源（页面销毁时调用） */
     fun release() {
         handler.removeCallbacks(progressTask)
-        player?.let { runCatching { it.release() } }
+        player?.let {
+            runCatching { it.removeListener(listener) }
+            runCatching { it.release() }
+        }
         player = null
         isPlaying = false
         durationMs = 0
@@ -151,8 +180,8 @@ object AudioPlayer {
         override fun run() {
             player?.let {
                 if (it.isPlaying) {
-                    currentPositionMs = it.currentPosition
-                    onProgress?.invoke(it.currentPosition, durationMs)
+                    currentPositionMs = it.currentPosition.toInt()
+                    onProgress?.invoke(currentPositionMs, durationMs)
                     handler.postDelayed(this, 500)
                 }
             }

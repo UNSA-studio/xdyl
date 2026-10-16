@@ -300,6 +300,8 @@ class MainActivity : AppCompatActivity() {
         AudioPlayer.onState = { st ->
             runOnUiThread {
                 audioBinding.tvAudioState.text = when {
+                    st == "ready" -> "就绪"
+                    st == "loading" -> "缓冲中…"
                     st == "playing" -> "播放中"
                     st == "paused" -> "已暂停"
                     st == "stopped" -> "已停止"
@@ -321,7 +323,7 @@ class MainActivity : AppCompatActivity() {
                 this,
                 title = "选择音频文件",
                 startDir = android.os.Environment.getExternalStorageDirectory().absolutePath,
-                extensions = arrayOf("mp3", "flac", "wav", "ogg", "m4a", "aac"),
+                extensions = AudioPlayer.SUPPORTED_EXTENSIONS,
                 mode = FileManagerDialog.MODE_FILE
             ) { f ->
                 audioBinding.tvAudioTitle.text = f.name
