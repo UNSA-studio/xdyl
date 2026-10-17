@@ -310,6 +310,72 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ===== LRC 歌词 =====
+    private var lyricLines: List<LrcParser.Line> = emptyList()
+    private val lyricViews = mutableListOf<TextView>()
+    private var currentLyricIndex = -1
+
+    /** 加载与音频同名的 .lrc（找不到则提示） */
+    private fun loadLyrics(audio: File) {
+        val sidecar = LrcParser.findSidecar(audio)
+        lyricLines = if (sidecar != null) LrcParser.parseFile(sidecar) else emptyList()
+        renderLyrics(audio)
+    }
+
+    private fun renderLyrics(audio: File) {
+        val container = audioBinding.lyricsContainer
+        container.removeAllViews()
+        lyricViews.clear()
+        currentLyricIndex = -1
+
+        if (lyricLines.isEmpty()) {
+            container.addView(TextView(this).apply {
+                text = "未找到同名歌词文件（${audio.name.substringBeforeLast('.')}.lrc）"
+                setTextColor(0xFF777777.toInt())
+                textSize = 13f
+                gravity = android.view.Gravity.CENTER
+                setPadding(0, 24, 0, 0)
+            })
+            return
+        }
+
+        for (line in lyricLines) {
+            val tv = TextView(this).apply {
+                text = if (line.translation != null) "${line.text}
+${line.translation}" else line.text
+                setTextColor(0xFF888888.toInt())
+                textSize = 14f
+                gravity = android.view.Gravity.CENTER
+                setPadding(0, 10, 0, 10)
+            }
+            container.addView(tv)
+            lyricViews.add(tv)
+        }
+    }
+
+    /** 根据播放位置高亮当前歌词行，并滚动到控件中部 */
+    private fun updateLyricHighlight(positionMs: Int) {
+        if (lyricLines.isEmpty() || lyricViews.isEmpty()) return
+        var idx = -1
+        for (i in lyricLines.indices) {
+            if (lyricLines[i].timeMs <= positionMs) idx = i else break
+        }
+        if (idx == currentLyricIndex) return
+        currentLyricIndex = idx
+        lyricViews.forEachIndexed { i, tv ->
+            val active = i == idx
+            tv.setTextColor(if (active) 0xFF7FD4FF.toInt() else 0xFF888888.toInt())
+            tv.textSize = if (active) 16f else 14f
+            tv.setTypeface(null, if (active) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+        }
+        if (idx >= 0) {
+            val v = lyricViews[idx]
+            val scroll = audioBinding.lyricsScroll
+            val target = (v.top - scroll.height / 2 + v.height / 2).coerceAtLeast(0)
+            scroll.smoothScrollTo(0, target)
+        }
+    }
+
     /** 音频播放器页：选择文件 + 播放控制 + 进度同步 */
     private fun setupAudioPage() {
         AudioPlayer.onState = { st ->
@@ -347,6 +413,7 @@ class MainActivity : AppCompatActivity() {
                 val totalS = total / 1000
                 audioBinding.tvAudioTime.text = "${curS / 60}:${(curS % 60).toString().padStart(2, '0')} / ${totalS / 60}:${(totalS % 60).toString().padStart(2, '0')}"
             }
+            updateLyricHighlight(cur)
         }
         audioBinding.btnPickAudio.setOnClickListener {
             FileManagerDialog.show(
@@ -358,6 +425,7 @@ class MainActivity : AppCompatActivity() {
             ) { f ->
                 audioBinding.tvAudioTitle.text = f.name
                 audioBinding.tvAudioState.text = "加载中…"
+                loadLyrics(f)
                 AudioPlayer.play(this, f.absolutePath)
             }
         }
