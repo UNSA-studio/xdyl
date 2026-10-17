@@ -341,8 +341,7 @@ class MainActivity : AppCompatActivity() {
 
         for (line in lyricLines) {
             val tv = TextView(this).apply {
-                text = if (line.translation != null) "${line.text}
-${line.translation}" else line.text
+                text = if (line.translation != null) "${line.text}\n${line.translation}" else line.text
                 setTextColor(0xFF888888.toInt())
                 textSize = 14f
                 gravity = android.view.Gravity.CENTER
