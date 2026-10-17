@@ -164,8 +164,10 @@ class LyricView @JvmOverloads constructor(
                     }
                 } else {
                     textPaint.textSize = sp(15f)
-                    textPaint.color = idleColor
-                    textPaint.alpha = alpha
+                    // 已经唱过的行保持“已唱色”（略淡），未唱的行才是灰色
+                    val sung = i < currentIdx
+                    textPaint.color = if (sung) Color.parseColor("#6FB6DC") else idleColor
+                    textPaint.alpha = if (sung) 190 else alpha
                     canvas.drawText(line.text, cx, baseline, textPaint)
 
                     line.translation?.let { tr ->
