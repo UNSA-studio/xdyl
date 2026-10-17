@@ -310,141 +310,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ===== LRC 歌词 =====
-    private var lyricLines: List<LrcParser.Line> = emptyList()
-    private val lyricViews = mutableListOf<TextView>()
-    private var currentLyricIndex = -1
-    private var lastFillCut = -1
-    private var lastFillLine = -2
+    // ===== LRC 歌词（Canvas 自绘视图） =====
 
     /** 逐帧驱动（Choreographer，与屏幕刷新同步），只在播放中推进歌词 */
     private val lyricFrameCallback = object : android.view.Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
             if (AudioPlayer.isPlaying) {
-                updateLyricHighlight(AudioPlayer.currentPositionNow())
+                audioBinding.lyricView.update(AudioPlayer.currentPositionNow())
             }
             android.view.Choreographer.getInstance().postFrameCallback(this)
         }
     }
 
-    /** 加载与音频同名的 .lrc（找不到则提示） */
+    /** 加载与音频同名的 .lrc */
     private fun loadLyrics(audio: File) {
         val sidecar = LrcParser.findSidecar(audio)
-        lyricLines = if (sidecar != null) LrcParser.parseFile(sidecar) else emptyList()
-        renderLyrics(audio)
-    }
-
-    private fun renderLyrics(audio: File) {
-        val container = audioBinding.lyricsContainer
-        container.removeAllViews()
-        lyricViews.clear()
-        currentLyricIndex = -1
-
-        if (lyricLines.isEmpty()) {
-            container.addView(TextView(this).apply {
-                text = "未找到同名歌词文件（${audio.name.substringBeforeLast('.')}.lrc）"
-                setTextColor(0xFF777777.toInt())
-                textSize = 13f
-                gravity = android.view.Gravity.CENTER
-                setPadding(0, 24, 0, 0)
-            })
-            return
-        }
-
-        for (line in lyricLines) {
-            val tv = TextView(this).apply {
-                text = if (line.translation != null) "${line.text}\n${line.translation}" else line.text
-                setTextColor(0xFF888888.toInt())
-                textSize = 14f
-                alpha = 0.45f
-                gravity = android.view.Gravity.CENTER
-                setPadding(0, 12, 0, 12)
-            }
-            container.addView(tv)
-            lyricViews.add(tv)
-        }
-    }
-
-    /**
-     * 歌词随唱推进：
-     *  - 当前行按【行内时间比例】逐字染色（伪卡拉OK，已唱=亮蓝，未唱=暗灰）
-     *  - 上下行按距离渐隐，当前行加粗放大
-     *  - 换行时自动滚动到控件中部
-     */
-    private fun updateLyricHighlight(positionMs: Int) {
-        if (lyricLines.isEmpty() || lyricViews.isEmpty()) return
-        var idx = -1
-        for (i in lyricLines.indices) {
-            if (lyricLines[i].timeMs <= positionMs) idx = i else break
-        }
-
-        val sungColor = 0xFF87D9FF.toInt()
-        val unsungColor = 0xFF4A4A4A.toInt()
-        val idleColor = 0xFF888888.toInt()
-
-        if (idx >= 0) {
-            val line = lyricLines[idx]
-            val startMs = line.timeMs
-            val endMs = if (idx + 1 < lyricLines.size) lyricLines[idx + 1].timeMs else startMs + 4000L
-            val span = (endMs - startMs).coerceAtLeast(300L)
-            val frac = ((positionMs - startMs).toFloat() / span.toFloat()).coerceIn(0f, 1f)
-
-            val tv = lyricViews[idx]
-            val full = tv.text.toString()
-            val originalLen = line.text.length
-            val cut = (originalLen * frac).toInt().coerceIn(0, originalLen)
-
-            // 无变化就不重绘（60fps 下大量帧其实字符进度未变）
-            if (cut != lastFillCut || idx != lastFillLine) {
-                lastFillCut = cut
-                lastFillLine = idx
-
-                val sp = android.text.SpannableString(full)
-                if (cut > 0) {
-                    sp.setSpan(
-                        android.text.style.ForegroundColorSpan(sungColor), 0, cut,
-                        android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                    )
-                }
-                val tailStart = if (cut < originalLen) cut else originalLen
-                if (tailStart < full.length) {
-                    sp.setSpan(
-                        android.text.style.ForegroundColorSpan(if (cut < originalLen) unsungColor else idleColor),
-                        tailStart, full.length,
-                        android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                    )
-                }
-                tv.text = sp
-            }
-        }
-
-        // 只在【换行】时刷新所有行的字号/透明度/滚动，避免每 100ms 重画整个列表
-        if (idx != currentLyricIndex) {
-            lyricViews.forEachIndexed { i, tv ->
-                if (i == idx) {
-                    tv.textSize = 17f
-                    tv.alpha = 1f
-                    tv.setTypeface(null, android.graphics.Typeface.BOLD)
-                } else {
-                    tv.textSize = 14f
-                    tv.setTypeface(null, android.graphics.Typeface.NORMAL)
-                    tv.setTextColor(idleColor)
-                    tv.alpha = when (kotlin.math.abs(i - idx)) {
-                        0 -> 1f
-                        1 -> 0.6f
-                        2 -> 0.38f
-                        else -> 0.26f
-                    }
-                }
-            }
-            if (idx >= 0) {
-                val v = lyricViews[idx]
-                val scroll = audioBinding.lyricsScroll
-                val target = (v.top - scroll.height / 2 + v.height / 2).coerceAtLeast(0)
-                scroll.smoothScrollTo(0, target)
-            }
-            currentLyricIndex = idx
-        }
+        audioBinding.lyricView.lines = if (sidecar != null) LrcParser.parseFile(sidecar) else emptyList()
+        audioBinding.lyricView.update(0)
     }
 
     /** 音频播放器页：选择文件 + 播放控制 + 进度同步 */
@@ -484,7 +366,6 @@ class MainActivity : AppCompatActivity() {
                 val totalS = total / 1000
                 audioBinding.tvAudioTime.text = "${curS / 60}:${(curS % 60).toString().padStart(2, '0')} / ${totalS / 60}:${(totalS % 60).toString().padStart(2, '0')}"
             }
-            updateLyricHighlight(cur)
         }
         audioBinding.btnPickAudio.setOnClickListener {
             FileManagerDialog.show(

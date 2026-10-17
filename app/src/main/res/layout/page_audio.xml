@@ -130,24 +130,15 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- 歌词区（LRC）：当前行高亮，自动滚动 -->
-    <ScrollView
-        android:id="@+id/lyricsScroll"
+    <!-- 歌词区：Canvas 自绘（按像素宽度裁剪，真正“流动”的逐字效果） -->
+    <www.xdyl.hygge.com.LyricView
+        android:id="@+id/lyricView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="12dp"
-        android:scrollbars="none"
         app:layout_constraintTop_toBottomOf="@id/audioCard"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <LinearLayout
-            android:id="@+id/lyricsContainer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingBottom="24dp"/>
-    </ScrollView>
+        app:layout_constraintEnd_toEndOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

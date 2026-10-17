@@ -88,7 +88,6 @@ object HomeHolders {
         val btnPickAudio: MaterialButton = root.findViewById(R.id.btnPickAudio)
         val btnAudioPlay: MaterialButton = root.findViewById(R.id.btnAudioPlay)
         val btnAudioStop: MaterialButton = root.findViewById(R.id.btnAudioStop)
-        val lyricsScroll: android.widget.ScrollView = root.findViewById(R.id.lyricsScroll)
-        val lyricsContainer: LinearLayout = root.findViewById(R.id.lyricsContainer)
+        val lyricView: LyricView = root.findViewById(R.id.lyricView)
     }
 }
