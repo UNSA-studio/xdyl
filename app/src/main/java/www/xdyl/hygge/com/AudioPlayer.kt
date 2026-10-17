@@ -112,6 +112,13 @@ object AudioPlayer {
         }
     }
 
+    /** 当场读取播放位置（毫秒）——用于逐帧驱动歌词，不依赖轮询缓存 */
+    fun currentPositionNow(): Int {
+        return player?.let {
+            if (it.playbackState == Player.STATE_READY || it.isPlaying) it.currentPosition.toInt() else currentPositionMs
+        } ?: currentPositionMs
+    }
+
     /** 播放 / 暂停切换 */
     fun toggle() {
         val p = player ?: return

@@ -314,6 +314,18 @@ class MainActivity : AppCompatActivity() {
     private var lyricLines: List<LrcParser.Line> = emptyList()
     private val lyricViews = mutableListOf<TextView>()
     private var currentLyricIndex = -1
+    private var lastFillCut = -1
+    private var lastFillLine = -2
+
+    /** 逐帧驱动（Choreographer，与屏幕刷新同步），只在播放中推进歌词 */
+    private val lyricFrameCallback = object : android.view.Choreographer.FrameCallback {
+        override fun doFrame(frameTimeNanos: Long) {
+            if (AudioPlayer.isPlaying) {
+                updateLyricHighlight(AudioPlayer.currentPositionNow())
+            }
+            android.view.Choreographer.getInstance().postFrameCallback(this)
+        }
+    }
 
     /** 加载与音频同名的 .lrc（找不到则提示） */
     private fun loadLyrics(audio: File) {
@@ -382,22 +394,28 @@ class MainActivity : AppCompatActivity() {
             val originalLen = line.text.length
             val cut = (originalLen * frac).toInt().coerceIn(0, originalLen)
 
-            val sp = android.text.SpannableString(full)
-            if (cut > 0) {
-                sp.setSpan(
-                    android.text.style.ForegroundColorSpan(sungColor), 0, cut,
-                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
+            // 无变化就不重绘（60fps 下大量帧其实字符进度未变）
+            if (cut != lastFillCut || idx != lastFillLine) {
+                lastFillCut = cut
+                lastFillLine = idx
+
+                val sp = android.text.SpannableString(full)
+                if (cut > 0) {
+                    sp.setSpan(
+                        android.text.style.ForegroundColorSpan(sungColor), 0, cut,
+                        android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+                val tailStart = if (cut < originalLen) cut else originalLen
+                if (tailStart < full.length) {
+                    sp.setSpan(
+                        android.text.style.ForegroundColorSpan(if (cut < originalLen) unsungColor else idleColor),
+                        tailStart, full.length,
+                        android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+                tv.text = sp
             }
-            val tailStart = if (cut < originalLen) cut else originalLen
-            if (tailStart < full.length) {
-                sp.setSpan(
-                    android.text.style.ForegroundColorSpan(if (cut < originalLen) unsungColor else idleColor),
-                    tailStart, full.length,
-                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-            }
-            tv.text = sp
         }
 
         // 只在【换行】时刷新所有行的字号/透明度/滚动，避免每 100ms 重画整个列表
@@ -495,6 +513,8 @@ class MainActivity : AppCompatActivity() {
             audioBinding.sbAudioProgress.progress = 0
             audioBinding.tvAudioTime.text = "0s / 0s"
         }
+        // 启动逐帧歌词驱动（60fps，与屏幕同步）
+        android.view.Choreographer.getInstance().postFrameCallback(lyricFrameCallback)
     }
 
     override fun onResume() {
