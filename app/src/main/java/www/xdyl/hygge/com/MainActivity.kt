@@ -344,35 +344,88 @@ class MainActivity : AppCompatActivity() {
                 text = if (line.translation != null) "${line.text}\n${line.translation}" else line.text
                 setTextColor(0xFF888888.toInt())
                 textSize = 14f
+                alpha = 0.45f
                 gravity = android.view.Gravity.CENTER
-                setPadding(0, 10, 0, 10)
+                setPadding(0, 12, 0, 12)
             }
             container.addView(tv)
             lyricViews.add(tv)
         }
     }
 
-    /** 根据播放位置高亮当前歌词行，并滚动到控件中部 */
+    /**
+     * 歌词随唱推进：
+     *  - 当前行按【行内时间比例】逐字染色（伪卡拉OK，已唱=亮蓝，未唱=暗灰）
+     *  - 上下行按距离渐隐，当前行加粗放大
+     *  - 换行时自动滚动到控件中部
+     */
     private fun updateLyricHighlight(positionMs: Int) {
         if (lyricLines.isEmpty() || lyricViews.isEmpty()) return
         var idx = -1
         for (i in lyricLines.indices) {
             if (lyricLines[i].timeMs <= positionMs) idx = i else break
         }
-        if (idx == currentLyricIndex) return
-        currentLyricIndex = idx
+
+        val sungColor = 0xFF87D9FF.toInt()
+        val unsungColor = 0xFF4A4A4A.toInt()
+        val idleColor = 0xFF888888.toInt()
+
+        if (idx >= 0) {
+            val line = lyricLines[idx]
+            val startMs = line.timeMs
+            val endMs = if (idx + 1 < lyricLines.size) lyricLines[idx + 1].timeMs else startMs + 4000L
+            val span = (endMs - startMs).coerceAtLeast(300L)
+            val frac = ((positionMs - startMs).toFloat() / span.toFloat()).coerceIn(0f, 1f)
+
+            val tv = lyricViews[idx]
+            val full = tv.text.toString()
+            val originalLen = line.text.length
+            val cut = (originalLen * frac).toInt().coerceIn(0, originalLen)
+
+            val sp = android.text.SpannableString(full)
+            if (cut > 0) {
+                sp.setSpan(
+                    android.text.style.ForegroundColorSpan(sungColor), 0, cut,
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+            val tailStart = if (cut < originalLen) cut else originalLen
+            if (tailStart < full.length) {
+                sp.setSpan(
+                    android.text.style.ForegroundColorSpan(if (cut < originalLen) unsungColor else idleColor),
+                    tailStart, full.length,
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+            tv.text = sp
+        }
+
         lyricViews.forEachIndexed { i, tv ->
             val active = i == idx
-            tv.setTextColor(if (active) 0xFF7FD4FF.toInt() else 0xFF888888.toInt())
-            tv.textSize = if (active) 16f else 14f
-            tv.setTypeface(null, if (active) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
+            if (active) {
+                tv.textSize = 17f
+                tv.alpha = 1f
+                tv.setTypeface(null, android.graphics.Typeface.BOLD)
+            } else {
+                tv.textSize = 14f
+                tv.setTypeface(null, android.graphics.Typeface.NORMAL)
+                tv.setTextColor(idleColor)
+                tv.alpha = when (kotlin.math.abs(i - idx)) {
+                    0 -> 1f
+                    1 -> 0.6f
+                    2 -> 0.38f
+                    else -> 0.26f
+                }
+            }
         }
-        if (idx >= 0) {
+
+        if (idx >= 0 && idx != currentLyricIndex) {
             val v = lyricViews[idx]
             val scroll = audioBinding.lyricsScroll
             val target = (v.top - scroll.height / 2 + v.height / 2).coerceAtLeast(0)
             scroll.smoothScrollTo(0, target)
         }
+        currentLyricIndex = idx
     }
 
     /** 音频播放器页：选择文件 + 播放控制 + 进度同步 */
