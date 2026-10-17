@@ -121,7 +121,7 @@ object LrcParser {
         parse(file.readText(Charsets.UTF_8))
     } catch (e: Exception) {
         try {
-            parse(file.readText(Charsets.GBK))
+            parse(file.readText(java.nio.charset.Charset.forName("GBK")))
         } catch (e2: Exception) {
             emptyList()
         }
