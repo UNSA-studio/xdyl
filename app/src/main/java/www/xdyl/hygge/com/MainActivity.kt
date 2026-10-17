@@ -400,32 +400,33 @@ class MainActivity : AppCompatActivity() {
             tv.text = sp
         }
 
-        lyricViews.forEachIndexed { i, tv ->
-            val active = i == idx
-            if (active) {
-                tv.textSize = 17f
-                tv.alpha = 1f
-                tv.setTypeface(null, android.graphics.Typeface.BOLD)
-            } else {
-                tv.textSize = 14f
-                tv.setTypeface(null, android.graphics.Typeface.NORMAL)
-                tv.setTextColor(idleColor)
-                tv.alpha = when (kotlin.math.abs(i - idx)) {
-                    0 -> 1f
-                    1 -> 0.6f
-                    2 -> 0.38f
-                    else -> 0.26f
+        // 只在【换行】时刷新所有行的字号/透明度/滚动，避免每 100ms 重画整个列表
+        if (idx != currentLyricIndex) {
+            lyricViews.forEachIndexed { i, tv ->
+                if (i == idx) {
+                    tv.textSize = 17f
+                    tv.alpha = 1f
+                    tv.setTypeface(null, android.graphics.Typeface.BOLD)
+                } else {
+                    tv.textSize = 14f
+                    tv.setTypeface(null, android.graphics.Typeface.NORMAL)
+                    tv.setTextColor(idleColor)
+                    tv.alpha = when (kotlin.math.abs(i - idx)) {
+                        0 -> 1f
+                        1 -> 0.6f
+                        2 -> 0.38f
+                        else -> 0.26f
+                    }
                 }
             }
+            if (idx >= 0) {
+                val v = lyricViews[idx]
+                val scroll = audioBinding.lyricsScroll
+                val target = (v.top - scroll.height / 2 + v.height / 2).coerceAtLeast(0)
+                scroll.smoothScrollTo(0, target)
+            }
+            currentLyricIndex = idx
         }
-
-        if (idx >= 0 && idx != currentLyricIndex) {
-            val v = lyricViews[idx]
-            val scroll = audioBinding.lyricsScroll
-            val target = (v.top - scroll.height / 2 + v.height / 2).coerceAtLeast(0)
-            scroll.smoothScrollTo(0, target)
-        }
-        currentLyricIndex = idx
     }
 
     /** 音频播放器页：选择文件 + 播放控制 + 进度同步 */

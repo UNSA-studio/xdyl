@@ -182,7 +182,7 @@ object AudioPlayer {
                 if (it.isPlaying) {
                     currentPositionMs = it.currentPosition.toInt()
                     onProgress?.invoke(currentPositionMs, durationMs)
-                    handler.postDelayed(this, 500)
+                    handler.postDelayed(this, 100)
                 }
             }
         }
