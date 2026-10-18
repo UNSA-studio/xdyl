@@ -959,8 +959,7 @@ object FeatureDialogs {
                             append("模型：").append(sk.modelId.ifBlank { "-" })
                             if (sk.isDuplicate) append(" · 重复")
                             if (sk.uploadTime.isNotBlank()) append(" · ").append(sk.uploadTime.replace('T', ' ').take(16))
-                            append("
-MD5：").append(sk.fileMd5.take(16))
+                            append("\nMD5：").append(sk.fileMd5.take(16))
                         }
                         listCol.addView(makeCard(activity, sk.modelId.ifBlank { "皮肤" }, sub, null))
                     }
@@ -1013,8 +1012,7 @@ MD5：").append(sk.fileMd5.take(16))
                         extensions = arrayOf("zip", "ysm", "json", "png"),
                         mode = FileManagerDialog.MODE_FILE
                     ) { f ->
-                        AppDialogs.tip(activity, "开始上传", "文件：${f.name}
-请稍候…")
+                        AppDialogs.tip(activity, "开始上传", "文件：${f.name}\n请稍候…")
                         activity.lifecycleScope.launch {
                             val res = withContext(Dispatchers.IO) {
                                 YsmApi.upload(activity, code, name, cbPublic.isChecked, f)
