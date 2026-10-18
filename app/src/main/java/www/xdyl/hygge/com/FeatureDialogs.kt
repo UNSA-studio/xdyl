@@ -1055,8 +1055,20 @@ object FeatureDialogs {
     fun renderGameBindingsPage(activity: AppCompatActivity, container: LinearLayout) =
         renderPage(activity, container, "游戏账号绑定", "/user/game-bindings", actionText = "解除") { o ->
             val id = o.optInt("id", -1)
+            // 标题显示游戏账号名（game_name），不是绑定记录主键 id
+            val gameName = firstNonBlank(o, "game_name", "gameName", "name", "player_name")
+                ?: "未命名账号"
+            val sub = buildString {
+                val t = firstNonBlank(o, "created_at", "created", "buy_time") ?: ""
+                if (t.isNotBlank()) append("绑定于 ").append(t)
+                val uuid = firstNonBlank(o, "uuid", "player_uuid") ?: ""
+                if (uuid.isNotBlank()) {
+                    if (isNotEmpty()) append("\n")
+                    append("UUID ").append(uuid)
+                }
+            }
             Triple(
-                itemTitle(o), itemSubtitle(o),
+                gameName, sub,
                 if (id > 0) ({ postJsonThen(activity, "/user/game-bindings/delete", JSONObject().put("id", id), "解除绑定", null) }) else null
             )
         }
