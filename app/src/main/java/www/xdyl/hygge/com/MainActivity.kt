@@ -351,10 +351,8 @@ class MainActivity : AppCompatActivity() {
             val transSb = StringBuilder()
             lines.forEach { l ->
                 val ts = formatLrcTime(l.timeMs)
-                mainSb.append(ts).append(l.text).append('
-')
-                transSb.append(ts).append(l.translation ?: "").append('
-')
+                mainSb.append(ts).append(l.text).append("\n")
+                transSb.append(ts).append(l.translation ?: "").append("\n")
             }
             audioBinding.lyricView.loadLrc(mainSb.toString(), transSb.toString())
         } else {
