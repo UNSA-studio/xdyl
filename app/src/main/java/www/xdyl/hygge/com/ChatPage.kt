@@ -78,6 +78,19 @@ object ChatPage {
             })
             return
         }
+        // 对仍是占位名的会话，后台尝试解析真实昵称（只尝试一次，避免频繁请求）
+        peers.filter { it.nickname.startsWith("用户") }.forEach { peer ->
+            Thread {
+                val info = ChatApi.fetchPlayerName("https://login.lanternwaves.fun", peer.userId.toString())
+                if (info != null) {
+                    val (name, registered) = info
+                    if (registered && name != peer.userId.toString()) {
+                        ChatStore.setPeerNickname(container.context, peer.userId, name)
+                        LogManager.i("[CHAT] 历史会话补全昵称 ${peer.userId} -> $name")
+                    }
+                }
+            }.start()
+        }
         peers.forEach { peer ->
             val card = makeCard(container.context as android.app.Activity as AppCompatActivity, peer)
             card.alpha = 0f
@@ -247,6 +260,13 @@ object ChatPage {
                         }
                     } else {
                         LogManager.w("[CHAT] 玩家 $id 公开资料查询失败")
+                    }
+                    // 提示注册状态（不阻塞聊天）
+                    val chk = ChatApi.fetchPlayerName("https://login.lanternwaves.fun", id.toString())
+                    if (chk != null && !chk.second) {
+                        activity.runOnUiThread {
+                            LogManager.w("[CHAT] 玩家 $id 未注册（registered=false）")
+                        }
                     }
                 }.start()
             }
