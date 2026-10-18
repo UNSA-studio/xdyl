@@ -316,17 +316,22 @@ class MainActivity : AppCompatActivity() {
     private val lyricFrameCallback = object : android.view.Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
             if (AudioPlayer.isPlaying) {
-                audioBinding.lyricView.update(AudioPlayer.currentPositionNow())
+                audioBinding.lyricView.updateTime(AudioPlayer.currentPositionNow().toLong())
             }
             android.view.Choreographer.getInstance().postFrameCallback(this)
         }
     }
 
-    /** 加载与音频同名的 .lrc */
+    /** 加载与音频同名的 .lrc（交给开源控件自己解析，支持双语） */
     private fun loadLyrics(audio: File) {
         val sidecar = LrcParser.findSidecar(audio)
-        audioBinding.lyricView.lines = if (sidecar != null) LrcParser.parseFile(sidecar) else emptyList()
-        audioBinding.lyricView.update(0)
+        if (sidecar != null) {
+            audioBinding.lyricView.loadLrc(sidecar)
+        } else {
+            audioBinding.lyricView.loadLrc("")
+            audioBinding.lyricView.setLabel("未找到同名歌词（${audio.name.substringBeforeLast('.')}.lrc）")
+        }
+        audioBinding.lyricView.updateTime(0)
     }
 
     /** 音频播放器页：选择文件 + 播放控制 + 进度同步 */
