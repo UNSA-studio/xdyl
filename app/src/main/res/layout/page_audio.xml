@@ -131,7 +131,7 @@
     </com.google.android.material.card.MaterialCardView>
 
     <!-- 歌词区：Canvas 自绘（按像素宽度裁剪，真正“流动”的逐字效果） -->
-    <me.wcy.lrcview.LrcView
+    <www.xdyl.hygge.com.lrc.LrcView
         android:id="@+id/lyricView"
         android:layout_width="0dp"
         android:layout_height="0dp"

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- me.wcy:lrcview 内联所需的默认资源 -->
+    <color name="lrc_normal_text_color">#9E9E9E</color>
+    <color name="lrc_current_text_color">#87D9FF</color>
+    <color name="lrc_timeline_text_color">#F8BBD0</color>
+    <color name="lrc_timeline_color">#809E9E9E</color>
+    <color name="lrc_time_text_color">#809E9E9E</color>
+
+    <string name="lrc_label">暂无歌词</string>
+
+    <integer name="lrc_animation_duration">400</integer>
+
+    <dimen name="lrc_text_size">17sp</dimen>
+    <dimen name="lrc_normal_text_size">14sp</dimen>
+    <dimen name="lrc_divider_height">14dp</dimen>
+    <dimen name="lrc_timeline_height">1dp</dimen>
+    <dimen name="lrc_time_text_size">12sp</dimen>
+    <dimen name="lrc_time_width">40dp</dimen>
+    <dimen name="lrc_drawable_width">24dp</dimen>
+</resources>
