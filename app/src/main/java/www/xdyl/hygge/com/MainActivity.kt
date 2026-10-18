@@ -1249,6 +1249,13 @@ class MainActivity : AppCompatActivity() {
                     data?.optInt("id", 0)?.let { uid ->
                         if (uid > 0) prefs.edit().putInt("my_user_id", uid).apply()
                     }
+                    // 私聊身份用 username（/player/info 的键）
+                    val uname = data?.optString("username", "")?.ifBlank {
+                        data.optString("nickname", "")
+                    } ?: ""
+                    if (!uname.isNullOrBlank()) {
+                        prefs.edit().putString("my_player_name", uname).apply()
+                    }
                     LogManager.log("[PROFILE] raw=$data")
                     // 喵币数额显示在称号右侧
                     profileBinding.tvCoins.text =

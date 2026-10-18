@@ -70,7 +70,7 @@ object ChatPage {
         while (container.childCount > 1) container.removeViewAt(container.childCount - 1)
         if (peers.isEmpty()) {
             container.addView(TextView(container.context).apply {
-                text = "还没有会话\n点右上角「新建会话」输入对方用户 ID"
+                text = "还没有会话\n点右上角「新建会话」输入对方 username（主站用户名）"
                 setTextColor(SUB)
                 textSize = 13f
                 gravity = Gravity.CENTER
@@ -81,12 +81,12 @@ object ChatPage {
         // 对仍是占位名的会话，后台尝试解析真实昵称（只尝试一次，避免频繁请求）
         peers.filter { it.nickname.startsWith("用户") }.forEach { peer ->
             Thread {
-                val info = ChatApi.fetchPlayerName("https://login.lanternwaves.fun", peer.userId.toString())
+                val info = ChatApi.fetchPlayerName("https://login.lanternwaves.fun", peer.peerKey.toString())
                 if (info != null) {
                     val (name, registered) = info
-                    if (registered && name != peer.userId.toString()) {
-                        ChatStore.setPeerNickname(container.context, peer.userId, name)
-                        LogManager.i("[CHAT] 历史会话补全昵称 ${peer.userId} -> $name")
+                    if (registered && name != peer.peerKey.toString()) {
+                        ChatStore.setPeerNickname(container.context, peer.peerKey, name)
+                        LogManager.i("[CHAT] 历史会话补全昵称 ${peer.peerKey} -> $name")
                     }
                 }
             }.start()
@@ -134,7 +134,7 @@ object ChatPage {
         val peers = ChatStore.loadIndex(activity)
         if (peers.isEmpty()) {
             container.addView(TextView(activity).apply {
-                text = "还没有会话\n点右上角「新建会话」输入对方用户 ID"
+                text = "还没有会话\n点右上角「新建会话」输入对方 username（主站用户名）"
                 setTextColor(SUB)
                 textSize = 13f
                 gravity = Gravity.CENTER
@@ -174,7 +174,7 @@ object ChatPage {
             gravity = Gravity.CENTER_VERTICAL
         }
         val nameBox = TextView(activity).apply {
-            text = peer.nickname + "  (#${peer.userId})"
+            text = peer.nickname + "  (#${peer.peerKey})"
             setTextColor(TEXT)
             textSize = 15f
             setTypeface(null, Typeface.BOLD)
@@ -202,8 +202,8 @@ object ChatPage {
         })
 
         card.setOnClickListener {
-            ChatStore.clearUnread(activity, peer.userId)
-            openChat(activity, peer.userId, peer.nickname)
+            ChatStore.clearUnread(activity, peer.peerKey)
+            openChat(activity, peer.peerKey, peer.nickname)
         }
         return card
     }
@@ -214,13 +214,13 @@ object ChatPage {
             setPadding(dp(activity, 20), dp(activity, 12), dp(activity, 20), 0)
         }
         wrapper.addView(TextView(activity).apply {
-            text = "对方用户 ID"
+            text = "对方 username（主站用户名）"
             setTextColor(SUB)
             textSize = 12f
         })
         val etId = EditText(activity).apply {
-            hint = "例如 22"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            hint = "例如 OvalXD_chen"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
             setTextColor(TEXT)
         }
         wrapper.addView(etId)
@@ -240,9 +240,9 @@ object ChatPage {
             .setTitle("新建私聊")
             .setView(wrapper)
             .setPositiveButton("开始") { _, _ ->
-                val id = etId.text.toString().trim().toIntOrNull()
-                if (id == null || id <= 0) {
-                    AppDialogs.tip(activity, "ID 无效", "请输入纯数字的用户 ID")
+                val id = etId.text.toString().trim()
+                if (id.isBlank()) {
+                    AppDialogs.tip(activity, "玩家名无效", "请输入对方的主站 username（如 OvalXD_chen）")
                     return@setPositiveButton
                 }
                 val manual = etName.text.toString().trim()
@@ -262,7 +262,7 @@ object ChatPage {
                         LogManager.w("[CHAT] 玩家 $id 公开资料查询失败")
                     }
                     // 提示注册状态（不阻塞聊天）
-                    val chk = ChatApi.fetchPlayerName("https://login.lanternwaves.fun", id.toString())
+                    val chk = ChatApi.fetchPlayerName("https://login.lanternwaves.fun", id)
                     if (chk != null && !chk.second) {
                         activity.runOnUiThread {
                             LogManager.w("[CHAT] 玩家 $id 未注册（registered=false）")
@@ -276,9 +276,10 @@ object ChatPage {
 
     // ==================== 聊天窗口 ====================
 
-    private fun meId(activity: AppCompatActivity): Int {
+    /** 本机 username（/player/info 的键，也是私聊的身份标识） */
+    private fun meName(activity: AppCompatActivity): String {
         val prefs = activity.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
-        return prefs.getInt("my_user_id", 0)
+        return prefs.getString("my_player_name", "") ?: ""
     }
 
     private fun token(activity: AppCompatActivity): String {
@@ -291,7 +292,7 @@ object ChatPage {
         }
     }
 
-    fun openChat(activity: AppCompatActivity, peerId: Int, nickname: String) {
+    fun openChat(activity: AppCompatActivity, peerKey: String, nickname: String) {
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(BG)
@@ -304,7 +305,7 @@ object ChatPage {
             setPadding(dp(activity, 8), dp(activity, 8), dp(activity, 8), dp(activity, 8))
         }
         val tvTitle = TextView(activity).apply {
-            text = "$nickname  (#$peerId)"
+            text = "$nickname  (#$peerKey)"
             setTextColor(PRIMARY)
             textSize = 15f
             setTypeface(null, Typeface.BOLD)
@@ -374,7 +375,7 @@ object ChatPage {
 
         fun render() {
             list.removeAllViews()
-            val msgs = ChatStore.loadMessages(activity, peerId)
+            val msgs = ChatStore.loadMessages(activity, peerKey)
             if (msgs.isEmpty()) {
                 list.addView(TextView(activity).apply {
                     text = "还没有消息，打个招呼吧"
@@ -393,9 +394,9 @@ object ChatPage {
         fun send() {
             val text = etInput.text.toString().trim()
             if (text.isEmpty()) return
-            val myId = meId(activity)
-            if (myId <= 0) {
-                AppDialogs.tip(activity, "未获取到用户 ID", "请先在「我的」页刷新资料后重试")
+            val myId = meName(activity)
+            if (myId.isBlank()) {
+                AppDialogs.tip(activity, "未获取到玩家名", "请先在「我的」页刷新资料后重试")
                 return
             }
             if (!ChatApi.isConfigured(activity)) {
@@ -408,18 +409,18 @@ object ChatPage {
 
             // 1) 本地先落盘（pending）
             ChatStore.appendMessage(
-                activity, peerId,
-                ChatStore.Message(msgId, myId, peerId, text, now, outgoing = true, state = "pending")
+                activity, peerKey,
+                ChatStore.Message(msgId, myId, peerKey, text, now, outgoing = true, state = "pending")
             )
-            ChatStore.setPeerNickname(activity, peerId, nickname)
+            ChatStore.setPeerNickname(activity, peerKey, nickname)
             etInput.setText("")
             render()
 
             // 2) 加密 + 发送（后台线程）
             Thread {
-                val key = ensureSessionKey(activity, peerId, myId)
+                val key = ensureSessionKey(activity, peerKey, myId)
                 if (key == null) {
-                    ChatStore.updateMessageState(activity, peerId, msgId, "failed")
+                    ChatStore.updateMessageState(activity, peerKey, msgId, "failed")
                     activity.runOnUiThread {
                         AppDialogs.tip(activity, "发送失败", "对方不存在或服务器未返回公钥（HTTP 404）")
                         render()
@@ -427,8 +428,8 @@ object ChatPage {
                     return@Thread
                 }
                 val cipher = ChatCrypto.encrypt(key, text)
-                val ok = ChatApi.send(activity, myId, peerId, msgId, cipher, now)
-                ChatStore.updateMessageState(activity, peerId, msgId, if (ok) "sent" else "failed")
+                val ok = ChatApi.send(activity, myId, peerKey, msgId, cipher, now)
+                ChatStore.updateMessageState(activity, peerKey, msgId, if (ok) "sent" else "failed")
                 activity.runOnUiThread { render() }
             }.start()
         }
@@ -441,8 +442,8 @@ object ChatPage {
         val poller = object : Runnable {
             override fun run() {
                 Thread {
-                    val got = pullMessages(activity, peerId)
-                    if (got) activity.runOnUiThread { ChatStore.clearUnread(activity, peerId); render() }
+                    val got = pullMessages(activity, peerKey)
+                    if (got) activity.runOnUiThread { ChatStore.clearUnread(activity, peerKey); render() }
                 }.start()
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this, 8000)
             }
@@ -498,42 +499,42 @@ object ChatPage {
     // ==================== 加密/收发 ====================
 
     /** 确保有与对端的会话密钥（必要时向上传/拉取公钥） */
-    private fun ensureSessionKey(activity: AppCompatActivity, peerId: Int, myId: Int): ByteArray? {
-        ChatCrypto.getCachedKey(peerId)?.let { return it }
+    private fun ensureSessionKey(activity: AppCompatActivity, peerKey: String, myId: String): ByteArray? {
+        ChatCrypto.getCachedKey(peerKey)?.let { return it }
         ChatCrypto.init(activity)
 
         // 上传自己的公钥（幂等）
         ChatApi.uploadKey(activity, myId, token(activity), ChatCrypto.publicKeyBase64())
 
         // 拉对端公钥
-        val peerPub = ChatApi.fetchPeerKey(activity, peerId)
+        val peerPub = ChatApi.fetchPeerKey(activity, peerKey)
         if (peerPub == null) {
-            LogManager.w("[CHAT] 对端 $peerId 公钥不存在（404）")
+            LogManager.w("[CHAT] 对端 $peerKey 公钥不存在（404）")
             return null
         }
         val key = ChatCrypto.deriveSessionKey(peerPub)
-        ChatCrypto.cacheKey(peerId, key)
-        LogManager.d("[CHAT] 会话密钥指纹 ${ChatCrypto.fingerprint(key)}（对端 #$peerId）")
+        ChatCrypto.cacheKey(peerKey, key)
+        LogManager.d("[CHAT] 会话密钥指纹 ${ChatCrypto.fingerprint(key)}（对端 #$peerKey）")
         return key
     }
 
     /** 拉取并解密新消息，返回是否有更新 */
-    private fun pullMessages(activity: AppCompatActivity, peerId: Int): Boolean {
+    private fun pullMessages(activity: AppCompatActivity, peerKey: String): Boolean {
         if (!ChatApi.isConfigured(activity)) return false
-        val myId = meId(activity)
-        if (myId <= 0) return false
+        val myId = meName(activity)
+        if (myId.isBlank()) return false
 
         val list = ChatApi.pull(activity, lastPullTs(activity))
         if (list.isEmpty()) return false
 
-        val key = ensureSessionKey(activity, peerId, myId) ?: return false
+        val key = ensureSessionKey(activity, peerKey, myId) ?: return false
         var updated = false
         var maxTs = lastPullTs(activity)
 
         list.forEach { o ->
             val from = o.optInt("from")
             val to = o.optInt("to")
-            if (to != myId || from != peerId) return@forEach
+            if (to != myId || from != peerKey) return@forEach
             val cipher = o.optString("cipher")
             val msgId = o.optString("msgId").ifBlank { ChatStore.newMessageId() }
             val ts = o.optLong("ts", System.currentTimeMillis())
@@ -543,7 +544,7 @@ object ChatPage {
                 return@forEach
             }
             ChatStore.appendMessage(
-                activity, peerId,
+                activity, peerKey,
                 ChatStore.Message(msgId, from, to, plain, ts, outgoing = false, state = "delivered")
             )
             updated = true

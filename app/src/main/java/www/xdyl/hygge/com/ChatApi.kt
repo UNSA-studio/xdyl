@@ -128,7 +128,7 @@ object ChatApi {
     }
 
     /** 上传本机公钥 */
-    fun uploadKey(context: Context, userId: Int, token: String, publicKey: String): Boolean {
+    fun uploadKey(context: Context, userId: String, token: String, publicKey: String): Boolean {
         val r = post(context, "/chat/key", JSONObject()
             .put("userId", userId)
             .put("token", token)
@@ -137,7 +137,7 @@ object ChatApi {
     }
 
     /** 取对端公钥（null = 用户不存在） */
-    fun fetchPeerKey(context: Context, userId: Int): String? {
+    fun fetchPeerKey(context: Context, userId: String): String? {
         val r = get(context, "/chat/key/$userId") ?: return null
         val data = r.optJSONObject("data") ?: r
         return data.optString("publicKey", "").ifBlank { null }
@@ -180,8 +180,8 @@ object ChatApi {
     /** 发送密文 */
     fun send(
         context: Context,
-        from: Int,
-        to: Int,
+        from: String,
+        to: String,
         msgId: String,
         cipher: String,
         ts: Long
