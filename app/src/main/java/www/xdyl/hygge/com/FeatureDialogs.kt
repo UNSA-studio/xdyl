@@ -861,38 +861,108 @@ object FeatureDialogs {
     }
 
     /** YSM 皮肤（页面）：刷新 / 上传 / 列表 */
+    /**
+     * YSM 皮肤（页面）
+     *
+     * 真实接口（api.lanternwaves.fun:8080）：
+     *   GET  /history?player={player}  → 该玩家已上传的皮肤列表
+     *   POST /upload_v2 (multipart)     → code / player_name / is_public / skin_file
+     *   POST /confirm_duplicate        → 重复皮肤二次授权
+     */
     fun renderYsmPage(activity: AppCompatActivity, container: LinearLayout) {
         container.removeAllViews()
+
+        // 顶部：标题 + 服务器地址
         val head = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding(0, dp(activity, 4), 0, dp(activity, 12))
+            setPadding(0, dp(activity, 4), 0, dp(activity, 8))
         }
         head.addView(textView(activity, "YSM 皮肤", 18f, 0xFFA0C4FF.toInt(), bold = true).apply {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
-        val listCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
         container.addView(head)
+
+        container.addView(textView(activity, "服务：" + YsmApi.base(activity), 11f, 0xFF888888.toInt()).apply {
+            setPadding(0, 0, 0, dp(activity, 8))
+        })
+
+        // 操作按钮行
+        val btnRow = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, dp(activity, 10))
+        }
+        val btnUpload = com.google.android.material.button.MaterialButton(activity).apply {
+            text = "上传皮肤"
+            textSize = 13f
+            setTextColor(android.graphics.Color.BLACK)
+            setBackgroundColor(0xFFA0C4FF.toInt())
+            minHeight = 0; minimumHeight = 0
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            setPadding(dp(activity, 10), dp(activity, 10), dp(activity, 10), dp(activity, 10))
+        }
+        val btnRefresh = com.google.android.material.button.MaterialButton(activity).apply {
+            text = "刷新"
+            textSize = 13f
+            setTextColor(0xFFA0C4FF.toInt())
+            setBackgroundColor(0xFF2A2A2A.toInt())
+            minHeight = 0; minimumHeight = 0
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = dp(activity, 8) }
+            setPadding(dp(activity, 10), dp(activity, 10), dp(activity, 10), dp(activity, 10))
+        }
+        btnRow.addView(btnUpload)
+        btnRow.addView(btnRefresh)
+        container.addView(btnRow)
+
+        val listCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
         container.addView(listCol)
+
+        fun myName(): String {
+            val prefs = activity.getSharedPreferences("xdyl_settings", android.content.Context.MODE_PRIVATE)
+            return prefs.getString("my_player_name", "") ?: ""
+        }
 
         fun load() {
             listCol.removeAllViews()
             listCol.addView(textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt()))
             activity.lifecycleScope.launch {
                 try {
-                    val root = withContext(Dispatchers.IO) { api.get("/user/items") }
-                    LogManager.log("[PAGE] /user/items => " + root.toString().take(500))
-                    val arr = toArray(root)
-                    listCol.removeAllViews()
-                    if (arr == null || arr.length() == 0) {
-                        listCol.addView(textView(activity, "暂无 YSM 皮肤", 13f, 0xFF9AA0A6.toInt()))
+                    // 先确保有玩家名
+                    var name = myName()
+                    if (name.isBlank()) {
+                        val root = withContext(Dispatchers.IO) { api.get("/user/profile") }
+                        val d = root.optJSONObject("data") ?: root
+                        name = d.optString("nickname", d.optString("username", ""))
+                        if (name.isNotBlank()) {
+                            activity.getSharedPreferences("xdyl_settings", android.content.Context.MODE_PRIVATE)
+                                .edit().putString("my_player_name", name).apply()
+                        }
+                    }
+                    if (name.isBlank()) {
+                        listCol.removeAllViews()
+                        listCol.addView(textView(activity, "未获取到玩家名，请先到「我的」刷新资料", 13f, 0xFFE57373.toInt()))
                         return@launch
                     }
-                    for (i in 0 until arr.length()) {
-                        val o = arr.optJSONObject(i) ?: continue
-                        val name = firstNonBlank(o, "name", "title", "item_name", "filename") ?: "皮肤"
-                        val sub = itemSubtitle(o)
-                        listCol.addView(makeCard(activity, name, sub, null))
+
+                    val skins = withContext(Dispatchers.IO) { YsmApi.history(activity, name) }
+                    listCol.removeAllViews()
+                    if (skins == null) {
+                        listCol.addView(textView(activity, "YSM 服务连接失败（" + YsmApi.base(activity) + "）", 13f, 0xFFE57373.toInt()))
+                        return@launch
+                    }
+                    if (skins.isEmpty()) {
+                        listCol.addView(textView(activity, "还没有上传过皮肤", 13f, 0xFF9AA0A6.toInt()))
+                        return@launch
+                    }
+                    skins.forEach { sk ->
+                        val sub = buildString {
+                            append("模型：").append(sk.modelId.ifBlank { "-" })
+                            if (sk.isDuplicate) append(" · 重复")
+                            if (sk.uploadTime.isNotBlank()) append(" · ").append(sk.uploadTime.replace('T', ' ').take(16))
+                            append("
+MD5：").append(sk.fileMd5.take(16))
+                        }
+                        listCol.addView(makeCard(activity, sk.modelId.ifBlank { "皮肤" }, sub, null))
                     }
                 } catch (e: Exception) {
                     handleError(activity, e)
@@ -902,21 +972,84 @@ object FeatureDialogs {
             }
         }
 
-        val uploadBtn = MaterialButton(activity).apply {
-            text = "上传 YSM 皮肤"
-            textSize = 13f
-            minWidth = 0
-            setTextColor(0xFF10131A.toInt())
-            setBackgroundColor(0xFFA0C4FF.toInt())
-            setPadding(dp(activity, 18), 0, dp(activity, 18), 0)
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, dp(activity, 40)
-            ).apply { bottomMargin = dp(activity, 12) }
-            setOnClickListener {
-                AppDialogs.tip(activity, "上传 YSM 皮肤", "请在游戏内使用上传功能，或联系服主开通 App 上传。")
+        btnRefresh.setOnClickListener { load() }
+
+        btnUpload.setOnClickListener {
+            val name = myName()
+            if (name.isBlank()) {
+                AppDialogs.tip(activity, "未获取到玩家名", "请先到「我的」页刷新资料")
+                return@setOnClickListener
             }
+            val wrap = LinearLayout(activity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(activity, 18), dp(activity, 10), dp(activity, 18), 0)
+            }
+            wrap.addView(textView(activity, "玩家：$name", 12f, 0xFF888888.toInt()))
+            val etCode = android.widget.EditText(activity).apply {
+                hint = "皮肤兑换码"
+                setTextColor(android.graphics.Color.WHITE)
+            }
+            wrap.addView(etCode)
+            val cbPublic = android.widget.CheckBox(activity).apply {
+                text = "公开可见"
+                setTextColor(0xFFCCCCCC.toInt())
+                isChecked = false
+            }
+            wrap.addView(cbPublic)
+
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
+                .setTitle("上传 YSM 皮肤")
+                .setView(wrap)
+                .setPositiveButton("选择文件") { _, _ ->
+                    val code = etCode.text.toString().trim()
+                    if (code.isBlank()) {
+                        AppDialogs.tip(activity, "缺少兑换码", "请输入皮肤兑换码")
+                        return@setPositiveButton
+                    }
+                    FileManagerDialog.show(
+                        activity,
+                        title = "选择皮肤文件",
+                        startDir = android.os.Environment.getExternalStorageDirectory().absolutePath,
+                        extensions = arrayOf("zip", "ysm", "json", "png"),
+                        mode = FileManagerDialog.MODE_FILE
+                    ) { f ->
+                        AppDialogs.tip(activity, "开始上传", "文件：${f.name}
+请稍候…")
+                        activity.lifecycleScope.launch {
+                            val res = withContext(Dispatchers.IO) {
+                                YsmApi.upload(activity, code, name, cbPublic.isChecked, f)
+                            }
+                            when (res) {
+                                is YsmApi.UploadResult.Ok -> {
+                                    AppDialogs.tip(activity, "上传成功", "模型 ID：" + (firstNonBlank(res.raw, "model_id", "model") ?: "-"))
+                                    load()
+                                }
+                                is YsmApi.UploadResult.Duplicate -> {
+                                    val orig = firstNonBlank(res.raw, "original_model_id", "model_id") ?: ""
+                                    AppDialogs.confirm(
+                                        activity,
+                                        "检测到重复皮肤",
+                                        "这个模型已存在（原始 ID：" + (if (orig.isBlank()) "未知" else orig) + "），是否继续授权替换？",
+                                        onConfirm = {
+                                            activity.lifecycleScope.launch {
+                                                val ok = withContext(Dispatchers.IO) {
+                                                    YsmApi.confirmDuplicate(activity, code, name, orig)
+                                                }
+                                                AppDialogs.tip(activity, if (ok) "已授权" else "授权失败", if (ok) "请稍后刷新查看" else "请检查兑换码")
+                                                if (ok) load()
+                                            }
+                                        }
+                                    )
+                                }
+                                is YsmApi.UploadResult.Fail -> AppDialogs.tip(activity, "上传失败", res.message)
+                            }
+                        }
+                    }
+                }
+                .setNegativeButton("取消", null)
+                .show()
         }
-        listCol.addView(uploadBtn)
+
         load()
     }
 
