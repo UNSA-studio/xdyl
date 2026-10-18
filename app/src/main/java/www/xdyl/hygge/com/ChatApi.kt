@@ -143,6 +143,40 @@ object ChatApi {
         return data.optString("publicKey", "").ifBlank { null }
     }
 
+    /**
+     * 按玩家标识（user_id 或用户名）查公开资料
+     * GET /player/info/{player} → { username, nickname, avatar, coins, level, seconds, registered, online, banned }
+     *
+     * @return Pair(显示名, 是否已注册)；查不到返回 null
+     */
+    fun fetchPlayerName(base: String, player: String): Pair<String, Boolean>? {
+        if (base.isBlank() || player.isBlank()) return null
+        val url = base.trimEnd('/') + "/player/info/" + android.net.Uri.encode(player)
+        val tryUrls = listOf(url).let { list ->
+            val fb = httpFallback(base)
+            if (fb != null) list + (fb.trimEnd('/') + "/player/info/" + android.net.Uri.encode(player)) else list
+        }
+        for (u in tryUrls) {
+            try {
+                val req = Request.Builder().url(u).get().build()
+                client.newCall(req).execute().use { resp ->
+                    if (!resp.isSuccessful) return@use
+                    val body = resp.body?.string() ?: return@use
+                    val data = JSONObject(body).optJSONObject("data") ?: return@use
+                    val registered = data.optBoolean("registered", false)
+                    val name = data.optString("nickname", "")
+                        .ifBlank { data.optString("username", "") }
+                        .ifBlank { player }
+                    LogManager.d("[CHAT] /player/info/$player -> $name (registered=$registered)")
+                    return name to registered
+                }
+            } catch (e: Exception) {
+                LogManager.w("[CHAT] /player/info/$player 失败: ${e.message}")
+            }
+        }
+        return null
+    }
+
     /** 发送密文 */
     fun send(
         context: Context,

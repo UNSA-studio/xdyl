@@ -232,9 +232,23 @@ object ChatPage {
                     AppDialogs.tip(activity, "ID 无效", "请输入纯数字的用户 ID")
                     return@setPositiveButton
                 }
-                val name = etName.text.toString().trim().ifBlank { "用户$id" }
-                ChatStore.setPeerNickname(activity, id, name)
-                openChat(activity, id, name)
+                val manual = etName.text.toString().trim()
+                ChatStore.setPeerNickname(activity, id, manual.ifBlank { "用户$id" })
+                // 先用本地昵称直接进聊天，后台再查公开资料补全真名
+                openChat(activity, id, manual.ifBlank { "用户$id" })
+                Thread {
+                    val legacy = "https://login.lanternwaves.fun"
+                    val info = ChatApi.fetchPlayerName(legacy, id.toString())
+                    if (info != null) {
+                        val (realName, registered) = info
+                        if (manual.isBlank() && registered) {
+                            ChatStore.setPeerNickname(activity, id, realName)
+                            LogManager.i("[CHAT] 自动解析玩家 $id -> $realName")
+                        }
+                    } else {
+                        LogManager.w("[CHAT] 玩家 $id 公开资料查询失败")
+                    }
+                }.start()
             }
             .setNegativeButton("取消", null)
             .show()
