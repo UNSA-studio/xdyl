@@ -322,16 +322,54 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** 加载与音频同名的 .lrc（交给开源控件自己解析，支持双语） */
+    /**
+     * 加载与音频同名的 .lrc
+     *
+     * 双语处理：LrcView 要求「主歌词 + 译词」分成两份数据分别传，
+     * 否则同一时间戳的两行会被当成两行歌词。这里用 LrcParser 先拆出译文，
+     * 再按相同时间戳生成两份 LRC 文本交给控件。
+     */
     private fun loadLyrics(audio: File) {
         val sidecar = LrcParser.findSidecar(audio)
-        if (sidecar != null) {
-            audioBinding.lyricView.loadLrc(sidecar)
-        } else {
+        if (sidecar == null) {
             audioBinding.lyricView.loadLrc("")
             audioBinding.lyricView.setLabel("未找到同名歌词（${audio.name.substringBeforeLast('.')}.lrc）")
+            audioBinding.lyricView.updateTime(0)
+            return
+        }
+
+        val lines = LrcParser.parseFile(sidecar)
+        if (lines.isEmpty()) {
+            audioBinding.lyricView.loadLrc(sidecar)
+            audioBinding.lyricView.updateTime(0)
+            return
+        }
+
+        val hasTranslation = lines.any { it.translation != null }
+        if (hasTranslation) {
+            val mainSb = StringBuilder()
+            val transSb = StringBuilder()
+            lines.forEach { l ->
+                val ts = formatLrcTime(l.timeMs)
+                mainSb.append(ts).append(l.text).append('
+')
+                transSb.append(ts).append(l.translation ?: "").append('
+')
+            }
+            audioBinding.lyricView.loadLrc(mainSb.toString(), transSb.toString())
+        } else {
+            audioBinding.lyricView.loadLrc(sidecar)
         }
         audioBinding.lyricView.updateTime(0)
+    }
+
+    /** 毫秒 -> [mm:ss.xx] */
+    private fun formatLrcTime(ms: Long): String {
+        val totalSec = ms / 1000
+        val min = totalSec / 60
+        val sec = totalSec % 60
+        val cent = (ms % 1000) / 10
+        return "[%02d:%02d.%02d]".format(min, sec, cent)
     }
 
     /** 音频播放器页：选择文件 + 播放控制 + 进度同步 */
