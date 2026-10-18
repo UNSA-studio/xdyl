@@ -36,7 +36,60 @@ object ChatPage {
 
     // ==================== 会话列表 ====================
 
+    private var convRefreshHandler: android.os.Handler? = null
+    private val convRefreshTask = object : Runnable {
+        override fun run() {
+            lastConvContainer?.let { c ->
+                if (c.isAttachedToWindow) refreshConversationList(c)
+            }
+            convRefreshHandler?.postDelayed(this, 4000L)
+        }
+    }
+
+    private var lastConvContainer: LinearLayout? = null
+
+    /** 开始/停止会话列表自动刷新（每 4 秒） */
+    fun startConversationAutoRefresh() {
+        stopConversationAutoRefresh()
+        convRefreshHandler = android.os.Handler(android.os.Looper.getMainLooper()).also {
+            it.postDelayed(convRefreshTask, 1500L)
+        }
+    }
+
+    fun stopConversationAutoRefresh() {
+        convRefreshHandler?.removeCallbacks(convRefreshTask)
+        convRefreshHandler = null
+    }
+
+    /** 只刷新列表区（保留顶部状态栏），用于定时刷新 */
+    private fun refreshConversationList(container: LinearLayout) {
+        val peers = ChatStore.loadIndex(container.context)
+        val existing = container.tag as? Int ?: -1
+        if (existing == peers.hashCode()) return   // 无变化不重绘
+        container.tag = peers.hashCode()
+        while (container.childCount > 1) container.removeViewAt(container.childCount - 1)
+        if (peers.isEmpty()) {
+            container.addView(TextView(container.context).apply {
+                text = "还没有会话
+点右上角「新建会话」输入对方用户 ID"
+                setTextColor(SUB)
+                textSize = 13f
+                gravity = Gravity.CENTER
+                setPadding(0, dp(container.context, 60), 0, 0)
+            })
+            return
+        }
+        peers.forEach { peer ->
+            val card = makeCard(container.context as android.app.Activity as AppCompatActivity, peer)
+            card.alpha = 0f
+            card.translationY = dp(container.context, 8).toFloat()
+            container.addView(card)
+            card.animate().alpha(1f).translationY(0f).setDuration(180).start()
+        }
+    }
+
     fun renderConversations(activity: AppCompatActivity, container: LinearLayout) {
+        lastConvContainer = container
         container.removeAllViews()
         container.setBackgroundColor(BG)
 
@@ -78,9 +131,20 @@ object ChatPage {
             return
         }
 
-        peers.forEach { peer ->
-            container.addView(makeCard(activity, peer))
+        container.tag = peers.hashCode()
+        peers.forEachIndexed { i, peer ->
+            val card = makeCard(activity, peer)
+            card.alpha = 0f
+            card.translationY = dp(activity, 10).toFloat()
+            container.addView(card)
+            card.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setStartDelay((i * 35L).coerceAtMost(200L))
+                .setDuration(180)
+                .start()
         }
+        startConversationAutoRefresh()
     }
 
     private fun makeCard(activity: AppCompatActivity, peer: ChatStore.Peer): View {
@@ -352,6 +416,11 @@ object ChatPage {
         }
         dialog.setOnDismissListener {
             android.os.Handler(android.os.Looper.getMainLooper()).removeCallbacks(poller)
+        }
+        dialog.setOnShowListener {
+            root.translationY = 80f
+            root.alpha = 0f
+            root.animate().translationY(0f).alpha(1f).setDuration(200).start()
         }
         android.os.Handler(android.os.Looper.getMainLooper()).post(poller)
     }

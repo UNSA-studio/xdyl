@@ -38,6 +38,15 @@ object ChatApi {
 
     fun isConfigured(context: Context): Boolean = serverBase(context).isNotBlank()
 
+    /**
+     * HTTPS 连接被重置时自动回退到 HTTP（部分网络会 RST 掉带明文 SNI 的 TLS 握手）。
+     * 返回 "http://host[/prefix]"；不是 https 时原样返回。
+     */
+    private fun httpFallback(base: String): String? {
+        if (!base.startsWith("https://", ignoreCase = true)) return null
+        return "http://" + base.substring("https://".length)
+    }
+
     private fun get(context: Context, path: String): JSONObject? {
         val base = serverBase(context)
         if (base.isBlank()) return null
@@ -52,8 +61,26 @@ object ChatApi {
                 JSONObject(body)
             }
         } catch (e: Exception) {
-            LogManager.e("[CHAT] GET $path 失败: ${e.message}")
-            null
+            LogManager.w("[CHAT] GET $path 失败: ${e.message}，尝试 HTTP 回退")
+            val fb = httpFallback(base) ?: run {
+                LogManager.e("[CHAT] GET $path 最终失败")
+                return null
+            }
+            try {
+                val req = Request.Builder().url("$fb$path").get().build()
+                client.newCall(req).execute().use { resp ->
+                    val body = resp.body?.string() ?: return null
+                    if (!resp.isSuccessful) {
+                        LogManager.w("[CHAT] GET(http) $path -> ${resp.code} $body")
+                        return null
+                    }
+                    LogManager.i("[CHAT] GET $path 已通过 HTTP 回退成功")
+                    return JSONObject(body)
+                }
+            } catch (e2: Exception) {
+                LogManager.e("[CHAT] GET $path HTTP 回退也失败: ${e2.message}")
+                return null
+            }
         }
     }
 
@@ -74,8 +101,29 @@ object ChatApi {
                 JSONObject(text)
             }
         } catch (e: Exception) {
-            LogManager.e("[CHAT] POST $path 失败: ${e.message}")
-            null
+            LogManager.w("[CHAT] POST $path 失败: ${e.message}，尝试 HTTP 回退")
+            val fb = httpFallback(base) ?: run {
+                LogManager.e("[CHAT] POST $path 最终失败")
+                return null
+            }
+            try {
+                val req = Request.Builder()
+                    .url("$fb$path")
+                    .post(body.toString().toRequestBody("application/json".toMediaType()))
+                    .build()
+                client.newCall(req).execute().use { resp ->
+                    val text = resp.body?.string() ?: return null
+                    if (!resp.isSuccessful) {
+                        LogManager.w("[CHAT] POST(http) $path -> ${resp.code} $text")
+                        return null
+                    }
+                    LogManager.i("[CHAT] POST $path 已通过 HTTP 回退成功")
+                    return JSONObject(text)
+                }
+            } catch (e2: Exception) {
+                LogManager.e("[CHAT] POST $path HTTP 回退也失败: ${e2.message}")
+                return null
+            }
         }
     }
 
