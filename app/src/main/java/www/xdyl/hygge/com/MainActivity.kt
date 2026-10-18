@@ -313,10 +313,19 @@ class MainActivity : AppCompatActivity() {
     // ===== LRC 歌词（Canvas 自绘视图） =====
 
     /** 逐帧驱动（Choreographer，与屏幕刷新同步），只在播放中推进歌词 */
+    private var lastLyricLogAt = 0L
+
     private val lyricFrameCallback = object : android.view.Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
             if (AudioPlayer.isPlaying) {
-                audioBinding.lyricView.updateTime(AudioPlayer.currentPositionNow().toLong())
+                val pos = AudioPlayer.currentPositionNow()
+                audioBinding.lyricView.updateTime(pos.toLong())
+                // 诊断日志：每 2 秒打一次
+                val now = System.currentTimeMillis()
+                if (now - lastLyricLogAt > 2000L) {
+                    lastLyricLogAt = now
+                    LogManager.log("[LRC] pos=$pos playing=${AudioPlayer.isPlaying} dur=${AudioPlayer.durationMs} hasLrc=${audioBinding.lyricView.hasLrc()}")
+                }
             }
             android.view.Choreographer.getInstance().postFrameCallback(this)
         }
