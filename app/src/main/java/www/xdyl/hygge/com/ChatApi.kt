@@ -205,7 +205,7 @@ object ChatApi {
     }
 
     /** 标记已读 */
-    fun markRead(context: Context, peerId: Int, upto: Long) {
+    fun markRead(context: Context, peerId: String, upto: Long) {
         post(context, "/chat/read", JSONObject()
             .put("peerId", peerId)
             .put("upto", upto))

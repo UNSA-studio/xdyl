@@ -532,8 +532,8 @@ object ChatPage {
         var maxTs = lastPullTs(activity)
 
         list.forEach { o ->
-            val from = o.optInt("from")
-            val to = o.optInt("to")
+            val from = o.optString("from")
+            val to = o.optString("to")
             if (to != myId || from != peerKey) return@forEach
             val cipher = o.optString("cipher")
             val msgId = o.optString("msgId").ifBlank { ChatStore.newMessageId() }

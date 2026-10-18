@@ -110,19 +110,19 @@ object ChatStore {
 
     /** 追加一条消息（去重：同 id 覆盖） */
     fun appendMessage(context: Context, peerKey: String, msg: Message) {
-        val list = loadMessages(context, peerId)
+        val list = loadMessages(context, peerKey)
         val idx = list.indexOfFirst { it.id == msg.id }
         if (idx >= 0) list[idx] = msg else list.add(msg)
         list.sortBy { it.time }
-        saveMessages(context, peerId, list)
-        updateIndex(context, peerId, msg)
+        saveMessages(context, peerKey, list)
+        updateIndex(context, peerKey, msg)
     }
 
     fun updateMessageState(context: Context, peerKey: String, msgId: String, state: String) {
-        val list = loadMessages(context, peerId)
+        val list = loadMessages(context, peerKey)
         val m = list.firstOrNull { it.id == msgId } ?: return
         m.state = state
-        saveMessages(context, peerId, list)
+        saveMessages(context, peerKey, list)
     }
 
     private fun saveMessages(context: Context, peerKey: String, list: List<Message>) {
@@ -178,7 +178,7 @@ object ChatStore {
         val unread = if (msg.outgoing) 0 else (existing?.unread ?: 0) + 1
         val updated = Peer(
             peerKey,
-            existing?.nickname ?: "用户$peerId",
+            existing?.nickname ?: "用户$peerKey",
             msg.text,
             msg.time,
             unread
