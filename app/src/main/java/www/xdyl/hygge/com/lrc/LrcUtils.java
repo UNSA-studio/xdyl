@@ -207,11 +207,7 @@ class LrcUtils {
                     String inner = rawText.substring(ci + 1, close);
                     long t = parseWordTime(inner);
                     if (t >= 0) {
-                        // 字级标签位置替换为一个空格，避免相邻字粘连成一个词
-                        int n = cleaned.length();
-                        if (n > 0 && cleaned.charAt(n - 1) != ' ') {
-                            cleaned.append(' ');
-                        }
+                        // 标签直接移除（原文本里的空格/换行全部保留）
                         wTimes.add(t);
                         wIndices.add(cleaned.length());
                         ci = close + 1;
