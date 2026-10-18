@@ -15,18 +15,18 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-    - name: Cache Gradle Wrapper
-      uses: actions/cache@v4
+    - name: Setup Gradle (with dependency cache)
+      uses: gradle/actions/setup-gradle@v4
       with:
-        path: ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('gradle/wrapper/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-wrapper-
+        cache-read-only: false
+        gradle-home-cache-cleanup: true
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Build Android Debug APK
+      env:
+        GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
       run: |
-        ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
+        ./gradlew assembleDebug --no-daemon --parallel --build-cache --stacktrace 2>&1 | tee build.log
         exit ${PIPESTATUS[0]}
     - name: Print compile errors (on failure)
       if: failure()
