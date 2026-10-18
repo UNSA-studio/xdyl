@@ -28,7 +28,7 @@ object ChatApi {
     private val client = OkHttpClient.Builder()
         .connectTimeout(12, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
-        .dns(NetDns.INSTANCE)
+        .dns(NetDns)
         .build()
 
     fun serverBase(context: Context): String {

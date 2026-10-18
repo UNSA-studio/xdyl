@@ -88,6 +88,20 @@ class ExtensionSettingsActivity : AppCompatActivity() {
                 Toast.LENGTH_LONG
             ).show()
         }
+        // 私聊服务器地址
+        val etChatServer = findViewById<TextInputEditText>(R.id.etChatServer)
+        val btnSaveChatServer = findViewById<MaterialButton>(R.id.btnSaveChatServer)
+        etChatServer.setText(prefs.getString("chat_server", ""))
+        btnSaveChatServer.setOnClickListener {
+            val url = etChatServer.text.toString().trim().trimEnd('/')
+            prefs.edit().putString("chat_server", url).apply()
+            Toast.makeText(
+                this,
+                if (url.isBlank()) "已清空私聊服务器地址" else "已保存：$url",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
         val btnWhitelist = findViewById<MaterialButton>(R.id.btnWhitelist)
         btnWhitelist.setOnClickListener { showWhitelistDialog() }
 

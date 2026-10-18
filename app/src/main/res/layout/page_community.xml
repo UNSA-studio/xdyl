@@ -276,6 +276,19 @@
                 android:textColor="@color/secondary_light_blue" />
 
             <TextView
+                android:id="@+id/chipChat"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_tab_pill"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingTop="7dp"
+                android:paddingBottom="7dp"
+                android:text="私聊"
+                android:textColor="@color/secondary_light_blue"
+                android:textSize="13sp" />
+        <TextView
                 android:id="@+id/chipYsm"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

@@ -946,7 +946,8 @@ class MainActivity : AppCompatActivity() {
                     communityBinding.chipPvp,
                     communityBinding.chipBindings,
                     communityBinding.chipAfdian,
-                    communityBinding.chipYsm
+                    communityBinding.chipYsm,
+                    communityBinding.chipChat
                 ).forEach { it.alpha = 0.5f }
                 showCommunityList()
                 loadCommunityTab(key)
@@ -979,6 +980,7 @@ class MainActivity : AppCompatActivity() {
         communityBinding.chipPvp.setOnClickListener { openCommunityFeature("pvp") }
         communityBinding.chipBindings.setOnClickListener { openCommunityFeature("bindings") }
         communityBinding.chipAfdian.setOnClickListener { openCommunityFeature("afdian") }
+        communityBinding.chipChat.setOnClickListener { openCommunityFeature("chat") }
         communityBinding.chipYsm.setOnClickListener { openCommunityFeature("ysm") }
         // 发帖按钮
         communityBinding.fabNewPost.setOnClickListener {
@@ -1000,7 +1002,8 @@ class MainActivity : AppCompatActivity() {
             communityBinding.chipPvp,
             communityBinding.chipBindings,
             communityBinding.chipAfdian,
-            communityBinding.chipYsm
+            communityBinding.chipYsm,
+            communityBinding.chipChat
         )
         all.forEach { it.alpha = 0.5f }
         val active = when (type) {
@@ -1016,6 +1019,7 @@ class MainActivity : AppCompatActivity() {
             "pvp" -> communityBinding.chipPvp
             "bindings" -> communityBinding.chipBindings
             "afdian" -> communityBinding.chipAfdian
+            "chat" -> communityBinding.chipChat
             else -> communityBinding.chipYsm
         }
         active.alpha = 1f
@@ -1039,6 +1043,7 @@ class MainActivity : AppCompatActivity() {
             "bindings" -> FeatureDialogs.renderGameBindingsPage(this, c)
             "afdian" -> FeatureDialogs.renderAfdianPage(this, c)
             "ysm" -> FeatureDialogs.renderYsmPage(this, c)
+            "chat" -> ChatPage.renderConversations(this, c)
         }
     }
 
@@ -1241,6 +1246,9 @@ class MainActivity : AppCompatActivity() {
                     val balance = if (data != null)
                         (api.firstString(data, "coins", "balance", "coin", "money", "points") ?: "")
                     else ""
+                    data?.optInt("id", 0)?.let { uid ->
+                        if (uid > 0) prefs.edit().putInt("my_user_id", uid).apply()
+                    }
                     LogManager.log("[PROFILE] raw=$data")
                     // 喵币数额显示在称号右侧
                     profileBinding.tvCoins.text =
