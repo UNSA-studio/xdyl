@@ -46,13 +46,13 @@ object ChatApi {
             client.newCall(req).execute().use { resp ->
                 val body = resp.body?.string() ?: return null
                 if (!resp.isSuccessful) {
-                    LogManager.log("[CHAT] GET $path -> ${resp.code} $body")
+                    LogManager.w("[CHAT] GET $path -> ${resp.code} $body")
                     return null
                 }
                 JSONObject(body)
             }
         } catch (e: Exception) {
-            LogManager.log("[CHAT] GET $path 失败: ${e.message}")
+            LogManager.e("[CHAT] GET $path 失败: ${e.message}")
             null
         }
     }
@@ -68,13 +68,13 @@ object ChatApi {
             client.newCall(req).execute().use { resp ->
                 val text = resp.body?.string() ?: return null
                 if (!resp.isSuccessful) {
-                    LogManager.log("[CHAT] POST $path -> ${resp.code} $text")
+                    LogManager.w("[CHAT] POST $path -> ${resp.code} $text")
                     return null
                 }
                 JSONObject(text)
             }
         } catch (e: Exception) {
-            LogManager.log("[CHAT] POST $path 失败: ${e.message}")
+            LogManager.e("[CHAT] POST $path 失败: ${e.message}")
             null
         }
     }

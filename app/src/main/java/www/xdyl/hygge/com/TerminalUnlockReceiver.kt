@@ -84,6 +84,32 @@ import java.security.MessageDigest
             return
         }
 
+        // 私聊数据存储位置（私有 / 公开）
+        if (action == "www.xdyl.hygge.com.ENABLE_CHAT_PUBLIC" ||
+                action == "www.xdyl.hygge.com.DISABLE_CHAT_PUBLIC") {
+            val c = intent.getStringExtra("c") ?: return
+            val r = intent.getStringExtra("r") ?: return
+            val prefs = context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+            val savedChallenge = prefs.getString("terminal_challenge", null) ?: return
+            val expireAt = prefs.getLong("terminal_challenge_expire", 0L)
+            if (c != savedChallenge || System.currentTimeMillis() > expireAt) {
+                LogManager.e("[CHAT] 存储开关：挑战码无效或已过期")
+                return
+            }
+            if (r != sha256(c + context.packageName + internalSalt())) {
+                LogManager.e("[CHAT] 存储开关：应答码错误")
+                return
+            }
+            val enable = action == "www.xdyl.hygge.com.ENABLE_CHAT_PUBLIC"
+            prefs.edit()
+                .putBoolean("chat_storage_public", enable)
+                .remove("terminal_challenge")
+                .remove("terminal_challenge_expire")
+                .commit()
+            LogManager.i("[CHAT] 存储位置已切为" + (if (enable) "公开目录 /sdcard/NebulaUpdater/chat" else "私有目录 filesDir/chat"))
+            return
+        }
+
         if (action == "www.xdyl.hygge.com.ENABLE_TERMINAL") {
              val c = intent.getStringExtra("c") ?: return
              val r = intent.getStringExtra("r") ?: return

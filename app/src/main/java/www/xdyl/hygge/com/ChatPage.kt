@@ -406,12 +406,12 @@ object ChatPage {
         // 拉对端公钥
         val peerPub = ChatApi.fetchPeerKey(activity, peerId)
         if (peerPub == null) {
-            LogManager.log("[CHAT] 对端 $peerId 公钥不存在（404）")
+            LogManager.w("[CHAT] 对端 $peerId 公钥不存在（404）")
             return null
         }
         val key = ChatCrypto.deriveSessionKey(peerPub)
         ChatCrypto.cacheKey(peerId, key)
-        LogManager.log("[CHAT] 会话密钥指纹 ${ChatCrypto.fingerprint(key)}（对端 #$peerId）")
+        LogManager.d("[CHAT] 会话密钥指纹 ${ChatCrypto.fingerprint(key)}（对端 #$peerId）")
         return key
     }
 
@@ -437,7 +437,7 @@ object ChatPage {
             val ts = o.optLong("ts", System.currentTimeMillis())
             val plain = ChatCrypto.decrypt(key, cipher)
             if (plain == null) {
-                LogManager.log("[CHAT] 消息 $msgId 解密失败")
+                LogManager.e("[CHAT] 消息 $msgId 解密失败")
                 return@forEach
             }
             ChatStore.appendMessage(

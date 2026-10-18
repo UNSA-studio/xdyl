@@ -17,9 +17,36 @@ object LogManager {
     @Volatile var devicePort: Int = 5555
     private var collectorThread: Thread? = null
 
-    fun log(msg: String) {
-        Log.i(TAG, msg)
-        logBuilder.appendLine("[${System.currentTimeMillis()}] $msg")
+    /** 日志等级 */
+    enum class Level(val tag: String) {
+        DEBUG("[DEBUG]"),
+        INFO("[INFO]"),
+        WARN("[WARN]"),
+        ERROR("[ERROR]")
+    }
+
+    /** 兼容旧调用：默认 INFO */
+    fun log(msg: String) = log(Level.INFO, msg)
+
+    fun log(level: Level, msg: String) {
+        when (level) {
+            Level.DEBUG -> Log.d(TAG, msg)
+            Level.INFO -> Log.i(TAG, msg)
+            Level.WARN -> Log.w(TAG, msg)
+            Level.ERROR -> Log.e(TAG, msg)
+        }
+        val line = "[${System.currentTimeMillis()}] ${level.tag} $msg"
+        logBuilder.appendLine(line)
+    }
+
+    fun d(msg: String) = log(Level.DEBUG, msg)
+    fun i(msg: String) = log(Level.INFO, msg)
+    fun w(msg: String) = log(Level.WARN, msg)
+    fun e(msg: String) = log(Level.ERROR, msg)
+
+    fun e(msg: String, t: Throwable) {
+        log(Level.ERROR, "$msg: ${t.javaClass.simpleName}: ${t.message}")
+        Log.e(TAG, msg, t)
     }
 
     fun getFullLog(): String {

@@ -44,11 +44,31 @@ object ChatStore {
         val unread: Int
     )
 
+    /**
+     * 存储目录
+     *
+     * 默认：App 私有目录 filesDir/chat（外部应用/ADB 普通权限都无法读取，防篡改）
+     * 可选：公开目录 /sdcard/NebulaUpdater/chat（便于导出，需 ADB 开关打开）
+     *       开关：adb broadcast -a www.xdyl.hygge.com.ENABLE_CHAT_PUBLIC ...
+     */
     private fun root(context: Context): File {
-        val base = File(Environment.getExternalStorageDirectory(), "NebulaUpdater/chat")
+        val prefs = context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+        val usePublic = prefs.getBoolean("chat_storage_public", false)
+        val base = if (usePublic) {
+            File(Environment.getExternalStorageDirectory(), "NebulaUpdater/chat")
+        } else {
+            File(context.filesDir, "chat")
+        }
         if (!base.exists()) base.mkdirs()
         return base
     }
+
+    /** 当前存储位置（用于设置页展示） */
+    fun storagePath(context: Context): String = root(context).absolutePath
+
+    fun isPublicStorage(context: Context): Boolean =
+        context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+            .getBoolean("chat_storage_public", false)
 
     private fun peerFile(context: Context, peerId: Int) = File(root(context), "$peerId.json")
     private fun indexFile(context: Context) = File(root(context), "index.json")
@@ -115,7 +135,7 @@ object ChatStore {
         try {
             peerFile(context, peerId).writeText(arr.toString(), Charsets.UTF_8)
         } catch (e: Exception) {
-            LogManager.log("[CHAT] 保存失败: ${e.message}")
+            LogManager.e("[CHAT] 保存失败: ${e.message}")
         }
     }
 
@@ -198,7 +218,7 @@ object ChatStore {
         try {
             indexFile(context).writeText(arr.toString(), Charsets.UTF_8)
         } catch (e: Exception) {
-            LogManager.log("[CHAT] 索引保存失败: ${e.message}")
+            LogManager.e("[CHAT] 索引保存失败: ${e.message}")
         }
     }
 

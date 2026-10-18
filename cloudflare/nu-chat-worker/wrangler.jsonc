@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nu-chat",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  "kv_namespaces": [
+    {
+      "binding": "CHAT_KV",
+      // 部署前需替换为真实的 namespace id（wrangler kv namespace create CHAT_KV 生成）
+      "id": "REPLACE_WITH_KV_ID"
+    }
+  ],
+  "routes": [
+    { "pattern": "nu-pe-chat.cc.cd", "custom_domain": true }
+  ],
+  "observability": { "enabled": true }
+}

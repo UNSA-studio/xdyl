@@ -47,7 +47,7 @@ object ChatCrypto {
                 localPublic = kf.generatePublic(X509EncodedKeySpec(Base64.decode(pubB64, Base64.NO_WRAP)))
                 return
             } catch (e: Exception) {
-                LogManager.log("[CHAT] 恢复密钥失败: ${e.message}")
+                LogManager.e("[CHAT] 恢复密钥失败: ${e.message}")
             }
         }
         // 生成新密钥对
@@ -128,7 +128,7 @@ object ChatCrypto {
             )
             String(cipher.doFinal(ct), Charsets.UTF_8)
         } catch (e: Exception) {
-            LogManager.log("[CHAT] 解密失败: ${e.message}")
+            LogManager.e("[CHAT] 解密失败: ${e.message}")
             null
         }
     }
