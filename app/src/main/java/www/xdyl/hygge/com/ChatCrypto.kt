@@ -134,13 +134,13 @@ object ChatCrypto {
     }
 
     /** 会话密钥缓存（按对端 id） */
-    private val keyCache = mutableMapOf<Int, ByteArray>()
+    private val keyCache = mutableMapOf<String, ByteArray>()
 
-    fun cacheKey(peerId: Int, key: ByteArray) {
-        keyCache[peerId] = key
+    fun cacheKey(peerKey: String, key: ByteArray) {
+        keyCache[peerKey] = key
     }
 
-    fun getCachedKey(peerId: Int): ByteArray? = keyCache[peerId]
+    fun getCachedKey(peerKey: String): ByteArray? = keyCache[peerKey]
 
     /** 指纹（便于双方核对，防中间人） */
     fun fingerprint(sessionKey: ByteArray): String =
