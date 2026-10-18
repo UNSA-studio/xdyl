@@ -27,6 +27,11 @@ class LrcEntry implements Comparable<LrcEntry> {
     private String text;
     private String secondText;
     private StaticLayout staticLayout;
+
+    /** 字级时间（毫秒），null = 该行无字级信息 */
+    private long[] wordTimes;
+    /** 每个字（段）在文本中的起始索引 */
+    private int[] wordIndices;
     /**
      * 歌词距离视图顶部的距离
      */
@@ -80,6 +85,22 @@ class LrcEntry implements Comparable<LrcEntry> {
             return 0;
         }
         return staticLayout.getHeight();
+    }
+
+    public long[] getWordTimes() {
+        return wordTimes;
+    }
+
+    public void setWordTimes(long[] wordTimes) {
+        this.wordTimes = wordTimes;
+    }
+
+    public int[] getWordIndices() {
+        return wordIndices;
+    }
+
+    public void setWordIndices(int[] wordIndices) {
+        this.wordIndices = wordIndices;
     }
 
     public float getOffset() {

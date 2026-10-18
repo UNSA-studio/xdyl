@@ -41,6 +41,8 @@ import java.util.regex.Pattern;
  */
 class LrcUtils {
     private static final Pattern PATTERN_LINE = Pattern.compile("((\\[\\d\\d:\\d\\d\\.\\d{2,3}\\])+)(.+)");
+    /** 字级时间标签 <mm:ss.xx> */
+    private static final Pattern PATTERN_WORD_TIME = Pattern.compile("<(\d{1,2}):(\d{1,2})[.:](\d{1,3})>");
     private static final Pattern PATTERN_TIME = Pattern.compile("\\[(\\d\\d):(\\d\\d)\\.(\\d{2,3})\\]");
 
     /**
@@ -190,7 +192,33 @@ class LrcUtils {
         }
 
         String times = lineMatcher.group(1);
-        String text = lineMatcher.group(3);
+        String rawText = lineMatcher.group(3);
+
+        // 剥离字级标签 <mm:ss.xx>，同时记录其时间与对应文本位置
+        StringBuilder cleaned = new StringBuilder();
+        java.util.List<Long> wTimes = new java.util.ArrayList<>();
+        java.util.List<Integer> wIndices = new java.util.ArrayList<>();
+        int ci = 0;
+        while (ci < rawText.length()) {
+            char ch = rawText.charAt(ci);
+            if (ch == '<') {
+                int close = rawText.indexOf('>', ci);
+                if (close > ci) {
+                    String inner = rawText.substring(ci + 1, close);
+                    long t = parseWordTime(inner);
+                    if (t >= 0) {
+                        wTimes.add(t);
+                        wIndices.add(cleaned.length());
+                        ci = close + 1;
+                        continue;
+                    }
+                }
+            }
+            cleaned.append(ch);
+            ci++;
+        }
+        String text = cleaned.toString();
+
         List<LrcEntry> entryList = new ArrayList<>();
 
         // [00:17.65]
@@ -205,9 +233,32 @@ class LrcUtils {
                 mil = mil * 10;
             }
             long time = min * DateUtils.MINUTE_IN_MILLIS + sec * DateUtils.SECOND_IN_MILLIS + mil;
-            entryList.add(new LrcEntry(time, text));
+            LrcEntry entry = new LrcEntry(time, text);
+            if (!wTimes.isEmpty()) {
+                long[] wt = new long[wTimes.size()];
+                for (int k = 0; k < wt.length; k++) wt[k] = wTimes.get(k);
+                int[] wi = new int[wIndices.size()];
+                for (int k = 0; k < wi.length; k++) wi[k] = wIndices.get(k);
+                entry.setWordTimes(wt);
+                entry.setWordIndices(wi);
+            }
+            entryList.add(entry);
         }
         return entryList;
+    }
+
+    /** 解析 "mm:ss.xx" 为毫秒，不合法返回 -1 */
+    private static long parseWordTime(String s) {
+        try {
+            String[] parts = s.trim().split(":");
+            if (parts.length != 2) return -1;
+            long min = Long.parseLong(parts[0].trim());
+            String secPart = parts[1].trim().replace(':', '.');
+            double secVal = Double.parseDouble(secPart);
+            return min * 60000L + (long) (secVal * 1000);
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     /**

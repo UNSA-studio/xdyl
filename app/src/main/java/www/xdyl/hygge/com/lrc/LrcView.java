@@ -80,6 +80,8 @@ public class LrcView extends View {
     private int mCurrentLine;
     /** 当前行演唱进度 0..1（KTV 逐字填充） */
     private float mLineProgress = 0f;
+    /** 最近一次 updateTime 的播放时间（用于字级绘制） */
+    private long mCurrentTime = 0L;
     /** 已唱部分的颜色（默认同当前行颜色） */
     private int mSungTextColor;
     private Object mFlag;
@@ -438,6 +440,7 @@ public class LrcView extends View {
                         : startT + 4000L;
                 long span = Math.max(endT - startT, 200L);
                 mLineProgress = Math.max(0f, Math.min(1f, (time - startT) / (float) span));
+                mCurrentTime = time;
                 invalidate();
             }
         });
@@ -521,7 +524,7 @@ public class LrcView extends View {
                 drawText(canvas, mLrcEntryList.get(i).getStaticLayout(), y);
                 // 已唱部分：按像素宽度裁剪逐字填充
                 if (mLineProgress > 0f) {
-                    drawTextKtv(canvas, mLrcEntryList.get(i).getStaticLayout(), y, mLineProgress, mSungTextColor);
+                    drawTextKtv(canvas, mLrcEntryList.get(i).getStaticLayout(), y, mLineProgress, mLrcEntryList.get(i), mSungTextColor);
                 }
                 continue;
             } else if (isShowTimeline && i == centerLine) {
@@ -551,37 +554,79 @@ public class LrcView extends View {
      *
      * @param progress 本行演唱进度 0..1
      */
-    private void drawTextKtv(Canvas canvas, StaticLayout staticLayout, float y, float progress, int color) {
+    private void drawTextKtv(Canvas canvas, StaticLayout staticLayout, float y, float progress, LrcEntry entry, int color) {
         mLrcPaint.setColor(color);
         canvas.save();
         canvas.translate(mLrcPadding, y - (staticLayout.getHeight() >> 1));
 
-        // 先汇总总宽度
+        long[] wordTimes = entry == null ? null : entry.getWordTimes();
+        int[] wordIndices = entry == null ? null : entry.getWordIndices();
+        String text = entry == null ? null : entry.getText();
+
+        // 有字级时间：按每个字的真实时间推进（精确跟唱）
+        if (wordTimes != null && wordIndices != null && wordTimes.length > 0 && text != null) {
+            float charPos = 0f;
+            for (int i = 0; i < wordTimes.length; i++) {
+                long t0 = wordTimes[i];
+                long t1 = (i + 1 < wordTimes.length) ? wordTimes[i + 1] : t0 + 400L;
+                if (mCurrentTime >= t1) {
+                    charPos = (i + 1 < wordIndices.length) ? wordIndices[i + 1] : text.length();
+                } else if (mCurrentTime >= t0) {
+                    int s0 = Math.min(wordIndices[i], text.length());
+                    int s1 = (i + 1 < wordIndices.length) ? Math.min(wordIndices[i + 1], text.length()) : text.length();
+                    float f = (mCurrentTime - t0) / (float) Math.max(t1 - t0, 1L);
+                    charPos = s0 + (s1 - s0) * f;
+                    break;
+                } else {
+                    break;
+                }
+            }
+
+            int lineCount = staticLayout.getLineCount();
+            for (int ln = 0; ln < lineCount; ln++) {
+                int lStart = staticLayout.getLineStart(ln);
+                int lEnd = staticLayout.getLineEnd(ln);
+                if (charPos <= lStart) break;
+                float left = staticLayout.getLineLeft(ln);
+                float top = staticLayout.getLineTop(ln);
+                float bottom = staticLayout.getLineBottom(ln);
+                float right;
+                if (charPos >= lEnd) {
+                    right = staticLayout.getLineRight(ln);
+                } else {
+                    right = staticLayout.getPrimaryHorizontal((int) charPos);
+                }
+                canvas.save();
+                canvas.clipRect(left, top, Math.max(right, left + 0.01f), bottom);
+                staticLayout.draw(canvas);
+                canvas.restore();
+            }
+            canvas.restore();
+            return;
+        }
+
+        // 无字级时间：按行内总进度均分（原来的行为）
         float totalWidth = 0f;
         int lineCount = staticLayout.getLineCount();
         float[] widths = new float[lineCount];
         for (int ln = 0; ln < lineCount; ln++) {
-            float w = staticLayout.getLineWidth(ln);
-            widths[ln] = w;
-            totalWidth += w;
+            widths[ln] = staticLayout.getLineWidth(ln);
+            totalWidth += widths[ln];
         }
         if (totalWidth <= 0f) {
             canvas.restore();
             return;
         }
-
         float remain = totalWidth * progress;
         for (int ln = 0; ln < lineCount && remain > 0f; ln++) {
             float take = Math.min(widths[ln], remain);
             float left = staticLayout.getLineLeft(ln);
             float top = staticLayout.getLineTop(ln);
             float bottom = staticLayout.getLineBottom(ln);
-
             canvas.save();
             canvas.clipRect(left, top, left + take, bottom);
             staticLayout.draw(canvas);
             canvas.restore();
-
             remain -= take;
         }
         canvas.restore();
