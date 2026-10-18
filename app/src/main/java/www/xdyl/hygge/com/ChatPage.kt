@@ -70,8 +70,7 @@ object ChatPage {
         while (container.childCount > 1) container.removeViewAt(container.childCount - 1)
         if (peers.isEmpty()) {
             container.addView(TextView(container.context).apply {
-                text = "还没有会话
-点右上角「新建会话」输入对方用户 ID"
+                text = "还没有会话\n点右上角「新建会话」输入对方用户 ID"
                 setTextColor(SUB)
                 textSize = 13f
                 gravity = Gravity.CENTER
