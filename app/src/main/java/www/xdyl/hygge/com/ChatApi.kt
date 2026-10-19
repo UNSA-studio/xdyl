@@ -33,7 +33,7 @@ object ChatApi {
     const val PAGE_SIZE = 200
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(12, TimeUnit.SECONDS)
+        .connectTimeout(6, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .dns(NetDns)
         .build()
@@ -54,12 +54,20 @@ object ChatApi {
         }
 
     /**
-     * HTTPS 连接被重置时自动回退到 HTTP（部分网络会 RST 掉带明文 SNI 的 TLS 握手）。
-     * 返回 "http://host[/prefix]"；不是 https 时返回 null。
+     * 协议回退：HTTPS 失败就试 HTTP，HTTP 失败就试 HTTPS。
+     *
+     * 不同网络封锁方向不一样：
+     *   - 有的网络 RST 掉带明文 SNI 的 TLS 握手（HTTPS 不通、HTTP 通）
+     *   - 有的网络直接丢弃 80 端口的明文请求（HTTP 不通、HTTPS 通）
+     * 所以两边都要试，不能只单向回退。
      */
     private fun httpFallback(base: String): String? {
-        if (!base.startsWith("https://", ignoreCase = true)) return null
-        return "http://" + base.substring("https://".length)
+        val b = base.trimEnd('/')
+        return when {
+            b.startsWith("https://", ignoreCase = true) -> "http://" + b.substring("https://".length)
+            b.startsWith("http://", ignoreCase = true) -> "https://" + b.substring("http://".length)
+            else -> null
+        }
     }
 
     private fun Request.Builder.withAuth(context: Context): Request.Builder {
@@ -82,7 +90,7 @@ object ChatApi {
                 JSONObject(body)
             }
         } catch (e: Exception) {
-            LogManager.w("[CHAT] GET $path 失败: ${e.message}，尝试 HTTP 回退")
+            LogManager.w("[CHAT] GET $path 失败: ${e.message}，尝试切换协议")
             val fb = httpFallback(base) ?: run {
                 LogManager.e("[CHAT] GET $path 最终失败")
                 return null
@@ -95,11 +103,11 @@ object ChatApi {
                         LogManager.w("[CHAT] GET(http) $path -> ${resp.code} ${body.take(200)}")
                         return null
                     }
-                    LogManager.i("[CHAT] GET $path 已通过 HTTP 回退成功")
+                    LogManager.i("[CHAT] GET $path 已通过备用协议成功")
                     return JSONObject(body)
                 }
             } catch (e2: Exception) {
-                LogManager.e("[CHAT] GET $path HTTP 回退也失败: ${e2.message}")
+                LogManager.e("[CHAT] GET $path 备用协议也失败: ${e2.message}")
                 return null
             }
         }
@@ -124,7 +132,7 @@ object ChatApi {
                 JSONObject(text)
             }
         } catch (e: Exception) {
-            LogManager.w("[CHAT] POST $path 失败: ${e.message}，尝试 HTTP 回退")
+            LogManager.w("[CHAT] POST $path 失败: ${e.message}，尝试切换协议")
             val fb = httpFallback(base) ?: run {
                 LogManager.e("[CHAT] POST $path 最终失败")
                 return null
@@ -141,11 +149,11 @@ object ChatApi {
                         LogManager.w("[CHAT] POST(http) $path -> ${resp.code} ${text.take(200)}")
                         return null
                     }
-                    LogManager.i("[CHAT] POST $path 已通过 HTTP 回退成功")
+                    LogManager.i("[CHAT] POST $path 已通过备用协议成功")
                     return JSONObject(text)
                 }
             } catch (e2: Exception) {
-                LogManager.e("[CHAT] POST $path HTTP 回退也失败: ${e2.message}")
+                LogManager.e("[CHAT] POST $path 备用协议也失败: ${e2.message}")
                 return null
             }
         }
