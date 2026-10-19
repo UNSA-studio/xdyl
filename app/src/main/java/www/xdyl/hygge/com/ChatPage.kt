@@ -36,6 +36,7 @@ object ChatPage {
     private val ON_PRIMARY = 0xFF0A1929.toInt()
     private val ON_SURFACE = 0xFFFFFFFF.toInt()
     private val ON_SURFACE_VARIANT = 0xFF888888.toInt()
+    private val HINT_COLOR = 0xFF6B6B6B.toInt()  // 与项目其他对话框的 hint 一致
     private val OUTLINE = 0xFF3A3A3A.toInt()
     private val OUT_BUBBLE = 0xFF333333.toInt()        // 与对方气泡同底色，靠右区分即可
 
@@ -117,16 +118,8 @@ object ChatPage {
             return
         }
         container.tag = peers.hashCode()
-        peers.forEachIndexed { i, peer ->
-            val card = peerCard(activity, peer)
-            card.alpha = 0f
-            card.translationY = dp(activity, 12).toFloat()
-            container.addView(card)
-            card.animate()
-                .alpha(1f).translationY(0f)
-                .setStartDelay((i * 35L).coerceAtMost(200L))
-                .setDuration(180)
-                .start()
+        peers.forEach { peer ->
+            container.addView(peerCard(activity, peer))
         }
         startConversationAutoRefresh()
     }
@@ -144,10 +137,7 @@ object ChatPage {
         }
         val activity = container.context as AppCompatActivity
         peers.forEach { peer ->
-            val card = peerCard(activity, peer)
-            card.alpha = 0f
-            container.addView(card)
-            card.animate().alpha(1f).setDuration(160).start()
+            container.addView(peerCard(activity, peer))
         }
     }
 
@@ -175,6 +165,7 @@ object ChatPage {
             strokeWidth = dp(activity, 1)
             strokeColor = OUTLINE
             setCardBackgroundColor(SURFACE_HIGH)
+            rippleColor = android.content.res.ColorStateList.valueOf(0x1FFFFFFF)
             isClickable = true
             isFocusable = true
             setOnClickListener {
@@ -262,39 +253,33 @@ object ChatPage {
     }
 
     private fun showNewChatDialog(activity: AppCompatActivity, container: LinearLayout) {
+        // 与项目其他对话框保持一致：裸 EditText + hint，不用 TextInputLayout
         val wrap = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(activity, 24), dp(activity, 8), dp(activity, 24), 0)
+            setPadding(dp(activity, 24), dp(activity, 0), dp(activity, 24), 0)
         }
-
-        fun til(hint: String, child: EditText): View {
-            val t = com.google.android.material.textfield.TextInputLayout(activity).apply {
-                this.hint = hint
-                boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE
-                boxStrokeColor = PRIMARY
-                defaultHintTextColor = android.content.res.ColorStateList.valueOf(ON_SURFACE_VARIANT)
-                setHintTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-                setPadding(0, dp(activity, 4), 0, 0)
-            }
-            child.setTextColor(ON_SURFACE)
-            child.textSize = 15f
-            t.addView(child)
-            return t
-        }
-
         val etUser = EditText(activity).apply {
-            hint = "OvalXD_chen"
+            hint = "对方 username（如 OvalXD_chen）"
+            setTextColor(ON_SURFACE)
+            setHintTextColor(HINT_COLOR)
+            textSize = 15f
             inputType = android.text.InputType.TYPE_CLASS_TEXT
             maxLines = 1
         }
         val etName = EditText(activity).apply {
-            hint = "可留空，自动获取昵称"
+            hint = "备注名（可留空）"
+            setTextColor(ON_SURFACE)
+            setHintTextColor(HINT_COLOR)
+            textSize = 15f
             inputType = android.text.InputType.TYPE_CLASS_TEXT
             maxLines = 1
         }
-        wrap.addView(til("对方 username（主站用户名）", etUser))
-        wrap.addView(til("备注名（可选）", etName))
-
+        wrap.addView(etUser, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ))
+        wrap.addView(etName, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = dp(activity, 8) })
         com.google.android.material.dialog.MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setTitle("新建私聊")
             .setView(wrap)
@@ -411,7 +396,7 @@ object ChatPage {
         scroll.addView(list)
         root.addView(scroll)
 
-        // ---- 输入区（MD：圆角 TextInputLayout + 圆形发送按钮）----
+        // ---- 输入区（圆角输入框 + 圆形发送按钮）----
         val inputBar = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.BOTTOM
@@ -424,32 +409,32 @@ object ChatPage {
             textSize = 14.5f
             maxLines = 5
             minLines = 1
-            background = null
-            setPadding(dp(activity, 14), dp(activity, 10), dp(activity, 14), dp(activity, 10))
-        }
-        val inputBox = com.google.android.material.textfield.TextInputLayout(activity).apply {
-            boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE
-            boxBackgroundColor = SURFACE_HIGH
-            boxStrokeColor = PRIMARY
-            setBoxCornerRadii(
-                dp(activity, 22).toFloat(), dp(activity, 22).toFloat(),
-                dp(activity, 22).toFloat(), dp(activity, 22).toFloat()
-            )
-            isHintEnabled = false
+            background = GradientDrawable().apply {
+                cornerRadius = dp(activity, 22).toFloat()
+                setColor(SURFACE_HIGH)
+                setStroke(dp(activity, 1), OUTLINE)
+            }
+            setPadding(dp(activity, 16), dp(activity, 10), dp(activity, 16), dp(activity, 10))
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            addView(etInput)
         }
-        val btnSend = com.google.android.material.floatingactionbutton.FloatingActionButton(activity).apply {
+        val btnSend = ImageButton(activity).apply {
             setImageResource(R.drawable.ic_send)
-            backgroundTintList = android.content.res.ColorStateList.valueOf(PRIMARY)
+            background = android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(0x33FFFFFF),
+                GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(PRIMARY)
+                },
+                null
+            )
             imageTintList = android.content.res.ColorStateList.valueOf(ON_PRIMARY)
-            customSize = dp(activity, 48)
-            elevation = dp(activity, 2).toFloat()
-            layoutParams = LinearLayout.LayoutParams(dp(activity, 48), dp(activity, 48)).apply {
+            setPadding(dp(activity, 12), dp(activity, 12), dp(activity, 12), dp(activity, 12))
+            contentDescription = "发送"
+            layoutParams = LinearLayout.LayoutParams(dp(activity, 44), dp(activity, 44)).apply {
                 marginStart = dp(activity, 8)
             }
         }
-        inputBar.addView(inputBox)
+        inputBar.addView(etInput)
         inputBar.addView(btnSend)
         root.addView(inputBar)
 
@@ -548,9 +533,6 @@ object ChatPage {
             android.os.Handler(android.os.Looper.getMainLooper()).removeCallbacks(poller)
         }
         dialog.setOnShowListener {
-            root.translationY = dp(activity, 24).toFloat()
-            root.alpha = 0f
-            root.animate().translationY(0f).alpha(1f).setDuration(220).start()
         }
         android.os.Handler(android.os.Looper.getMainLooper()).post(poller)
     }
@@ -615,7 +597,7 @@ object ChatPage {
 
     private fun circleRipple(c: Context, color: Int): android.graphics.drawable.Drawable {
         val tv = android.util.TypedValue()
-        c.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, tv, true)
+        c.theme.resolveAttribute(android.R.attr.selectableItemBackground, tv, true)
         return ContextCompat.getDrawable(c, tv.resourceId) ?: GradientDrawable().apply {
             shape = GradientDrawable.OVAL; setColor(color)
         }
