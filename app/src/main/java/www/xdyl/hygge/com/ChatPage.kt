@@ -656,7 +656,7 @@ object ChatPage {
     private fun ensureSessionKey(activity: AppCompatActivity, peerKey: String, myId: String): ByteArray? {
         ChatCrypto.getCachedKey(peerKey)?.let { return it }
         ChatCrypto.init(activity)
-        ChatApi.uploadKey(activity, myId, token(activity), ChatCrypto.publicKeyBase64())
+        ChatApi.uploadKey(activity, myId, ChatCrypto.publicKeyBase64())
         val peerPub = ChatApi.fetchPeerKey(activity, peerKey)
         if (peerPub == null) {
             LogManager.w("[CHAT] 对端 $peerKey 公钥不存在（404）")
@@ -668,44 +668,95 @@ object ChatPage {
         return key
     }
 
+    /**
+     * 同步消息：按服务端 seq 游标分页拉取，一次拿到全部新消息。
+     *
+     * 与旧版区别：
+     *   1. 旧版只拉一页、按毫秒时间过滤 → 旧消息会把新消息挤掉（漏信）。
+     *   2. 新版按 seq 严格递增，has_more 时继续翻页，直到拉完。
+     *   3. 收件箱 + 发件箱都同步，多设备能看到自己发出的消息。
+     */
     private fun pullMessages(activity: AppCompatActivity, peerKey: String): Boolean {
         if (!ChatApi.isConfigured(activity)) return false
         val myId = meName(activity)
         if (myId.isBlank()) return false
 
-        val list = ChatApi.pull(activity, lastPullTs(activity))
-        if (list.isEmpty()) return false
-        val key = ensureSessionKey(activity, peerKey, myId) ?: return false
+        var cursor = lastCursor(activity)
         var updated = false
-        var maxTs = lastPullTs(activity)
+        var pages = 0
+        val knownIds = mutableMapOf<String, MutableSet<String>>()
 
-        list.forEach { o ->
-            val from = o.optString("from")
-            val to = o.optString("to")
-            if (to != myId || from != peerKey) return@forEach
-            val cipher = o.optString("cipher")
-            val msgId = o.optString("msgId").ifBlank { ChatStore.newMessageId() }
-            val ts = o.optLong("ts", System.currentTimeMillis())
-            val plain = ChatCrypto.decrypt(key, cipher)
-            if (plain == null) {
-                LogManager.e("[CHAT] 消息 $msgId 解密失败")
-                return@forEach
+        fun alreadyHave(peer: String, id: String): Boolean {
+            val set = knownIds.getOrPut(peer) {
+                ChatStore.loadMessages(activity, peer).map { it.id }.toMutableSet()
             }
-            ChatStore.appendMessage(
-                activity, peerKey,
-                ChatStore.Message(msgId, from, to, plain, ts, outgoing = false, state = "delivered")
-            )
-            updated = true
-            if (ts > maxTs) maxTs = ts
+            if (set.contains(id)) return true
+            set.add(id)
+            return false
         }
-        if (maxTs > lastPullTs(activity)) {
-            activity.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
-                .edit().putLong("chat_last_pull", maxTs).apply()
+
+        while (pages < 50) {
+            val page = ChatApi.pullPage(activity, cursor) ?: break
+            for (o in page.items) {
+                val from = o.optString("from")
+                val to = o.optString("to")
+                val peer = when {
+                    to == myId -> from
+                    from == myId -> to
+                    else -> ""
+                }
+                if (peer.isBlank() || peer == myId) continue
+
+                val isMine = from == myId
+                val msgId = o.optString("msgId").ifBlank { "srv-" + o.optLong("seq") }
+                val ts = o.optLong("ts", System.currentTimeMillis())
+                val cipher = o.optString("cipher")
+
+                if (alreadyHave(peer, msgId)) {
+                    // 已在本地：自己发的不再是 pending
+                    if (isMine) ChatStore.updateMessageState(activity, peer, msgId, "sent")
+                    continue
+                }
+
+                if (cipher.isBlank()) continue
+                val key = ensureSessionKey(activity, peer, myId)
+                if (key == null) {
+                    LogManager.w("[CHAT] 缺少会话密钥，跳过 $msgId（对端 $peer）")
+                    continue
+                }
+                val plain = ChatCrypto.decrypt(key, cipher)
+                if (plain == null) {
+                    LogManager.e("[CHAT] 消息 $msgId 解密失败")
+                    continue
+                }
+                ChatStore.appendMessage(
+                    activity, peer,
+                    ChatStore.Message(
+                        msgId, from, to, plain, ts,
+                        outgoing = isMine,
+                        state = if (isMine) "sent" else "delivered"
+                    )
+                )
+                updated = true
+            }
+
+            if (page.nextCursor > cursor) {
+                cursor = page.nextCursor
+                saveCursor(activity, cursor)
+            }
+            if (!page.hasMore || page.items.isEmpty()) break
+            pages++
         }
         return updated
     }
 
-    private fun lastPullTs(activity: AppCompatActivity): Long =
+    private fun lastCursor(activity: AppCompatActivity): Long =
         activity.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
-            .getLong("chat_last_pull", 0L)
+            .getLong("chat_last_seq", 0L)
+
+    private fun saveCursor(activity: AppCompatActivity, seq: Long) {
+        activity.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+            .edit().putLong("chat_last_seq", seq).apply()
+    }
+
 }
