@@ -28,16 +28,16 @@ import com.google.android.material.card.MaterialCardView
  */
 object ChatPage {
 
-    // Material 3 dark 常用色
-    private val SURFACE = 0xFF1C1B1F.toInt()          // m3 surface
-    private val SURFACE_CONTAINER = 0xFF232227.toInt() // 卡片/气泡（对方）
-    private val SURFACE_HIGH = 0xFF2B2930.toInt()
+    // 沿用 App 既有配色（与其它页面完全一致，不引入新的底色层）
+    private val SURFACE = 0xFF1E1E1E.toInt()          // = background_dark
+    private val SURFACE_CONTAINER = 0xFF1E1E1E.toInt() // 不再额外铺一层
+    private val SURFACE_HIGH = 0xFF2A2A2A.toInt()      // = card_background
     private val PRIMARY = 0xFFA0C4FF.toInt()
     private val ON_PRIMARY = 0xFF0A1929.toInt()
-    private val ON_SURFACE = 0xFFE6E1E5.toInt()
-    private val ON_SURFACE_VARIANT = 0xFFA9A4AD.toInt()
-    private val OUTLINE = 0xFF3A3840.toInt()
-    private val OUT_BUBBLE = 0xFF2E4162.toInt()
+    private val ON_SURFACE = 0xFFFFFFFF.toInt()
+    private val ON_SURFACE_VARIANT = 0xFF888888.toInt()
+    private val OUTLINE = 0xFF3A3A3A.toInt()
+    private val OUT_BUBBLE = 0xFF333333.toInt()        // 与对方气泡同底色，靠右区分即可
 
     private fun dp(c: Context, v: Int) = (v * c.resources.displayMetrics.density).toInt()
 
@@ -174,7 +174,7 @@ object ChatPage {
             cardElevation = 0f
             strokeWidth = dp(activity, 1)
             strokeColor = OUTLINE
-            setCardBackgroundColor(SURFACE_CONTAINER)
+            setCardBackgroundColor(SURFACE_HIGH)
             isClickable = true
             isFocusable = true
             setOnClickListener {
@@ -345,7 +345,6 @@ object ChatPage {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(activity, 4), dp(activity, 8), dp(activity, 12), dp(activity, 8))
-            setBackgroundColor(SURFACE_CONTAINER)
         }
         val btnBack = ImageButton(activity).apply {
             setImageResource(R.drawable.ic_arrow_back)
@@ -417,7 +416,6 @@ object ChatPage {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.BOTTOM
             setPadding(dp(activity, 10), dp(activity, 8), dp(activity, 10), dp(activity, 10))
-            setBackgroundColor(SURFACE_CONTAINER)
         }
         val etInput = EditText(activity).apply {
             hint = "发送消息"
