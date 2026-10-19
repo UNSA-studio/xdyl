@@ -103,7 +103,7 @@ object ChatPage {
             setImageResource(R.drawable.ic_edit)
             background = circleRipple(activity, SURFACE_HIGH)
             imageTintList = android.content.res.ColorStateList.valueOf(PRIMARY)
-            padding = dp(activity, 12)
+            setPadding(dp(activity, 12), dp(activity, 12), dp(activity, 12), dp(activity, 12))
             layoutParams = LinearLayout.LayoutParams(dp(activity, 48), dp(activity, 48))
             contentDescription = "新建会话"
             setOnClickListener { showNewChatDialog(activity, container) }
@@ -250,7 +250,9 @@ object ChatPage {
                     cornerRadius = dp(activity, 10).toFloat()
                     setColor(PRIMARY)
                 }
-                topMargin = dp(activity, 4)
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = dp(activity, 4) }
             })
         }
         row.addView(right)
@@ -349,7 +351,7 @@ object ChatPage {
             setImageResource(R.drawable.ic_arrow_back)
             background = circleRipple(activity, Color.TRANSPARENT)
             imageTintList = android.content.res.ColorStateList.valueOf(ON_SURFACE)
-            padding = dp(activity, 12)
+            setPadding(dp(activity, 12), dp(activity, 12), dp(activity, 12), dp(activity, 12))
             layoutParams = LinearLayout.LayoutParams(dp(activity, 48), dp(activity, 48))
             contentDescription = "返回"
         }
@@ -378,7 +380,7 @@ object ChatPage {
             setImageResource(R.drawable.ic_info)
             background = circleRipple(activity, Color.TRANSPARENT)
             imageTintList = android.content.res.ColorStateList.valueOf(ON_SURFACE_VARIANT)
-            padding = dp(activity, 12)
+            setPadding(dp(activity, 12), dp(activity, 12), dp(activity, 12), dp(activity, 12))
             layoutParams = LinearLayout.LayoutParams(dp(activity, 48), dp(activity, 48))
             contentDescription = "信息"
             setOnClickListener {
@@ -431,11 +433,11 @@ object ChatPage {
             boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE
             boxBackgroundColor = SURFACE_HIGH
             boxStrokeColor = PRIMARY
-            boxCornerRadiusTopStart = dp(activity, 22).toFloat()
-            boxCornerRadiusTopEnd = dp(activity, 22).toFloat()
-            boxCornerRadiusBottomStart = dp(activity, 22).toFloat()
-            boxCornerRadiusBottomEnd = dp(activity, 22).toFloat()
-            hintEnabled = false
+            setBoxCornerRadii(
+                dp(activity, 22).toFloat(), dp(activity, 22).toFloat(),
+                dp(activity, 22).toFloat(), dp(activity, 22).toFloat()
+            )
+            isHintEnabled = false
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             addView(etInput)
         }
