@@ -3,34 +3,41 @@ package www.xdyl.hygge.com
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
-import org.json.JSONObject
+import com.google.android.material.card.MaterialCardView
 
 /**
- * 【私聊页面】
+ * 【私聊页面】（Material Design 3 风格）
  *
- * 会话列表 → 点进某个会话 → 聊天窗口
- * 全部为代码构建 UI（与项目现有风格一致：深色卡片 + 浅蓝主色）
+ * 会话列表：MaterialCardView（大圆角 + 描边 + 涟漪）+ 圆形字母头像 + 未读胶囊
+ * 聊天窗口：MaterialToolbar 顶栏 + 圆角气泡 + TextInputLayout 输入框 + FAB 发送
+ *
+ * 身份标识统一用主站 username（/player/info/{username} 的键）。
  */
 object ChatPage {
 
-    private const val BG = 0xFF1E1E1E.toInt()
-    private const val CARD = 0xFF2A2A2A.toInt()
-    private const val PRIMARY = 0xFFA0C4FF.toInt()
-    private const val TEXT = 0xFFFFFFFF.toInt()
-    private const val SUB = 0xFF888888.toInt()
-    private const val BUBBLE_OUT = 0xFF2E4A6B.toInt()
-    private const val BUBBLE_IN = 0xFF333333.toInt()
+    // Material 3 dark 常用色
+    private val SURFACE = 0xFF1C1B1F.toInt()          // m3 surface
+    private val SURFACE_CONTAINER = 0xFF232227.toInt() // 卡片/气泡（对方）
+    private val SURFACE_HIGH = 0xFF2B2930.toInt()
+    private val PRIMARY = 0xFFA0C4FF.toInt()
+    private val ON_PRIMARY = 0xFF0A1929.toInt()
+    private val ON_SURFACE = 0xFFE6E1E5.toInt()
+    private val ON_SURFACE_VARIANT = 0xFFA9A4AD.toInt()
+    private val OUTLINE = 0xFF3A3840.toInt()
+    private val OUT_BUBBLE = 0xFF2E4162.toInt()
 
     private fun dp(c: Context, v: Int) = (v * c.resources.displayMetrics.density).toInt()
 
@@ -46,9 +53,9 @@ object ChatPage {
         }
     }
 
+    @Volatile
     private var lastConvContainer: LinearLayout? = null
 
-    /** 开始/停止会话列表自动刷新（每 4 秒） */
     fun startConversationAutoRefresh() {
         stopConversationAutoRefresh()
         convRefreshHandler = android.os.Handler(android.os.Looper.getMainLooper()).also {
@@ -61,97 +68,62 @@ object ChatPage {
         convRefreshHandler = null
     }
 
-    /** 只刷新列表区（保留顶部状态栏），用于定时刷新 */
-    private fun refreshConversationList(container: LinearLayout) {
-        val peers = ChatStore.loadIndex(container.context)
-        val existing = container.tag as? Int ?: -1
-        if (existing == peers.hashCode()) return   // 无变化不重绘
-        container.tag = peers.hashCode()
-        while (container.childCount > 1) container.removeViewAt(container.childCount - 1)
-        if (peers.isEmpty()) {
-            container.addView(TextView(container.context).apply {
-                text = "还没有会话\n点右上角「新建会话」输入对方 username（主站用户名）"
-                setTextColor(SUB)
-                textSize = 13f
-                gravity = Gravity.CENTER
-                setPadding(0, dp(container.context, 60), 0, 0)
-            })
-            return
-        }
-        // 对仍是占位名的会话，后台尝试解析真实昵称（只尝试一次，避免频繁请求）
-        peers.filter { it.nickname.startsWith("用户") }.forEach { peer ->
-            Thread {
-                val info = ChatApi.fetchPlayerName("https://login.lanternwaves.fun", peer.peerKey.toString())
-                if (info != null) {
-                    val (name, registered) = info
-                    if (registered && name != peer.peerKey.toString()) {
-                        ChatStore.setPeerNickname(container.context, peer.peerKey, name)
-                        LogManager.i("[CHAT] 历史会话补全昵称 ${peer.peerKey} -> $name")
-                    }
-                }
-            }.start()
-        }
-        peers.forEach { peer ->
-            val card = makeCard(container.context as android.app.Activity as AppCompatActivity, peer)
-            card.alpha = 0f
-            card.translationY = dp(container.context, 8).toFloat()
-            container.addView(card)
-            card.animate().alpha(1f).translationY(0f).setDuration(180).start()
-        }
-    }
-
     fun renderConversations(activity: AppCompatActivity, container: LinearLayout) {
         lastConvContainer = container
         container.removeAllViews()
-        container.setBackgroundColor(BG)
+        container.setBackgroundColor(SURFACE)
 
-        // 顶部：服务器状态 + 新建会话
+        // 顶部：标题 + 新建按钮（MD 风格）
         val header = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(activity, 4), dp(activity, 8), dp(activity, 4), dp(activity, 8))
+            setPadding(dp(activity, 16), dp(activity, 16), dp(activity, 12), dp(activity, 8))
         }
-        val tvStatus = TextView(activity).apply {
-            text = if (ChatApi.isConfigured(activity)) "私聊服务器：${ChatApi.serverBase(activity)}" else "私聊服务器未配置"
-            setTextColor(if (ChatApi.isConfigured(activity)) SUB else 0xFFE57373.toInt())
-            textSize = 11f
+        val titleCol = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        val btnNew = MaterialButton(activity).apply {
-            text = "新建会话"
-            textSize = 12f
-            setTextColor(Color.BLACK)
-            setBackgroundColor(PRIMARY)
-            minHeight = 0
-            minimumHeight = 0
-            setPadding(dp(activity, 14), dp(activity, 8), dp(activity, 14), dp(activity, 8))
+        titleCol.addView(TextView(activity).apply {
+            text = "私聊"
+            setTextColor(ON_SURFACE)
+            textSize = 22f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        })
+        val server = ChatApi.serverBase(activity)
+        titleCol.addView(TextView(activity).apply {
+            text = if (server.isBlank()) "未配置服务器" else server
+            setTextColor(if (server.isBlank()) 0xFFE57373.toInt() else ON_SURFACE_VARIANT)
+            textSize = 11f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
+        })
+        header.addView(titleCol)
+
+        val btnNew = ImageButton(activity).apply {
+            setImageResource(R.drawable.ic_edit)
+            background = circleRipple(activity, SURFACE_HIGH)
+            imageTintList = android.content.res.ColorStateList.valueOf(PRIMARY)
+            padding = dp(activity, 12)
+            layoutParams = LinearLayout.LayoutParams(dp(activity, 48), dp(activity, 48))
+            contentDescription = "新建会话"
             setOnClickListener { showNewChatDialog(activity, container) }
         }
-        header.addView(tvStatus)
         header.addView(btnNew)
         container.addView(header)
 
         val peers = ChatStore.loadIndex(activity)
         if (peers.isEmpty()) {
-            container.addView(TextView(activity).apply {
-                text = "还没有会话\n点右上角「新建会话」输入对方 username（主站用户名）"
-                setTextColor(SUB)
-                textSize = 13f
-                gravity = Gravity.CENTER
-                setPadding(0, dp(activity, 60), 0, 0)
-            })
+            container.addView(emptyState(activity, "还没有会话\n点右上角新建，输入对方的 username"))
             return
         }
-
         container.tag = peers.hashCode()
         peers.forEachIndexed { i, peer ->
-            val card = makeCard(activity, peer)
+            val card = peerCard(activity, peer)
             card.alpha = 0f
-            card.translationY = dp(activity, 10).toFloat()
+            card.translationY = dp(activity, 12).toFloat()
             container.addView(card)
             card.animate()
-                .alpha(1f)
-                .translationY(0f)
+                .alpha(1f).translationY(0f)
                 .setStartDelay((i * 35L).coerceAtMost(200L))
                 .setDuration(180)
                 .start()
@@ -159,113 +131,189 @@ object ChatPage {
         startConversationAutoRefresh()
     }
 
-    private fun makeCard(activity: AppCompatActivity, peer: ChatStore.Peer): View {
-        val card = LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(CARD)
-            setPadding(dp(activity, 14), dp(activity, 12), dp(activity, 14), dp(activity, 12))
+    private fun refreshConversationList(container: LinearLayout) {
+        val peers = ChatStore.loadIndex(container.context)
+        val existing = container.tag as? Int ?: -1
+        if (existing == peers.hashCode()) return
+        container.tag = peers.hashCode()
+        // 保留 header（第 0 个），清掉后面的
+        while (container.childCount > 1) container.removeViewAt(container.childCount - 1)
+        if (peers.isEmpty()) {
+            container.addView(emptyState(container.context, "还没有会话\n点右上角新建，输入对方的 username"))
+            return
+        }
+        val activity = container.context as AppCompatActivity
+        peers.forEach { peer ->
+            val card = peerCard(activity, peer)
+            card.alpha = 0f
+            container.addView(card)
+            card.animate().alpha(1f).setDuration(160).start()
+        }
+    }
+
+    private fun emptyState(c: Context, text: String): View =
+        TextView(c).apply {
+            this.text = text
+            setTextColor(ON_SURFACE_VARIANT)
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setPadding(dp(c, 32), dp(c, 64), dp(c, 32), 0)
+        }
+
+    /** 单个会话卡片（MD 风格：圆角 16dp + 描边 + 涟漪） */
+    private fun peerCard(activity: AppCompatActivity, peer: ChatStore.Peer): View {
+        val card = MaterialCardView(activity).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dp(activity, 8) }
+            ).apply {
+                topMargin = dp(activity, 8)
+                marginStart = dp(activity, 12)
+                marginEnd = dp(activity, 12)
+            }
+            radius = dp(activity, 16).toFloat()
+            cardElevation = 0f
+            strokeWidth = dp(activity, 1)
+            strokeColor = OUTLINE
+            setCardBackgroundColor(SURFACE_CONTAINER)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                ChatStore.clearUnread(activity, peer.peerKey)
+                openChat(activity, peer.peerKey, peer.nickname)
+            }
         }
 
         val row = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(activity, 14), dp(activity, 12), dp(activity, 14), dp(activity, 12))
         }
-        val nameBox = TextView(activity).apply {
-            text = peer.nickname + "  (#${peer.peerKey})"
-            setTextColor(TEXT)
-            textSize = 15f
-            setTypeface(null, Typeface.BOLD)
+
+        // 圆形头像（首字母）
+        val avatar = TextView(activity).apply {
+            text = peer.nickname.take(1).uppercase()
+            setTextColor(ON_PRIMARY)
+            textSize = 17f
+            gravity = Gravity.CENTER
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(PRIMARY)
+            }
+            layoutParams = LinearLayout.LayoutParams(dp(activity, 44), dp(activity, 44))
+        }
+        row.addView(avatar)
+
+        val mid = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(activity, 12), 0, dp(activity, 8), 0)
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        row.addView(nameBox)
-        if (peer.unread > 0) {
-            row.addView(TextView(activity).apply {
-                text = if (peer.unread > 99) "99+" else peer.unread.toString()
-                setTextColor(Color.BLACK)
-                textSize = 11f
-                gravity = Gravity.CENTER
-                setBackgroundColor(PRIMARY)
-                setPadding(dp(activity, 6), dp(activity, 2), dp(activity, 6), dp(activity, 2))
+        mid.addView(TextView(activity).apply {
+            text = peer.nickname
+            setTextColor(ON_SURFACE)
+            textSize = 15f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        mid.addView(TextView(activity).apply {
+            text = peer.lastText.ifBlank { "（暂无消息）" }
+            setTextColor(ON_SURFACE_VARIANT)
+            textSize = 12.5f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, dp(activity, 3), 0, 0)
+        })
+        row.addView(mid)
+
+        val right = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.END
+        }
+        if (peer.lastTime > 0) {
+            right.addView(TextView(activity).apply {
+                text = formatTime(peer.lastTime)
+                setTextColor(ON_SURFACE_VARIANT)
+                textSize = 10.5f
             })
         }
-        card.addView(row)
-
-        card.addView(TextView(activity).apply {
-            text = peer.lastText.ifBlank { "（暂无消息）" }
-            setTextColor(SUB)
-            textSize = 12f
-            maxLines = 1
-            setPadding(0, dp(activity, 4), 0, 0)
-        })
-
-        card.setOnClickListener {
-            ChatStore.clearUnread(activity, peer.peerKey)
-            openChat(activity, peer.peerKey, peer.nickname)
+        if (peer.unread > 0) {
+            right.addView(TextView(activity).apply {
+                text = if (peer.unread > 99) "99+" else peer.unread.toString()
+                setTextColor(ON_PRIMARY)
+                textSize = 10.5f
+                gravity = Gravity.CENTER
+                minWidth = dp(activity, 20)
+                setPadding(dp(activity, 6), dp(activity, 2), dp(activity, 6), dp(activity, 2))
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(activity, 10).toFloat()
+                    setColor(PRIMARY)
+                }
+                topMargin = dp(activity, 4)
+            })
         }
+        row.addView(right)
+
+        card.addView(row)
         return card
     }
 
     private fun showNewChatDialog(activity: AppCompatActivity, container: LinearLayout) {
-        val wrapper = LinearLayout(activity).apply {
+        val wrap = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(activity, 20), dp(activity, 12), dp(activity, 20), 0)
+            setPadding(dp(activity, 24), dp(activity, 8), dp(activity, 24), 0)
         }
-        wrapper.addView(TextView(activity).apply {
-            text = "对方 username（主站用户名）"
-            setTextColor(SUB)
-            textSize = 12f
-        })
-        val etId = EditText(activity).apply {
-            hint = "例如 OvalXD_chen"
-            inputType = android.text.InputType.TYPE_CLASS_TEXT
-            setTextColor(TEXT)
-        }
-        wrapper.addView(etId)
-        wrapper.addView(TextView(activity).apply {
-            text = "昵称（可留空）"
-            setTextColor(SUB)
-            textSize = 12f
-            setPadding(0, dp(activity, 10), 0, 0)
-        })
-        val etName = EditText(activity).apply {
-            hint = "备注名"
-            setTextColor(TEXT)
-        }
-        wrapper.addView(etName)
 
-        androidx.appcompat.app.AlertDialog.Builder(activity)
+        fun til(hint: String, child: EditText): View {
+            val t = com.google.android.material.textfield.TextInputLayout(activity).apply {
+                this.hint = hint
+                boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE
+                boxStrokeColor = PRIMARY
+                defaultHintTextColor = android.content.res.ColorStateList.valueOf(ON_SURFACE_VARIANT)
+                setHintTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                setPadding(0, dp(activity, 4), 0, 0)
+            }
+            child.setTextColor(ON_SURFACE)
+            child.textSize = 15f
+            t.addView(child)
+            return t
+        }
+
+        val etUser = EditText(activity).apply {
+            hint = "OvalXD_chen"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            maxLines = 1
+        }
+        val etName = EditText(activity).apply {
+            hint = "可留空，自动获取昵称"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            maxLines = 1
+        }
+        wrap.addView(til("对方 username（主站用户名）", etUser))
+        wrap.addView(til("备注名（可选）", etName))
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(activity, R.style.DialogAnimation)
             .setTitle("新建私聊")
-            .setView(wrapper)
+            .setView(wrap)
             .setPositiveButton("开始") { _, _ ->
-                val id = etId.text.toString().trim()
-                if (id.isBlank()) {
-                    AppDialogs.tip(activity, "玩家名无效", "请输入对方的主站 username（如 OvalXD_chen）")
+                val key = etUser.text.toString().trim()
+                if (key.isBlank()) {
+                    AppDialogs.tip(activity, "玩家名无效", "请输入对方的 username（如 OvalXD_chen）")
                     return@setPositiveButton
                 }
                 val manual = etName.text.toString().trim()
-                ChatStore.setPeerNickname(activity, id, manual.ifBlank { "用户$id" })
-                // 先用本地昵称直接进聊天，后台再查公开资料补全真名
-                openChat(activity, id, manual.ifBlank { "用户$id" })
+                ChatStore.setPeerNickname(activity, key, manual.ifBlank { key })
+                openChat(activity, key, manual.ifBlank { key })
                 Thread {
-                    val legacy = "https://login.lanternwaves.fun"
-                    val info = ChatApi.fetchPlayerName(legacy, id.toString())
+                    val info = ChatApi.fetchPlayerName("https://login.lanternwaves.fun", key)
                     if (info != null) {
-                        val (realName, registered) = info
-                        if (manual.isBlank() && registered) {
-                            ChatStore.setPeerNickname(activity, id, realName)
-                            LogManager.i("[CHAT] 自动解析玩家 $id -> $realName")
-                        }
-                    } else {
-                        LogManager.w("[CHAT] 玩家 $id 公开资料查询失败")
-                    }
-                    // 提示注册状态（不阻塞聊天）
-                    val chk = ChatApi.fetchPlayerName("https://login.lanternwaves.fun", id)
-                    if (chk != null && !chk.second) {
-                        activity.runOnUiThread {
-                            LogManager.w("[CHAT] 玩家 $id 未注册（registered=false）")
+                        val (name, registered) = info
+                        if (registered) {
+                            ChatStore.setPeerNickname(activity, key, name)
+                            LogManager.i("[CHAT] 解析玩家 $key -> $name")
+                        } else {
+                            LogManager.w("[CHAT] 玩家 $key 未注册")
                         }
                     }
                 }.start()
@@ -276,102 +324,141 @@ object ChatPage {
 
     // ==================== 聊天窗口 ====================
 
-    /** 本机 username（/player/info 的键，也是私聊的身份标识） */
     private fun meName(activity: AppCompatActivity): String {
         val prefs = activity.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
         return prefs.getString("my_player_name", "") ?: ""
     }
 
-    private fun token(activity: AppCompatActivity): String {
-        // 复用主会话的 access token（ChatApi 与服务端共享认证）
-        return try {
-            val session = SessionStore(activity)
-            session.accessToken
-        } catch (e: Exception) {
-            ""
-        }
-    }
+    private fun token(activity: AppCompatActivity): String =
+        try { SessionStore(activity).accessToken } catch (e: Exception) { "" }
 
     fun openChat(activity: AppCompatActivity, peerKey: String, nickname: String) {
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(BG)
+            setBackgroundColor(SURFACE)
         }
 
-        // 顶部栏
+        // ---- 顶栏（MaterialToolbar 语义：返回 + 标题 + 副标题）----
         val top = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(activity, 8), dp(activity, 8), dp(activity, 8), dp(activity, 8))
+            setPadding(dp(activity, 4), dp(activity, 8), dp(activity, 12), dp(activity, 8))
+            setBackgroundColor(SURFACE_CONTAINER)
         }
-        val tvTitle = TextView(activity).apply {
-            text = "$nickname  (#$peerKey)"
-            setTextColor(PRIMARY)
-            textSize = 15f
-            setTypeface(null, Typeface.BOLD)
+        val btnBack = ImageButton(activity).apply {
+            setImageResource(R.drawable.ic_arrow_back)
+            background = circleRipple(activity, Color.TRANSPARENT)
+            imageTintList = android.content.res.ColorStateList.valueOf(ON_SURFACE)
+            padding = dp(activity, 12)
+            layoutParams = LinearLayout.LayoutParams(dp(activity, 48), dp(activity, 48))
+            contentDescription = "返回"
+        }
+        val titleCol = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            setPadding(dp(activity, 4), 0, 0, 0)
         }
-        val btnClose = MaterialButton(activity).apply {
-            text = "关闭"
-            textSize = 12f
-            setTextColor(PRIMARY)
-            setBackgroundColor(0x00000000)
-            minHeight = 0
-            minimumHeight = 0
+        titleCol.addView(TextView(activity).apply {
+            text = nickname
+            setTextColor(ON_SURFACE)
+            textSize = 16f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        titleCol.addView(TextView(activity).apply {
+            text = peerKey
+            setTextColor(ON_SURFACE_VARIANT)
+            textSize = 11f
+            maxLines = 1
+        })
+        top.addView(btnBack)
+        top.addView(titleCol)
+        val btnMore = ImageButton(activity).apply {
+            setImageResource(R.drawable.ic_info)
+            background = circleRipple(activity, Color.TRANSPARENT)
+            imageTintList = android.content.res.ColorStateList.valueOf(ON_SURFACE_VARIANT)
+            padding = dp(activity, 12)
+            layoutParams = LinearLayout.LayoutParams(dp(activity, 48), dp(activity, 48))
+            contentDescription = "信息"
+            setOnClickListener {
+                AppDialogs.tip(
+                    activity,
+                    "会话信息",
+                    "对端：$peerKey\n昵称：$nickname\n服务：${ChatApi.serverBase(activity)}"
+                )
+            }
         }
-        top.addView(tvTitle)
-        top.addView(btnClose)
+        top.addView(btnMore)
         root.addView(top)
 
-        // 消息区
+        // 分隔线
+        root.addView(View(activity).apply {
+            setBackgroundColor(OUTLINE)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(activity, 1))
+        })
+
+        // ---- 消息区 ----
         val scroll = ScrollView(activity).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-            )
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+            isFillViewport = true
         }
         val list = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(activity, 10), dp(activity, 6), dp(activity, 10), dp(activity, 10))
+            setPadding(dp(activity, 12), dp(activity, 10), dp(activity, 12), dp(activity, 12))
         }
         scroll.addView(list)
         root.addView(scroll)
 
-        // 输入栏（置顶固定，不随滚动）
-        val inputRow = LinearLayout(activity).apply {
+        // ---- 输入区（MD：圆角 TextInputLayout + 圆形发送按钮）----
+        val inputBar = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(activity, 10), dp(activity, 8), dp(activity, 10), dp(activity, 12))
+            gravity = Gravity.BOTTOM
+            setPadding(dp(activity, 10), dp(activity, 8), dp(activity, 10), dp(activity, 10))
+            setBackgroundColor(SURFACE_CONTAINER)
         }
         val etInput = EditText(activity).apply {
-            hint = "输入消息…"
-            setTextColor(TEXT)
-            setHintTextColor(SUB)
-            textSize = 14f
-            maxLines = 3
+            hint = "发送消息"
+            setTextColor(ON_SURFACE)
+            setHintTextColor(ON_SURFACE_VARIANT)
+            textSize = 14.5f
+            maxLines = 5
+            minLines = 1
+            background = null
+            setPadding(dp(activity, 14), dp(activity, 10), dp(activity, 14), dp(activity, 10))
+        }
+        val inputBox = com.google.android.material.textfield.TextInputLayout(activity).apply {
+            boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE
+            boxBackgroundColor = SURFACE_HIGH
+            boxStrokeColor = PRIMARY
+            boxCornerRadiusTopStart = dp(activity, 22).toFloat()
+            boxCornerRadiusTopEnd = dp(activity, 22).toFloat()
+            boxCornerRadiusBottomStart = dp(activity, 22).toFloat()
+            boxCornerRadiusBottomEnd = dp(activity, 22).toFloat()
+            hintEnabled = false
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            addView(etInput)
         }
-        val btnSend = MaterialButton(activity).apply {
-            text = "发送"
-            textSize = 13f
-            setTextColor(Color.BLACK)
-            setBackgroundColor(PRIMARY)
-            minHeight = 0
-            minimumHeight = 0
-            setPadding(dp(activity, 16), dp(activity, 8), dp(activity, 16), dp(activity, 8))
+        val btnSend = com.google.android.material.floatingactionbutton.FloatingActionButton(activity).apply {
+            setImageResource(R.drawable.ic_send)
+            backgroundTintList = android.content.res.ColorStateList.valueOf(PRIMARY)
+            imageTintList = android.content.res.ColorStateList.valueOf(ON_PRIMARY)
+            customSize = dp(activity, 48)
+            elevation = dp(activity, 2).toFloat()
+            layoutParams = LinearLayout.LayoutParams(dp(activity, 48), dp(activity, 48)).apply {
+                marginStart = dp(activity, 8)
+            }
         }
-        inputRow.addView(etInput)
-        inputRow.addView(btnSend)
-        root.addView(inputRow)
+        inputBar.addView(inputBox)
+        inputBar.addView(btnSend)
+        root.addView(inputBar)
 
         val dialog = android.app.Dialog(activity).apply {
             setContentView(root)
             window?.setBackgroundDrawableResource(android.R.color.transparent)
-            window?.setLayout(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
+            window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         }
-        btnClose.setOnClickListener { dialog.dismiss() }
+        btnBack.setOnClickListener { dialog.dismiss() }
 
         fun render() {
             list.removeAllViews()
@@ -379,23 +466,35 @@ object ChatPage {
             if (msgs.isEmpty()) {
                 list.addView(TextView(activity).apply {
                     text = "还没有消息，打个招呼吧"
-                    setTextColor(SUB)
+                    setTextColor(ON_SURFACE_VARIANT)
                     textSize = 13f
                     gravity = Gravity.CENTER
-                    setPadding(0, dp(activity, 40), 0, 0)
+                    setPadding(0, dp(activity, 48), 0, 0)
                 })
             }
-            msgs.forEach { m -> list.addView(bubble(activity, m)) }
-            scroll.post {
-                scroll.fullScroll(View.FOCUS_DOWN)
+            var lastDay = ""
+            msgs.forEach { m ->
+                val day = formatDay(m.time)
+                if (day != lastDay) {
+                    lastDay = day
+                    list.addView(TextView(activity).apply {
+                        text = day
+                        setTextColor(ON_SURFACE_VARIANT)
+                        textSize = 11f
+                        gravity = Gravity.CENTER
+                        setPadding(0, dp(activity, 12), 0, dp(activity, 8))
+                    })
+                }
+                list.addView(bubble(activity, m))
             }
+            scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
         }
 
         fun send() {
             val text = etInput.text.toString().trim()
             if (text.isEmpty()) return
-            val myId = meName(activity)
-            if (myId.isBlank()) {
+            val myName = meName(activity)
+            if (myName.isBlank()) {
                 AppDialogs.tip(activity, "未获取到玩家名", "请先在「我的」页刷新资料后重试")
                 return
             }
@@ -403,32 +502,28 @@ object ChatPage {
                 AppDialogs.tip(activity, "私聊服务器未配置", "请到「扩展设置」里填写私聊服务器地址")
                 return
             }
-
             val msgId = ChatStore.newMessageId()
             val now = System.currentTimeMillis()
-
-            // 1) 本地先落盘（pending）
             ChatStore.appendMessage(
                 activity, peerKey,
-                ChatStore.Message(msgId, myId, peerKey, text, now, outgoing = true, state = "pending")
+                ChatStore.Message(msgId, myName, peerKey, text, now, outgoing = true, state = "pending")
             )
             ChatStore.setPeerNickname(activity, peerKey, nickname)
             etInput.setText("")
             render()
 
-            // 2) 加密 + 发送（后台线程）
             Thread {
-                val key = ensureSessionKey(activity, peerKey, myId)
+                val key = ensureSessionKey(activity, peerKey, myName)
                 if (key == null) {
                     ChatStore.updateMessageState(activity, peerKey, msgId, "failed")
                     activity.runOnUiThread {
-                        AppDialogs.tip(activity, "发送失败", "对方不存在或服务器未返回公钥（HTTP 404）")
+                        AppDialogs.tip(activity, "发送失败", "对方不存在或服务器未返回公钥（404）")
                         render()
                     }
                     return@Thread
                 }
                 val cipher = ChatCrypto.encrypt(key, text)
-                val ok = ChatApi.send(activity, myId, peerKey, msgId, cipher, now)
+                val ok = ChatApi.send(activity, myName, peerKey, msgId, cipher, now)
                 ChatStore.updateMessageState(activity, peerKey, msgId, if (ok) "sent" else "failed")
                 activity.runOnUiThread { render() }
             }.start()
@@ -438,12 +533,13 @@ object ChatPage {
         render()
         dialog.show()
 
-        // 拉取新消息（页面打开期间每 8 秒）
         val poller = object : Runnable {
             override fun run() {
                 Thread {
                     val got = pullMessages(activity, peerKey)
-                    if (got) activity.runOnUiThread { ChatStore.clearUnread(activity, peerKey); render() }
+                    if (got) activity.runOnUiThread {
+                        ChatStore.clearUnread(activity, peerKey); render()
+                    }
                 }.start()
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this, 8000)
             }
@@ -452,61 +548,115 @@ object ChatPage {
             android.os.Handler(android.os.Looper.getMainLooper()).removeCallbacks(poller)
         }
         dialog.setOnShowListener {
-            root.translationY = 80f
+            root.translationY = dp(activity, 24).toFloat()
             root.alpha = 0f
-            root.animate().translationY(0f).alpha(1f).setDuration(200).start()
+            root.animate().translationY(0f).alpha(1f).setDuration(220).start()
         }
         android.os.Handler(android.os.Looper.getMainLooper()).post(poller)
     }
 
+    /** 消息气泡（MD 风格：18dp 圆角，靠边角 6dp） */
     private fun bubble(activity: AppCompatActivity, m: ChatStore.Message): View {
         val wrap = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = if (m.outgoing) Gravity.END else Gravity.START
-            setPadding(0, dp(activity, 3), 0, dp(activity, 3))
+            setPadding(0, dp(activity, 2), 0, dp(activity, 2))
         }
-        val box = LinearLayout(activity).apply {
+        val col = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(if (m.outgoing) BUBBLE_OUT else BUBBLE_IN)
-            setPadding(dp(activity, 12), dp(activity, 8), dp(activity, 12), dp(activity, 8))
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { if (m.outgoing) marginStart = dp(activity, 48) else marginEnd = dp(activity, 48) }
+            gravity = if (m.outgoing) Gravity.END else Gravity.START
         }
-        box.addView(TextView(activity).apply {
+        val box = TextView(activity).apply {
             text = m.text
-            setTextColor(TEXT)
-            textSize = 14f
-        })
-        val stateText = when (m.state) {
-            "pending" -> "发送中…"
-            "sent" -> "已发送"
-            "failed" -> "发送失败"
-            else -> ""
+            setTextColor(ON_SURFACE)
+            textSize = 14.5f
+            setPadding(dp(activity, 14), dp(activity, 9), dp(activity, 14), dp(activity, 9))
+            val big = dp(activity, 18).toFloat()
+            val small = dp(activity, 6).toFloat()
+            background = GradientDrawable().apply {
+                cornerRadii = if (m.outgoing) {
+                    floatArrayOf(big, big, big, big, big, small, small, big)
+                } else {
+                    floatArrayOf(big, big, small, small, big, big, big, big)
+                }
+                setColor(if (m.outgoing) OUT_BUBBLE else SURFACE_HIGH)
+            }
+            maxWidth = (activity.resources.displayMetrics.widthPixels * 0.74f).toInt()
         }
-        if (m.outgoing && stateText.isNotEmpty()) {
-            box.addView(TextView(activity).apply {
-                text = stateText
-                setTextColor(if (m.state == "failed") 0xFFE57373.toInt() else SUB)
+        col.addView(box)
+
+        val meta = buildString {
+            append(formatClock(m.time))
+            if (m.outgoing) {
+                append("  ")
+                append(
+                    when (m.state) {
+                        "pending" -> "发送中"
+                        "sent" -> "已发送"
+                        "failed" -> "失败"
+                        else -> ""
+                    }
+                )
+            }
+        }
+        if (meta.isNotBlank()) {
+            col.addView(TextView(activity).apply {
+                text = meta
+                setTextColor(if (m.state == "failed") 0xFFE57373.toInt() else ON_SURFACE_VARIANT)
                 textSize = 10f
-                gravity = Gravity.END
+                setPadding(dp(activity, 4), dp(activity, 3), dp(activity, 4), 0)
             })
         }
-        wrap.addView(box)
+        wrap.addView(col)
         return wrap
     }
 
-    // ==================== 加密/收发 ====================
+    // ==================== 工具 ====================
 
-    /** 确保有与对端的会话密钥（必要时向上传/拉取公钥） */
+    private fun circleRipple(c: Context, color: Int): android.graphics.drawable.Drawable {
+        val tv = android.util.TypedValue()
+        c.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, tv, true)
+        return ContextCompat.getDrawable(c, tv.resourceId) ?: GradientDrawable().apply {
+            shape = GradientDrawable.OVAL; setColor(color)
+        }
+    }
+
+    private fun formatClock(ms: Long): String {
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = ms }
+        return String.format("%02d:%02d", cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE))
+    }
+
+    private fun formatDay(ms: Long): String {
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = ms }
+        val now = java.util.Calendar.getInstance()
+        val sameDay = cal.get(java.util.Calendar.YEAR) == now.get(java.util.Calendar.YEAR) &&
+                cal.get(java.util.Calendar.DAY_OF_YEAR) == now.get(java.util.Calendar.DAY_OF_YEAR)
+        if (sameDay) return "今天"
+        val yest = (now.clone() as java.util.Calendar).apply { add(java.util.Calendar.DAY_OF_YEAR, -1) }
+        if (cal.get(java.util.Calendar.YEAR) == yest.get(java.util.Calendar.YEAR) &&
+            cal.get(java.util.Calendar.DAY_OF_YEAR) == yest.get(java.util.Calendar.DAY_OF_YEAR)
+        ) return "昨天"
+        return String.format(
+            "%d-%02d-%02d",
+            cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH) + 1, cal.get(java.util.Calendar.DAY_OF_MONTH)
+        )
+    }
+
+    private fun formatTime(ms: Long): String {
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = ms }
+        val now = java.util.Calendar.getInstance()
+        if (cal.get(java.util.Calendar.YEAR) == now.get(java.util.Calendar.YEAR) &&
+            cal.get(java.util.Calendar.DAY_OF_YEAR) == now.get(java.util.Calendar.DAY_OF_YEAR)
+        ) return formatClock(ms)
+        return "${cal.get(java.util.Calendar.MONTH) + 1}/${cal.get(java.util.Calendar.DAY_OF_MONTH)}"
+    }
+
+    // ==================== 加密 / 收发 ====================
+
     private fun ensureSessionKey(activity: AppCompatActivity, peerKey: String, myId: String): ByteArray? {
         ChatCrypto.getCachedKey(peerKey)?.let { return it }
         ChatCrypto.init(activity)
-
-        // 上传自己的公钥（幂等）
         ChatApi.uploadKey(activity, myId, token(activity), ChatCrypto.publicKeyBase64())
-
-        // 拉对端公钥
         val peerPub = ChatApi.fetchPeerKey(activity, peerKey)
         if (peerPub == null) {
             LogManager.w("[CHAT] 对端 $peerKey 公钥不存在（404）")
@@ -514,11 +664,10 @@ object ChatPage {
         }
         val key = ChatCrypto.deriveSessionKey(peerPub)
         ChatCrypto.cacheKey(peerKey, key)
-        LogManager.d("[CHAT] 会话密钥指纹 ${ChatCrypto.fingerprint(key)}（对端 #$peerKey）")
+        LogManager.d("[CHAT] 会话密钥指纹 ${ChatCrypto.fingerprint(key)}（对端 $peerKey）")
         return key
     }
 
-    /** 拉取并解密新消息，返回是否有更新 */
     private fun pullMessages(activity: AppCompatActivity, peerKey: String): Boolean {
         if (!ChatApi.isConfigured(activity)) return false
         val myId = meName(activity)
@@ -526,7 +675,6 @@ object ChatPage {
 
         val list = ChatApi.pull(activity, lastPullTs(activity))
         if (list.isEmpty()) return false
-
         val key = ensureSessionKey(activity, peerKey, myId) ?: return false
         var updated = false
         var maxTs = lastPullTs(activity)
