@@ -597,10 +597,11 @@ object ChatPage {
         }
 
         box.addView(TextView(activity).apply {
-            text = m.text
             setTextColor(ON_SURFACE)
             textSize = 15f
             setLineSpacing(dp(activity, 3).toFloat(), 1f)
+            // 聊天内容也支持 &3 / &a 这类 MC 颜色码
+            RichText.apply(this, m.text)
             maxWidth = (activity.resources.displayMetrics.widthPixels * 0.76f).toInt()
         })
 

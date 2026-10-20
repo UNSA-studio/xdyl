@@ -17,7 +17,7 @@ object Display {
             .ifBlank { obj.optString("player_name", "") }
             .ifBlank { obj.optString("username", "") }
             .ifBlank { fallback }
-        val t = HtmlText.plain(obj.optString("user_title", "")).trim()
+        val t = RichText.strip(HtmlText.plain(obj.optString("user_title", ""))).trim()
         return if (t.isBlank()) n else n + "「" + t + "」"
     }
 }
