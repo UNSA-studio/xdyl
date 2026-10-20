@@ -11,29 +11,38 @@ import java.util.concurrent.TimeUnit
 /**
  * 【私聊网络层】
  *
- * 服务端接口约定（D1 版，服务器只转发密文，无法解密）：
- *   GET  /chat/ping?                                    健康检查
- *   POST /chat/key        Bearer {userId, publicKey}     上传本机公钥
+ * 服务端接口（兼容 legacy 与 v2 中继）：
+ *   GET  /chat/ping                                     健康检查
+ *   POST /chat/key        Bearer {userId, publicKey}     登记本机公钥
  *   GET  /chat/key/{uid}                                 取对端公钥（匿名）
  *   POST /chat/send       Bearer {from,to,msgId,cipher,ts}  发送密文（强幂等）
  *   GET  /chat/pull       Bearer ?cursor=&limit=         按 seq 增量拉取（含自己发的）
  *   POST /chat/read       Bearer {peerId, upto}          已读水位
  *
- * 认证：所有需要身份的请求都带 `Authorization: Bearer <主站 access_token>`。
- * 服务端用该令牌回调 /user/profile 校验并取出 username；令牌不落服务端存储。
+ * 认证：需要身份的请求都带 `Authorization: Bearer <主站 access_token>`。
+ * 服务端用该令牌回调主站 /user/profile 校验并取出 username，不落库。
  *
- * 服务器地址在设置里可配（pref: chat_server），未配置时所有调用返回失败，
- * UI 会提示"私聊服务器未配置"。
+ * 【端点自动切换】
+ * 部分网络会对 Cloudflare 的 443 端口做间歇性 RST（TLS 握手直接被打断），
+ * 而同一域名的 8443 / 2053 端口（Cloudflare 同样支持 HTTPS 代理）往往是通的。
+ * 所以这里不是"一个地址打通到底"，而是按下面的顺序逐个尝试，成功即停：
+ *
+ *   https://host          →  https://host:8443  →  https://host:2053  →  http://host
+ *
+ * 其中 http 只作最后兜底（新版中继会直接回 400 HTTPS_REQUIRED）。
  */
 object ChatApi {
 
     const val PREF_SERVER = "chat_server"
 
-    /** 服务端单页最大条数上限（客户端请求值会被服务端裁剪到 500 内） */
+    /** 单页请求条数 */
     const val PAGE_SIZE = 200
 
+    /** 备用 HTTPS 端口（Cloudflare 支持代理的端口） */
+    private val FALLBACK_HTTPS_PORTS = listOf(8443, 2053)
+
     private val client = OkHttpClient.Builder()
-        .connectTimeout(6, TimeUnit.SECONDS)
+        .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .dns(NetDns)
         .build()
@@ -45,7 +54,6 @@ object ChatApi {
 
     fun isConfigured(context: Context): Boolean = serverBase(context).isNotBlank()
 
-    /** 取主站 access token，用作Bearer 身份。 */
     private fun authOf(context: Context): String =
         try {
             SessionStore(context).accessToken
@@ -54,112 +62,93 @@ object ChatApi {
         }
 
     /**
-     * 协议回退：HTTPS 失败就试 HTTP，HTTP 失败就试 HTTPS。
-     *
-     * 不同网络封锁方向不一样：
-     *   - 有的网络 RST 掉带明文 SNI 的 TLS 握手（HTTPS 不通、HTTP 通）
-     *   - 有的网络直接丢弃 80 端口的明文请求（HTTP 不通、HTTPS 通）
-     * 所以两边都要试，不能只单向回退。
+     * 生成候选端点列表（按优先级）。用户填的地址带端口时不做端口扩展。
      */
-    private fun httpFallback(base: String): String? {
+    private fun endpoints(base: String): List<String> {
         val b = base.trimEnd('/')
-        return when {
-            b.startsWith("https://", ignoreCase = true) -> "http://" + b.substring("https://".length)
-            b.startsWith("http://", ignoreCase = true) -> "https://" + b.substring("http://".length)
-            else -> null
+        val out = mutableListOf(b)
+        val m = Regex("""^([A-Za-z]+)://([^/:]+)(:\d+)?(/.*)?$""").find(b)
+        if (m != null) {
+            val scheme = m.groupValues[1].lowercase()
+            val host = m.groupValues[2]
+            val port = m.groupValues[3]
+            val rest = m.groupValues[4]
+            if (port.isBlank()) {
+                if (scheme == "https") {
+                    FALLBACK_HTTPS_PORTS.forEach { out.add("https://$host:$it$rest") }
+                    out.add("http://$host$rest")
+                } else {
+                    out.add("https://$host$rest")
+                    FALLBACK_HTTPS_PORTS.forEach { out.add("https://$host:$it$rest") }
+                }
+            }
         }
+        return out.distinct()
     }
 
-    private fun Request.Builder.withAuth(context: Context): Request.Builder {
-        val t = authOf(context)
-        if (t.isNotBlank()) header("Authorization", "Bearer $t")
-        return this
-    }
-
-    private fun get(context: Context, path: String): JSONObject? {
+    /**
+     * 统一请求入口：按候选端点循环，遇到网络层失败换下一个。
+     * 业务错误（400/401/403/404/409）视为"服务端已答复"，不再换端点重试。
+     */
+    private fun call(context: Context, method: String, path: String, body: JSONObject?): JSONObject? {
         val base = serverBase(context)
         if (base.isBlank()) return null
-        return try {
-            val req = Request.Builder().url("$base$path").withAuth(context).get().build()
-            client.newCall(req).execute().use { resp ->
-                val body = resp.body?.string() ?: return null
-                if (!resp.isSuccessful) {
-                    LogManager.w("[CHAT] GET $path -> ${resp.code} ${body.take(200)}")
-                    return null
-                }
-                JSONObject(body)
-            }
-        } catch (e: Exception) {
-            LogManager.w("[CHAT] GET $path 失败: ${e.message}，尝试切换协议")
-            val fb = httpFallback(base) ?: run {
-                LogManager.e("[CHAT] GET $path 最终失败")
-                return null
-            }
+        val auth = authOf(context)
+        val jsonType = "application/json".toMediaType()
+        val list = endpoints(base)
+
+        for ((idx, ep) in list.withIndex()) {
+            var code = -1
+            var text = ""
             try {
-                val req = Request.Builder().url("$fb$path").withAuth(context).get().build()
-                client.newCall(req).execute().use { resp ->
-                    val body = resp.body?.string() ?: return null
-                    if (!resp.isSuccessful) {
-                        LogManager.w("[CHAT] GET(http) $path -> ${resp.code} ${body.take(200)}")
-                        return null
-                    }
-                    LogManager.i("[CHAT] GET $path 已通过备用协议成功")
-                    return JSONObject(body)
+                val rb = Request.Builder().url("$ep$path")
+                if (auth.isNotBlank()) rb.header("Authorization", "Bearer $auth")
+                if (method == "GET") {
+                    rb.get()
+                } else {
+                    rb.post((body ?: JSONObject()).toString().toRequestBody(jsonType))
                 }
-            } catch (e2: Exception) {
-                LogManager.e("[CHAT] GET $path 备用协议也失败: ${e2.message}")
-                return null
+                client.newCall(rb.build()).execute().use { resp ->
+                    code = resp.code
+                    text = resp.body?.string() ?: ""
+                }
+            } catch (e: Exception) {
+                LogManager.w("[CHAT] $method $path @${shortEp(ep)} 失败: ${e.message}")
+                continue
             }
+
+            if (code in 200..299) {
+                if (idx > 0) LogManager.i("[CHAT] $method $path 已切换到备用端点 ${shortEp(ep)}")
+                return try {
+                    JSONObject(text)
+                } catch (e: Exception) {
+                    LogManager.e("[CHAT] $method $path 返回非 JSON: ${text.take(120)}")
+                    null
+                }
+            }
+
+            LogManager.w("[CHAT] $method $path @${shortEp(ep)} -> $code ${text.take(160)}")
+
+            // 明文被拒（服务端强制 HTTPS）：继续尝试下一个端点
+            if (code == 400 && text.contains("HTTPS_REQUIRED")) continue
+            // 其它业务错误：换端点结果也一样，直接返回
+            if (code == 400 || code == 401 || code == 403 || code == 404 || code == 409) return null
+            // 5xx / 429：继续换端点
         }
+
+        LogManager.e("[CHAT] $method $path 所有端点均失败（${list.size} 个）")
+        return null
     }
 
-    private fun post(context: Context, path: String, body: JSONObject): JSONObject? {
-        val base = serverBase(context)
-        if (base.isBlank()) return null
-        val json = "application/json".toMediaType()
-        return try {
-            val req = Request.Builder()
-                .url("$base$path")
-                .withAuth(context)
-                .post(body.toString().toRequestBody(json))
-                .build()
-            client.newCall(req).execute().use { resp ->
-                val text = resp.body?.string() ?: return null
-                if (!resp.isSuccessful) {
-                    LogManager.w("[CHAT] POST $path -> ${resp.code} ${text.take(200)}")
-                    return null
-                }
-                JSONObject(text)
-            }
-        } catch (e: Exception) {
-            LogManager.w("[CHAT] POST $path 失败: ${e.message}，尝试切换协议")
-            val fb = httpFallback(base) ?: run {
-                LogManager.e("[CHAT] POST $path 最终失败")
-                return null
-            }
-            try {
-                val req = Request.Builder()
-                    .url("$fb$path")
-                    .withAuth(context)
-                    .post(body.toString().toRequestBody(json))
-                    .build()
-                client.newCall(req).execute().use { resp ->
-                    val text = resp.body?.string() ?: return null
-                    if (!resp.isSuccessful) {
-                        LogManager.w("[CHAT] POST(http) $path -> ${resp.code} ${text.take(200)}")
-                        return null
-                    }
-                    LogManager.i("[CHAT] POST $path 已通过备用协议成功")
-                    return JSONObject(text)
-                }
-            } catch (e2: Exception) {
-                LogManager.e("[CHAT] POST $path 备用协议也失败: ${e2.message}")
-                return null
-            }
-        }
-    }
+    private fun shortEp(ep: String): String =
+        ep.substringAfter("://").let { if (it.length <= 26) it else it.take(26) + "…" }
 
-    /** 上传本机公钥（身份来自 Bearer 头，服务端不接受 body 里的 token） */
+    private fun get(context: Context, path: String): JSONObject? = call(context, "GET", path, null)
+
+    private fun post(context: Context, path: String, body: JSONObject): JSONObject? =
+        call(context, "POST", path, body)
+
+    /** 登记本机公钥（身份来自 Bearer 头） */
     fun uploadKey(context: Context, userId: String, publicKey: String): Boolean {
         val r = post(context, "/chat/key", JSONObject()
             .put("userId", userId)
@@ -167,7 +156,7 @@ object ChatApi {
         return r.optBoolean("ok", false) || r.optInt("code", 0) == 200
     }
 
-    /** 取对端公钥（null = 用户不存在 / 网络失败） */
+    /** 取对端公钥（null = 用户不存在 / 未绑定 / 网络失败） */
     fun fetchPeerKey(context: Context, userId: String): String? {
         val r = get(context, "/chat/key/$userId") ?: return null
         val data = r.optJSONObject("data") ?: r
@@ -175,21 +164,15 @@ object ChatApi {
     }
 
     /**
-     * 按玩家标识（username）查主站公开资料
-     * GET /player/info/{player} → { username, nickname, avatar, coins, level, seconds, registered, online, banned }
-     *
-     * @return Pair(显示名, 是否已注册)；查不到返回 null
+     * 按 username 查主站公开资料（直连主站，不走中继）
+     * GET /player/info/{player}
      */
     fun fetchPlayerName(base: String, player: String): Pair<String, Boolean>? {
         if (base.isBlank() || player.isBlank()) return null
-        val url = base.trimEnd('/') + "/player/info/" + android.net.Uri.encode(player)
-        val tryUrls = listOf(url).let { list ->
-            val fb = httpFallback(base)
-            if (fb != null) list + (fb.trimEnd('/') + "/player/info/" + android.net.Uri.encode(player)) else list
-        }
-        for (u in tryUrls) {
+        val encoded = android.net.Uri.encode(player)
+        for (ep in endpoints(base)) {
             try {
-                val req = Request.Builder().url(u).get().build()
+                val req = Request.Builder().url("$ep/player/info/$encoded").get().build()
                 client.newCall(req).execute().use { resp ->
                     if (!resp.isSuccessful) return@use
                     val body = resp.body?.string() ?: return@use
@@ -202,13 +185,13 @@ object ChatApi {
                     return name to registered
                 }
             } catch (e: Exception) {
-                LogManager.w("[CHAT] /player/info/$player 失败: ${e.message}")
+                LogManager.w("[CHAT] /player/info/$player @${shortEp(ep)} 失败: ${e.message}")
             }
         }
         return null
     }
 
-    /** 发送密文（服务端按 (from, msgId) 幂等，重试不会重复） */
+    /** 发送密文（服务端按 (from, msgId) 幂等） */
     fun send(
         context: Context,
         from: String,
@@ -234,8 +217,8 @@ object ChatApi {
     )
 
     /**
-     * 按服务端 seq 游标拉一页。返回 null 表示请求失败（网络错误 / 401 等）。
-     * 注意：空列表 + hasMore=false 是合法结果，不代表失败。
+     * 按服务端 seq 游标拉一页。null = 请求失败。
+     * 空列表 + hasMore=false 是合法结果。
      */
     fun pullPage(context: Context, cursor: Long, limit: Int = PAGE_SIZE): PullResult? {
         val r = get(context, "/chat/pull?cursor=$cursor&limit=$limit") ?: return null
@@ -247,7 +230,7 @@ object ChatApi {
         return PullResult(out, if (next > 0) next else cursor, hasMore)
     }
 
-    /** 兼容旧调用：按游标拉一页并只返回列表 */
+    /** 兼容旧调用 */
     fun pull(context: Context, cursor: Long): List<JSONObject> =
         pullPage(context, cursor)?.items ?: emptyList()
 
