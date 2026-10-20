@@ -267,3 +267,57 @@ QQ 登录轮询，返回 token
 2. **`/history?player=` 404**：路径可能不是这个
 3. **`/pay/create` 空响应**：需要参数语义
 4. **CF 的 HTTPS 在此网络被 RST**：已通过「强制 HTTPS 关闭 + 客户端 HTTP 回退」绕过
+
+---
+
+## 平台分入口（2026-10-20 起）
+
+中继服务端按平台把入口分开，两边互不干扰：
+
+```
+Android → https://nu-pe-chat.cc.cd/Android/chat/...
+iOS     → https://nu-pe-chat.cc.cd/iOS/chat/v2/...
+```
+
+服务端会把 `/Android` 或 `/iOS` 前缀剥掉，再按同一套路由处理；
+不带前缀的旧路径（`/chat/...`）仍然可用，兼容旧客户端。
+
+### Android 使用的接口（legacy，纯文字 + 单密钥）
+
+| 方法 | 路径 | 认证 | 说明 |
+|---|---|---|---|
+| GET | `/Android/chat/ping` | 匿名 | 健康检查 |
+| POST | `/Android/chat/key` | Bearer | 登记本机公钥（DER SPKI） |
+| GET | `/Android/chat/key/{username}` | 匿名 | 取对端公钥 |
+| POST | `/Android/chat/send` | Bearer | 发送密文（按 `(from,msgId)` 幂等） |
+| GET | `/Android/chat/pull?cursor=&limit=` | Bearer | 按 `seq` 增量拉取（含自己发的） |
+| POST | `/Android/chat/read` | Bearer | 记录已读水位 |
+
+### iOS 使用的能力（v2，Android 不实现也不调用）
+
+| 能力 | 路径前缀 | 说明 |
+|---|---|---|
+| 能力发现 | `/iOS/chat/v2/capabilities` | 返回协议版本、算法、features |
+| 设备会话 | `/iOS/chat/v2/session` | 短期聊天令牌（主站 token 只在此用一次） |
+| 设备与密钥 | `/iOS/chat/v2/devices[/{id}/keys]` | 每设备两把公钥（X25519 + P256）、CAS 版本 |
+| 发送 | `/iOS/chat/v2/messages` | 每设备 envelope，含自副本 |
+| 增量同步 | `/iOS/chat/v2/sync` + `/sync/ack` | 每设备 `event_seq` 事件流 |
+| 已读 | `/iOS/chat/v2/conversations/{id}/read` | 会话级已读水位 |
+| 通知 | `/iOS/chat/v2/devices/{id}/bark*` | Bark 推送绑定与状态 |
+
+### 为什么这样分
+
+- **安卓不需要设备级多密钥**：单机单密钥够用，换成多设备 envelope 反而复杂。
+- **安卓不需要 Bark**：Android 有自己的后台/通知，不依赖 APNs。
+- **回执、分页游标签名、历史备份**这些 iOS 侧可靠性能力，对安卓是额外负担。
+- 分开后两边各自演进，改 iOS 的协议不会碰坏 Android 的 legacy 通道。
+
+### 保留策略（当前）
+
+```
+retention_days = 365000   （≈ 1000 年，实际等于永久）
+定时清理任务 = 已停用
+```
+
+原来每分钟跑一次的 `cleanup()`（会删除 30 天前的消息）已经移除，
+新写入的消息 `expires_at` 也被改为 1000 年后。

@@ -35,6 +35,16 @@ object ChatApi {
 
     const val PREF_SERVER = "chat_server"
 
+    /**
+     * 平台路径前缀。
+     *
+     * 服务端按平台把入口分开：
+     *   Android → /Android/chat/*        （legacy 接口，本客户端使用）
+     *   iOS     → /iOS/chat/v2/*         （设备密钥 / 回执 / Bark 等 iOS 侧能力）
+     * 服务端会把前缀剥掉后按同一套路由处理，所以两边互不干扰。
+     */
+    const val PLATFORM_PREFIX = "/Android"
+
     /** 单页请求条数 */
     const val PAGE_SIZE = 200
 
@@ -101,7 +111,7 @@ object ChatApi {
             var code = -1
             var text = ""
             try {
-                val rb = Request.Builder().url("$ep$path")
+                val rb = Request.Builder().url("$ep$PLATFORM_PREFIX$path")
                 if (auth.isNotBlank()) rb.header("Authorization", "Bearer $auth")
                 if (method == "GET") {
                     rb.get()
@@ -118,7 +128,7 @@ object ChatApi {
             }
 
             if (code in 200..299) {
-                if (idx > 0) LogManager.i("[CHAT] $method $path 已切换到备用端点 ${shortEp(ep)}")
+                if (idx > 0) LogManager.i("[CHAT] $method $PLATFORM_PREFIX$path 已切换到备用端点 ${shortEp(ep)}")
                 return try {
                     JSONObject(text)
                 } catch (e: Exception) {
