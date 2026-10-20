@@ -1,8 +1,11 @@
 package www.xdyl.hygge.com
 
 import android.content.Context
+import okhttp3.ConnectionSpec
+import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
@@ -51,10 +54,51 @@ object ChatApi {
     /** 备用 HTTPS 端口（Cloudflare 支持代理的端口） */
     private val FALLBACK_HTTPS_PORTS = listOf(8443, 2053)
 
+    /**
+     * 用浏览器 UA 发请求。
+     *
+     * 部分校园网 / 运营商会按 User-Agent 掐断连接（对 okhttp、python-requests 这类
+     * "非浏览器"标记直接 RST）。实测同一台手机上：
+     *   curl（UA=curl/7.x）        → 200，稳定
+     *   OkHttp（UA=okhttp/4.x）    → 每次都在 TLS/请求初期被 reset
+     * 因此这里伪装成 Chrome，避免被 UA 规则命中。
+     */
+    private const val BROWSER_UA =
+        "Mozilla/5.0 (Linux; Android 10; SPN-AL00) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
+
+    private val uaInterceptor = Interceptor { chain ->
+        val req = chain.request().newBuilder()
+            .header("User-Agent", BROWSER_UA)
+            .header("Accept", "application/json, text/plain, */*")
+            .header("Accept-Language", "zh-CN,zh;q=0.9")
+            .header("Connection", "keep-alive")
+            .build()
+        chain.proceed(req)
+    }
+
+    /**
+     * TLS 指纹降级。
+     *
+     * 现象：同一台手机、同一网络、同一 IP，
+     *   curl（BoringSSL, TLS1.3 + h2）        → 200
+     *   OkHttp（Conscrypt, TLS1.2/1.3 + h2）  → 每次 TLS 握手被 RST
+     * 唯一的差别是 ClientHello 本身。这里把握手参数退到最保守的形态
+     * （TLS1.2 + 宽松 cipher + 只用 HTTP/1.1），让指纹远离被拦的特征。
+     */
     private val client = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
+        .connectTimeout(6, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .dns(NetDns)
+        .connectionSpecs(
+            listOf(
+                ConnectionSpec.Builder(ConnectionSpec.COMPATIBLE_TLS).build(),
+                ConnectionSpec.CLEARTEXT
+            )
+        )
+        .protocols(listOf(Protocol.HTTP_1_1))
+        .retryOnConnectionFailure(true)
+        .addInterceptor(uaInterceptor)
         .build()
 
     fun serverBase(context: Context): String {
