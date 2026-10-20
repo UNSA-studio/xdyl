@@ -1075,11 +1075,16 @@ class MainActivity : AppCompatActivity() {
                         "FORUM" -> {
                             val title = api.firstString(obj, "title") ?: "(无标题)"
                             communityPostIds[title] = obj.optInt("id", -1)
-                            Triple(
-                                title,
-                                (api.firstString(obj, "nickname", "username") ?: "") + " · " + (api.firstString(obj, "created_at") ?: "") + " · 赞 " + obj.optInt("likes", 0),
-                                api.firstString(obj, "content") ?: ""
-                            )
+                            run {
+                                val parts = ArrayList<String>()
+                                (api.firstString(obj, "nickname", "username") ?: "").takeIf { it.isNotBlank() }?.let { parts.add(it) }
+                                TimeFmt.server(api.firstString(obj, "created_at")).takeIf { it.isNotBlank() }?.let { parts.add(it) }
+                                val lk = obj.optInt("likes", 0)
+                                if (lk > 0) parts.add("赞 " + lk)
+                                val rc = obj.optInt("reply_count", 0)
+                                if (rc > 0) parts.add("回复 " + rc)
+                                Triple(title, parts.joinToString(" · "), api.firstString(obj, "content") ?: "")
+                            }
                         }
                         "RANK" -> Triple(
                             "#" + obj.optInt("rank", 0) + "  " + (api.firstString(obj, "nickname", "player_name", "username") ?: ""),
@@ -1094,7 +1099,7 @@ class MainActivity : AppCompatActivity() {
                         }
                         else -> Triple(
                             api.firstString(obj, "title") ?: "公告",
-                            api.firstString(obj, "created_at") ?: "",
+                            TimeFmt.server(api.firstString(obj, "created_at")),
                             api.firstString(obj, "content") ?: ""
                         )
                     }

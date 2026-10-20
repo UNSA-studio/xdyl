@@ -26,7 +26,37 @@ import org.json.JSONObject
  */
 object ForumPostDialog {
 
-    private val IMAGE_REGEX = Regex("!\\[.*?]\\((.*?)\\)")
+    /** Markdown 图片：![alt](url) */
+    private val IMG_MD = Regex("!\\[.*?]\\((.*?)\\)")
+
+    /** HTML 图片：<img src="..."> */
+    private val IMG_HTML = Regex("<img[^>]+src=[\"']([^\"']+)[\"']", RegexOption.IGNORE_CASE)
+
+    /** 裸图片链接 */
+    private val IMG_URL = Regex(
+        "https?://[^\s)]+?\\.(?:png|jpe?g|gif|webp|bmp)(?:\?[^\s)]*)?",
+        RegexOption.IGNORE_CASE
+    )
+
+    /** 依次抽取三种写法的图片地址（去重、保序） */
+    private fun extractImages(content: String): List<String> {
+        val out = LinkedHashSet<String>()
+        IMG_MD.findAll(content).forEach { out.add(it.groupValues[1].trim()) }
+        IMG_HTML.findAll(content).forEach { out.add(it.groupValues[1].trim()) }
+        IMG_URL.findAll(content).forEach { out.add(it.value.trim()) }
+        return out.filter { it.isNotBlank() }
+    }
+
+    /** 把三种图片标记从正文里剥掉，只留文字 */
+    private fun stripImages(content: String): String =
+        content
+            .replace(IMG_MD, "")
+            .replace(IMG_HTML, "")
+            .replace(IMG_URL, "")
+            .trim()
+
+    /** 时间统一交给 [TimeFmt]，列表 / 详情 / 回复共用一套规则 */
+    private fun fmtServerTime(raw: String): String = TimeFmt.server(raw)
 
     fun show(activity: MainActivity, api: ApiClient, postId: Int) {
         val rootCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
@@ -107,25 +137,29 @@ object ForumPostDialog {
                     }
                     // 标题
                     col.addView(simpleText(activity, post.optString("title", "帖子"), 18f, 0xFFA0C4FF.toInt(), bold = true))
-                    // 作者行
-                    val meta = buildString {
-                        append(post.optString("nickname", post.optString("username", "匿名")))
-                        val t = post.optString("created_at", "")
-                        if (t.isNotBlank()) append(" · ").append(t)
-                        append(" · 浏览 ").append(post.optInt("views", 0))
-                        val ut = post.optString("user_title", "")
-                        if (ut.isNotBlank()) append(" · ").append(ut)
-                    }
-                    col.addView(simpleText(activity, meta, 12f, 0xFF9AA0A6.toInt(), topMargin = 6))
+                    // 作者行：每段独立判空，不再按固定顺序硬拼
+                    val metaParts = ArrayList<String>()
+                    metaParts.add(post.optString("nickname", post.optString("username", "匿名")))
+                    val t = fmtServerTime(post.optString("created_at", ""))
+                    if (t.isNotBlank()) metaParts.add(t)
+                    val views = post.optInt("views", 0)
+                    if (views > 0) metaParts.add("浏览 " + views)
+                    val likesN = post.optInt("likes", 0)
+                    if (likesN > 0) metaParts.add("赞 " + likesN)
+                    val replyN = replies?.length() ?: post.optInt("reply_count", 0)
+                    if (replyN > 0) metaParts.add("回复 " + replyN)
+                    val ut = post.optString("user_title", "").trim()
+                    if (ut.isNotBlank() && ut.length <= 12) metaParts.add("「" + ut + "」")
+                    col.addView(simpleText(activity, metaParts.joinToString(" · "), 12f, 0xFF9AA0A6.toInt(), topMargin = 6))
                     // 正文（剥离 Markdown 图片语法后显示文字）
                     val content = post.optString("content", "")
-                    val textOnly = content.replace(IMAGE_REGEX, "").trim()
+                    val textOnly = stripImages(content)
                     if (textOnly.isNotBlank()) {
                         col.addView(simpleText(activity, textOnly, 14f, 0xFFEDEDED.toInt(), topMargin = 10))
                     }
-                    // 正文中的图片
-                    IMAGE_REGEX.findAll(content).forEach { m ->
-                        addImage(activity, col, m.groupValues[1])
+                    // 正文中的图片（Markdown / HTML / 裸链接都认）
+                    extractImages(content).forEach { url ->
+                        addImage(activity, col, url)
                     }
                     // 点赞行（接口是 toggle：再点即取消）
                     // 状态同步：服务端返回 liked / is_liked 时以其为准，否则保留本地状态
@@ -203,18 +237,18 @@ object ForumPostDialog {
                             val r = replies.optJSONObject(i) ?: continue
                             val head = buildString {
                                 append(r.optString("nickname", r.optString("username", "匿名")))
-                                val t = r.optString("created_at", "")
+                                val t = fmtServerTime(r.optString("created_at", ""))
                                 if (t.isNotBlank()) append(" · ").append(t)
                             }
                             col.addView(simpleText(activity, head, 12f, 0xFF9AA0A6.toInt(), topMargin = 12))
                             val rc = r.optString("content", "")
-                            val rText = rc.replace(IMAGE_REGEX, "").trim()
+                            val rText = stripImages(rc)
                             if (rText.isNotBlank()) {
                                 col.addView(simpleText(activity, rText, 14f, 0xFFEDEDED.toInt(), topMargin = 4))
                             }
                             // 回复里的图片（表情 / 上传图）同样渲染
-                            IMAGE_REGEX.findAll(rc).take(2).forEach { m ->
-                                addImage(activity, col, m.groupValues[1])
+                            extractImages(rc).take(2).forEach { url ->
+                                addImage(activity, col, url)
                             }
                         }
                     }
