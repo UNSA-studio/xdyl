@@ -470,7 +470,7 @@ object ChatPage {
                         setPadding(0, dp(activity, 12), 0, dp(activity, 8))
                     })
                 }
-                list.addView(bubble(activity, m))
+                list.addView(bubble(activity, m, nickname))
             }
             scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
         }
@@ -537,60 +537,96 @@ object ChatPage {
         android.os.Handler(android.os.Looper.getMainLooper()).post(poller)
     }
 
-    /** 消息气泡（MD 风格：18dp 圆角，靠边角 6dp） */
-    private fun bubble(activity: AppCompatActivity, m: ChatStore.Message): View {
-        val wrap = LinearLayout(activity).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = if (m.outgoing) Gravity.END else Gravity.START
-            setPadding(0, dp(activity, 2), 0, dp(activity, 2))
-        }
-        val col = LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = if (m.outgoing) Gravity.END else Gravity.START
-        }
-        val box = TextView(activity).apply {
-            text = m.text
-            setTextColor(ON_SURFACE)
-            textSize = 14.5f
-            setPadding(dp(activity, 14), dp(activity, 9), dp(activity, 14), dp(activity, 9))
-            val big = dp(activity, 18).toFloat()
-            val small = dp(activity, 6).toFloat()
-            background = GradientDrawable().apply {
-                cornerRadii = if (m.outgoing) {
-                    floatArrayOf(big, big, big, big, big, small, small, big)
-                } else {
-                    floatArrayOf(big, big, small, small, big, big, big, big)
-                }
-                setColor(if (m.outgoing) OUT_BUBBLE else SURFACE_HIGH)
-            }
-            maxWidth = (activity.resources.displayMetrics.widthPixels * 0.74f).toInt()
-        }
-        col.addView(box)
+    /**
+     * 消息气泡。
+     *
+     * 规格取自 Material 3 的 Chat 模式 + 主流 IM（Telegram / WhatsApp / 微信）的通用做法：
+     *   - 圆角 20dp，靠自己那一侧的底部是 4dp（形成“尖角”），用官方 ShapeAppearanceModel 描述，
+     *     不再手写 cornerRadii 数组（之前 8 个数的顺序写错，导致两个角同时变尖）。
+     *   - 自己：右对齐、深灰底 + 1dp 描边；对方：左对齐、更暗底 + 描边，并带 32dp 圆形头像。
+     *   - 时间放进气泡内右下角（11sp，alpha 0.55），发送状态跟在时间前面。
+     *   - 气泡最大宽度 76%，内边距 12x8，行距 +3dp。
+     */
+    private fun bubble(activity: AppCompatActivity, m: ChatStore.Message, peerName: String): View {
+        val out = m.outgoing
 
-        val meta = buildString {
-            append(formatClock(m.time))
-            if (m.outgoing) {
-                append("  ")
-                append(
-                    when (m.state) {
-                        "pending" -> "发送中"
-                        "sent" -> "已发送"
-                        "failed" -> "失败"
-                        else -> ""
-                    }
+        val row = LinearLayout(activity).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = if (out) Gravity.END else Gravity.START
+            setPadding(dp(activity, 12), dp(activity, 3), dp(activity, 12), dp(activity, 3))
+        }
+
+        // 对方侧头像
+        if (!out) {
+            val avatar = TextView(activity).apply {
+                text = (peerName.take(1).ifBlank { "?" }).uppercase()
+                setTextColor(ON_SURFACE)
+                textSize = 13f
+                gravity = Gravity.CENTER
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(0xFF3A3A3A.toInt())
+                }
+                layoutParams = LinearLayout.LayoutParams(dp(activity, 32), dp(activity, 32)).apply {
+                    topMargin = dp(activity, 2)
+                    marginEnd = dp(activity, 8)
+                }
+            }
+            row.addView(avatar)
+        }
+
+        // 气泡本体
+        val box = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            val radii = com.google.android.material.shape.ShapeAppearanceModel.builder()
+                .setTopLeftCornerSize(dp(activity, 20).toFloat())
+                .setTopRightCornerSize(dp(activity, 20).toFloat())
+                .setBottomLeftCornerSize(dp(activity, if (out) 20 else 4).toFloat())
+                .setBottomRightCornerSize(dp(activity, if (out) 4 else 20).toFloat())
+                .build()
+            background = com.google.android.material.shape.MaterialShapeDrawable(radii).apply {
+                fillColor = android.content.res.ColorStateList.valueOf(
+                    if (out) 0xFF383838.toInt() else 0xFF242424.toInt()
+                )
+                strokeWidth = dp(activity, 1).toFloat()
+                strokeColor = android.content.res.ColorStateList.valueOf(
+                    if (out) 0xFF4A4A4A.toInt() else 0xFF333333.toInt()
                 )
             }
+            setPadding(dp(activity, 12), dp(activity, 8), dp(activity, 12), dp(activity, 7))
         }
-        if (meta.isNotBlank()) {
-            col.addView(TextView(activity).apply {
-                text = meta
-                setTextColor(if (m.state == "failed") 0xFFE57373.toInt() else ON_SURFACE_VARIANT)
-                textSize = 10f
-                setPadding(dp(activity, 4), dp(activity, 3), dp(activity, 4), 0)
-            })
+
+        box.addView(TextView(activity).apply {
+            text = m.text
+            setTextColor(ON_SURFACE)
+            textSize = 15f
+            setLineSpacing(dp(activity, 3).toFloat(), 1f)
+            maxWidth = (activity.resources.displayMetrics.widthPixels * 0.76f).toInt()
+        })
+
+        // 时间 + 状态（气泡内右下角）
+        val meta = buildString {
+            if (out) {
+                when (m.state) {
+                    "pending" -> append("发送中 · ")
+                    "failed" -> append("发送失败 · ")
+                }
+            }
+            append(formatClock(m.time))
         }
-        wrap.addView(col)
-        return wrap
+        box.addView(TextView(activity).apply {
+            text = meta
+            textSize = 10.5f
+            setTextColor(if (m.state == "failed") 0xFFE57373.toInt() else 0xFF9E9E9E.toInt())
+            alpha = 0.9f
+            gravity = Gravity.END
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(activity, 2) }
+        })
+
+        row.addView(box)
+        return row
     }
 
     // ==================== 工具 ====================
