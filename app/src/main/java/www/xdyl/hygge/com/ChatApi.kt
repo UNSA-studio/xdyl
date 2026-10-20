@@ -75,7 +75,7 @@ object ChatApi {
             .header("User-Agent", BROWSER_UA)
             .header("Accept", "application/json, text/plain, */*")
             .header("Accept-Language", "zh-CN,zh;q=0.9")
-            .header("Connection", "keep-alive")
+            .header("Connection", "close")
             .build()
         chain.proceed(req)
     }
@@ -90,6 +90,9 @@ object ChatApi {
      * （TLS1.2 + 宽松 cipher + 只用 HTTP/1.1），让指纹远离被拦的特征。
      */
     private val client = OkHttpClient.Builder()
+        // 连接池设为 0：这条网络的中间设备会悄悄挂死空闲连接，
+        // 复用旧连接必然 Connection reset（明明是新建连接就能成功）。
+        .connectionPool(okhttp3.ConnectionPool(0, 1, TimeUnit.SECONDS))
         .connectTimeout(6, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .dns(NetDns)
