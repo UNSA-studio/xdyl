@@ -39,8 +39,8 @@ object ChatApi {
      * 平台路径前缀。
      *
      * 服务端按平台把入口分开：
-     *   Android → /Android/chat/*        （legacy 接口，本客户端使用）
-     *   iOS     → /iOS/chat/v2/*         （设备密钥 / 回执 / Bark 等 iOS 侧能力）
+     *   Android → /Android/chat/…        （legacy 接口，本客户端使用）
+     *   iOS     → /iOS/chat/v2/…         （设备密钥 / 回执 / Bark 等 iOS 侧能力）
      * 服务端会把前缀剥掉后按同一套路由处理，所以两边互不干扰。
      */
     const val PLATFORM_PREFIX = "/Android"
