@@ -48,6 +48,9 @@ object ChatApi {
      */
     const val PLATFORM_PREFIX = "/Android"
 
+    /** Cronet 单次请求超时（ms） */
+    private const val CRONET_TIMEOUT_MS = 12000L
+
     /** 单页请求条数 */
     const val PAGE_SIZE = 200
 
@@ -141,8 +144,12 @@ object ChatApi {
     }
 
     /**
-     * 统一请求入口：按候选端点循环，遇到网络层失败换下一个。
-     * 业务错误（400/401/403/404/409）视为"服务端已答复"，不再换端点重试。
+     * 统一请求入口。
+     *
+     * 传输层优先级：
+     *   1. Cronet（Chrome 的网络栈 / BoringSSL）——避开按 TLS 指纹的选择性拦截
+     *   2. OkHttp（系统 TLS）——Cronet 不可用时兜底
+     * 两者都不通就换下一个端点（443 → 8443 → 2053 → http）。
      */
     private fun call(context: Context, method: String, path: String, body: JSONObject?): JSONObject? {
         val base = serverBase(context)
@@ -151,46 +158,73 @@ object ChatApi {
         val jsonType = "application/json".toMediaType()
         val list = endpoints(base)
 
+        val payload = if (method == "GET") null else (body ?: JSONObject()).toString().toByteArray(Charsets.UTF_8)
+        val httpHeaders = LinkedHashMap<String, String>()
+        httpHeaders["User-Agent"] = BROWSER_UA
+        httpHeaders["Accept"] = "application/json, text/plain, */*"
+        httpHeaders["Accept-Language"] = "zh-CN,zh;q=0.9"
+        if (auth.isNotBlank()) httpHeaders["Authorization"] = "Bearer " + auth
+        if (payload != null) httpHeaders["Content-Type"] = "application/json"
+
+        val cronetReady = CronetHttp.ensure(context)
+
         for ((idx, ep) in list.withIndex()) {
+            val url = ep + PLATFORM_PREFIX + path
             var code = -1
             var text = ""
-            try {
-                val rb = Request.Builder().url("$ep$PLATFORM_PREFIX$path")
-                if (auth.isNotBlank()) rb.header("Authorization", "Bearer $auth")
-                if (method == "GET") {
-                    rb.get()
-                } else {
-                    rb.post((body ?: JSONObject()).toString().toRequestBody(jsonType))
+            var via = "okhttp"
+            var done = false
+
+            if (cronetReady) {
+                val r = CronetHttp.request(url, method, httpHeaders, payload, CRONET_TIMEOUT_MS)
+                if (r != null) {
+                    code = r.code
+                    text = r.body
+                    via = "cronet"
+                    done = true
                 }
-                client.newCall(rb.build()).execute().use { resp ->
-                    code = resp.code
-                    text = resp.body?.string() ?: ""
+            }
+
+            if (!done) {
+                try {
+                    val rb = Request.Builder().url(url)
+                    httpHeaders.forEach { (k, v) -> rb.header(k, v) }
+                    if (method == "GET") {
+                        rb.get()
+                    } else {
+                        rb.post((payload ?: ByteArray(0)).toRequestBody(jsonType))
+                    }
+                    client.newCall(rb.build()).execute().use { resp ->
+                        code = resp.code
+                        text = resp.body?.string() ?: ""
+                    }
+                } catch (e: Exception) {
+                    LogManager.w("[CHAT] " + method + " " + PLATFORM_PREFIX + path + " @" + shortEp(ep) + " 失败: " + e.message)
+                    continue
                 }
-            } catch (e: Exception) {
-                LogManager.w("[CHAT] $method $path @${shortEp(ep)} 失败: ${e.message}")
-                continue
             }
 
             if (code in 200..299) {
-                if (idx > 0) LogManager.i("[CHAT] $method $PLATFORM_PREFIX$path 已切换到备用端点 ${shortEp(ep)}")
+                if (idx > 0) {
+                    LogManager.i("[CHAT] " + method + " " + PLATFORM_PREFIX + path + " 已切换到备用端点 " + shortEp(ep) + "（" + via + "）")
+                } else {
+                    LogManager.d("[CHAT] " + method + " " + PLATFORM_PREFIX + path + " OK（" + via + "）")
+                }
                 return try {
                     JSONObject(text)
                 } catch (e: Exception) {
-                    LogManager.e("[CHAT] $method $path 返回非 JSON: ${text.take(120)}")
+                    LogManager.e("[CHAT] " + method + " " + PLATFORM_PREFIX + path + " 返回非 JSON: " + text.take(120))
                     null
                 }
             }
 
-            LogManager.w("[CHAT] $method $path @${shortEp(ep)} -> $code ${text.take(160)}")
+            LogManager.w("[CHAT] " + method + " " + PLATFORM_PREFIX + path + " @" + shortEp(ep) + "（" + via + "）-> " + code + " " + text.take(160))
 
-            // 明文被拒（服务端强制 HTTPS）：继续尝试下一个端点
             if (code == 400 && text.contains("HTTPS_REQUIRED")) continue
-            // 其它业务错误：换端点结果也一样，直接返回
             if (code == 400 || code == 401 || code == 403 || code == 404 || code == 409) return null
-            // 5xx / 429：继续换端点
         }
 
-        LogManager.e("[CHAT] $method $path 所有端点均失败（${list.size} 个）")
+        LogManager.e("[CHAT] " + method + " " + PLATFORM_PREFIX + path + " 所有端点均失败（" + list.size + " 个）")
         return null
     }
 
