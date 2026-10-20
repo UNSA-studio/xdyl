@@ -57,6 +57,102 @@ object RichText {
         return false
     }
 
+    /**
+     * 解析成带样式的 CharSequence（不直接写进 TextView）。
+     * 供拼接场景使用：比如「名字 + 带颜色的称号」。
+     */
+    fun toSpanned(raw: String, defaultColor: Int): CharSequence {
+        if (raw.isEmpty()) return ""
+        if (!hasMarkup(raw)) return raw
+
+        val sb = SpannableStringBuilder()
+        var color = defaultColor
+        var bold = false
+        var italic = false
+        var underline = false
+        var strike = false
+        var i = 0
+
+        while (i < raw.length) {
+            if (raw.startsWith("&#", i) && i + 9 <= raw.length) {
+                val hex = raw.substring(i + 2, i + 8)
+                if (isHex(hex)) {
+                    parseColor(hex)?.let { color = it }
+                    i += 8
+                    continue
+                }
+            }
+            if (raw.startsWith("<color=#", i)) {
+                val end = raw.indexOf('>', i)
+                if (end > i) {
+                    val hex = raw.substring(i + 8, end).trim().removePrefix("#")
+                    if (isHex(hex)) {
+                        parseColor(hex)?.let { color = it }
+                        i = end + 1
+                        continue
+                    }
+                }
+            }
+            if (raw.startsWith("</color>", i)) {
+                color = defaultColor
+                i += 8
+                continue
+            }
+            if (raw.startsWith("**", i)) {
+                bold = !bold
+                i += 2
+                continue
+            }
+            if (raw.startsWith("~~", i)) {
+                strike = !strike
+                i += 2
+                continue
+            }
+            if (raw[i] == '&' && i + 1 < raw.length) {
+                val c = raw[i + 1].lowercaseChar()
+                val mcColor = MC[c]
+                if (mcColor != null) {
+                    color = mcColor
+                    i += 2
+                    continue
+                }
+                when (c) {
+                    'l' -> { bold = true; i += 2; continue }
+                    'o' -> { italic = true; i += 2; continue }
+                    'n' -> { underline = true; i += 2; continue }
+                    'm' -> { strike = true; i += 2; continue }
+                    'k' -> { i += 2; continue }
+                    'r' -> {
+                        color = defaultColor
+                        bold = false; italic = false; underline = false; strike = false
+                        i += 2
+                        continue
+                    }
+                }
+            }
+
+            val start = sb.length
+            sb.append(raw[i])
+            if (color != defaultColor) {
+                sb.setSpan(ForegroundColorSpan(color), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            if (bold) {
+                sb.setSpan(StyleSpan(Typeface.BOLD), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            if (italic) {
+                sb.setSpan(StyleSpan(Typeface.ITALIC), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            if (underline) {
+                sb.setSpan(UnderlineSpan(), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            if (strike) {
+                sb.setSpan(StrikethroughSpan(), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            i++
+        }
+        return sb
+    }
+
     fun apply(tv: TextView, raw: String) {
         if (raw.isEmpty()) {
             tv.text = ""
