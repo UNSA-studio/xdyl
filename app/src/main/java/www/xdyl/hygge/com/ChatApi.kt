@@ -168,6 +168,32 @@ object ChatApi {
         }
     }
 
+
+    @Volatile
+    private var echProbed = false
+
+    /** 首次请求时后台探测一次：这台网络能否拿到 ECHConfig（决定内置 ECH 是否可行） */
+    private fun probeEchOnce(context: Context) {
+        if (echProbed) return
+        echProbed = true
+        Thread {
+            try {
+                val base = serverBase(context)
+                val host = base.removePrefix("https://").removePrefix("http://")
+                    .substringBefore('/').substringBefore(':')
+                if (host.isBlank()) return@Thread
+                val info = EchProbe.fetch(host)
+                if (info != null) {
+                    LogManager.i("[ECH] 探测成功：${info.echLen} 字节，DNS=${info.dns}，outer=${info.outerName}")
+                } else {
+                    LogManager.w("[ECH] 探测失败：拿不到 ECHConfig，内置 ECH 不可行")
+                }
+            } catch (e: Exception) {
+                LogManager.w("[ECH] 探测异常：${e.message}")
+            }
+        }.apply { isDaemon = true }.start()
+    }
+
     /**
      * 统一请求入口。
      *
@@ -179,6 +205,7 @@ object ChatApi {
     private fun call(context: Context, method: String, path: String, body: JSONObject?): JSONObject? {
         val base = serverBase(context)
         if (base.isBlank()) return null
+        probeEchOnce(context)
         val auth = authOf(context)
         val jsonType = "application/json".toMediaType()
         val list = endpoints(base, prefScheme(context))
