@@ -34,7 +34,7 @@ object ForumPostDialog {
 
     /** 裸图片链接 */
     private val IMG_URL = Regex(
-        "https?://[^\s)]+?\\.(?:png|jpe?g|gif|webp|bmp)(?:\?[^\s)]*)?",
+        """https?://[^\s)]+?\.(?:png|jpe?g|gif|webp|bmp)(?:\?[^\s)]*)?""",
         RegexOption.IGNORE_CASE
     )
 
