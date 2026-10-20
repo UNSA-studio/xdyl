@@ -237,7 +237,16 @@ object ChatApi {
         val jsonType = "application/json".toMediaType()
         val list = endpoints(base, prefScheme(context), prefEndpoint(context))
 
-        val payload = if (method == "GET") null else (body ?: JSONObject()).toString().toByteArray(Charsets.UTF_8)
+        // 该网络会 RST 明文 GET（POST 正常），所以 GET 统一改用 POST + __alias=1，
+        // 由服务端在最外层把它还原成 GET 处理。
+        val isGetAlias = method == "GET"
+        val payload = when {
+            isGetAlias -> "{}".toByteArray(Charsets.UTF_8)
+            body != null -> body.toString().toByteArray(Charsets.UTF_8)
+            else -> "{}".toByteArray(Charsets.UTF_8)
+        }
+        val httpMethod = if (isGetAlias) "POST" else method
+        val aliasQuery = if (isGetAlias) (if (path.contains('?')) "&__alias=1" else "?__alias=1") else ""
         val httpHeaders = LinkedHashMap<String, String>()
         httpHeaders["User-Agent"] = BROWSER_UA
         httpHeaders["Accept"] = "application/json, text/plain, */*"
@@ -248,14 +257,14 @@ object ChatApi {
         val cronetReady = CronetHttp.ensure(context)
 
         for ((idx, ep) in list.withIndex()) {
-            val url = ep + PLATFORM_PREFIX + path
+            val url = ep + PLATFORM_PREFIX + path + aliasQuery
             var code = -1
             var text = ""
             var via = "okhttp"
             var done = false
 
             if (cronetReady && url.startsWith("https://", ignoreCase = true)) {
-                val r = CronetHttp.request(url, method, httpHeaders, payload, CRONET_TIMEOUT_MS)
+                val r = CronetHttp.request(url, httpMethod, httpHeaders, payload, CRONET_TIMEOUT_MS)
                 if (r != null) {
                     code = r.code
                     text = r.body
@@ -268,11 +277,7 @@ object ChatApi {
                 try {
                     val rb = Request.Builder().url(url)
                     httpHeaders.forEach { (k, v) -> rb.header(k, v) }
-                    if (method == "GET") {
-                        rb.get()
-                    } else {
-                        rb.post((payload ?: ByteArray(0)).toRequestBody(jsonType))
-                    }
+                    rb.post((payload ?: ByteArray(0)).toRequestBody(jsonType))
                     client.newCall(rb.build()).execute().use { resp ->
                         code = resp.code
                         text = resp.body?.string() ?: ""
