@@ -136,10 +136,10 @@ object ForumPostDialog {
                         return@launch
                     }
                     // 标题
-                    col.addView(simpleText(activity, post.optString("title", "帖子"), 18f, 0xFFA0C4FF.toInt(), bold = true))
+                    col.addView(simpleText(activity, HtmlText.plain(post.optString("title", "帖子")), 18f, 0xFFA0C4FF.toInt(), bold = true))
                     // 作者行：每段独立判空，不再按固定顺序硬拼
                     val metaParts = ArrayList<String>()
-                    metaParts.add(post.optString("nickname", post.optString("username", "匿名")))
+                    metaParts.add(Display.name(post))
                     val t = fmtServerTime(post.optString("created_at", ""))
                     if (t.isNotBlank()) metaParts.add(t)
                     val views = post.optInt("views", 0)
@@ -148,11 +148,9 @@ object ForumPostDialog {
                     if (likesN > 0) metaParts.add("赞 " + likesN)
                     val replyN = replies?.length() ?: post.optInt("reply_count", 0)
                     if (replyN > 0) metaParts.add("回复 " + replyN)
-                    val ut = post.optString("user_title", "").trim()
-                    if (ut.isNotBlank() && ut.length <= 12) metaParts.add("「" + ut + "」")
                     col.addView(simpleText(activity, metaParts.joinToString(" · "), 12f, 0xFF9AA0A6.toInt(), topMargin = 6))
                     // 正文（剥离 Markdown 图片语法后显示文字）
-                    val content = post.optString("content", "")
+                    val content = HtmlText.plain(post.optString("content", ""))
                     val textOnly = stripImages(content)
                     if (textOnly.isNotBlank()) {
                         col.addView(simpleText(activity, textOnly, 14f, 0xFFEDEDED.toInt(), topMargin = 10))
@@ -236,12 +234,12 @@ object ForumPostDialog {
                         for (i in 0 until replies.length()) {
                             val r = replies.optJSONObject(i) ?: continue
                             val head = buildString {
-                                append(r.optString("nickname", r.optString("username", "匿名")))
+                                append(Display.name(r))
                                 val t = fmtServerTime(r.optString("created_at", ""))
                                 if (t.isNotBlank()) append(" · ").append(t)
                             }
                             col.addView(simpleText(activity, head, 12f, 0xFF9AA0A6.toInt(), topMargin = 12))
-                            val rc = r.optString("content", "")
+                            val rc = HtmlText.plain(r.optString("content", ""))
                             val rText = stripImages(rc)
                             if (rText.isNotBlank()) {
                                 col.addView(simpleText(activity, rText, 14f, 0xFFEDEDED.toInt(), topMargin = 4))

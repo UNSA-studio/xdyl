@@ -1073,17 +1073,17 @@ class MainActivity : AppCompatActivity() {
                 val rendered: List<Triple<String, String, String>> = list.map { obj ->
                     when (key) {
                         "FORUM" -> {
-                            val title = api.firstString(obj, "title") ?: "(无标题)"
+                            val title = HtmlText.plain(api.firstString(obj, "title")).ifBlank { "(无标题)" }
                             communityPostIds[title] = obj.optInt("id", -1)
                             run {
                                 val parts = ArrayList<String>()
-                                (api.firstString(obj, "nickname", "username") ?: "").takeIf { it.isNotBlank() }?.let { parts.add(it) }
+                                Display.name(obj, "").takeIf { it.isNotBlank() }?.let { parts.add(it) }
                                 TimeFmt.server(api.firstString(obj, "created_at")).takeIf { it.isNotBlank() }?.let { parts.add(it) }
                                 val lk = obj.optInt("likes", 0)
                                 if (lk > 0) parts.add("赞 " + lk)
                                 val rc = obj.optInt("reply_count", 0)
                                 if (rc > 0) parts.add("回复 " + rc)
-                                Triple(title, parts.joinToString(" · "), api.firstString(obj, "content") ?: "")
+                                Triple(title, parts.joinToString(" · "), HtmlText.plain(api.firstString(obj, "content")))
                             }
                         }
                         "RANK" -> Triple(
@@ -1098,9 +1098,9 @@ class MainActivity : AppCompatActivity() {
                             )
                         }
                         else -> Triple(
-                            api.firstString(obj, "title") ?: "公告",
+                            HtmlText.plain(api.firstString(obj, "title")).ifBlank { "公告" },
                             TimeFmt.server(api.firstString(obj, "created_at")),
-                            api.firstString(obj, "content") ?: ""
+                            HtmlText.plain(api.firstString(obj, "content"))
                         )
                     }
                 }
