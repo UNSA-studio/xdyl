@@ -119,6 +119,7 @@ object ChatApi {
         }
 
     private const val PREF_SCHEME = "chat_scheme"
+    private const val PREF_ENDPOINT = "chat_endpoint"
 
     private fun prefScheme(context: Context): String =
         try {
@@ -127,6 +128,22 @@ object ChatApi {
         } catch (e: Exception) {
             ""
         }
+
+    private fun prefEndpoint(context: Context): String =
+        try {
+            context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+                .getString(PREF_ENDPOINT, "") ?: ""
+        } catch (e: Exception) {
+            ""
+        }
+
+    private fun rememberEndpoint(context: Context, ep: String) {
+        try {
+            context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+                .edit().putString(PREF_ENDPOINT, ep).apply()
+        } catch (e: Exception) {
+        }
+    }
 
     private fun rememberScheme(context: Context, url: String) {
         val scheme = if (url.startsWith("https://", ignoreCase = true)) "https" else "http"
@@ -146,7 +163,7 @@ object ChatApi {
      *
      * 上次成功的协议会被记住并优先使用，所以换到允许 TLS 的网络后会自动恢复走 HTTPS。
      */
-    private fun endpoints(base: String, prefer: String = ""): List<String> {
+    private fun endpoints(base: String, prefer: String = "", preferEp: String = ""): List<String> {
         val b = base.trimEnd('/')
         val m = Regex("""^([A-Za-z]+)://([^/:]+)(:\d+)?(/.*)?$""").find(b)
         if (m == null) return listOf(b)
@@ -161,11 +178,18 @@ object ChatApi {
         val tls = "https://" + host + rest
         val tlsPorts = FALLBACK_HTTPS_PORTS.map { "https://" + host + ":" + it + rest }
 
-        return if (prefer == "https") {
+        val ordered = if (prefer == "https") {
             (listOf(tls) + tlsPorts + listOf(plain)).distinct()
         } else {
             (listOf(plain) + listOf(tls) + tlsPorts).distinct()
         }
+        // 上次成功的端点放到最前面，避免每次都把 4 个端点全试一遍
+        if (preferEp.isNotBlank()) {
+            val hostPart = preferEp.substringAfter("://").substringBefore("/")
+            val fixed = ordered.filter { it.substringAfter("://").substringBefore("/") == hostPart }
+            if (fixed.isNotEmpty()) return fixed + ordered.filter { it !in fixed }
+        }
+        return ordered
     }
 
 
@@ -208,7 +232,7 @@ object ChatApi {
         probeEchOnce(context)
         val auth = authOf(context)
         val jsonType = "application/json".toMediaType()
-        val list = endpoints(base, prefScheme(context))
+        val list = endpoints(base, prefScheme(context), prefEndpoint(context))
 
         val payload = if (method == "GET") null else (body ?: JSONObject()).toString().toByteArray(Charsets.UTF_8)
         val httpHeaders = LinkedHashMap<String, String>()
@@ -258,6 +282,7 @@ object ChatApi {
 
             if (code in 200..299) {
                 rememberScheme(context, url)
+                rememberEndpoint(context, ep)
                 if (idx > 0) {
                     LogManager.i("[CHAT] " + method + " " + PLATFORM_PREFIX + path + " 已切换到备用端点 " + shortEp(ep) + "（" + via + "）")
                 } else {

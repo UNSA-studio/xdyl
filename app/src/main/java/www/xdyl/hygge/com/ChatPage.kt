@@ -518,19 +518,34 @@ object ChatPage {
         render()
         dialog.show()
 
+        // 轮询：基础 15 秒；连续失败时指数退避（最多 60 秒）
+        // 背景：这条网络对高频连接会直接 RST，原来 8 秒一次 + 4 个端点等于每 2 秒建连，必然被封
+        val pollHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        var pollFail = 0
         val poller = object : Runnable {
             override fun run() {
                 Thread {
                     val got = pullMessages(activity, peerKey)
-                    if (got) activity.runOnUiThread {
-                        ChatStore.clearUnread(activity, peerKey); render()
+                    if (got) {
+                        pollFail = 0
+                        activity.runOnUiThread {
+                            ChatStore.clearUnread(activity, peerKey); render()
+                        }
+                    } else {
+                        pollFail++
                     }
                 }.start()
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this, 8000)
+                val factor = when {
+                    pollFail <= 1 -> 1L
+                    pollFail == 2 -> 2L
+                    else -> 4L
+                }
+                val next = (15000L * factor).coerceAtMost(60000L)
+                pollHandler.postDelayed(this, next)
             }
         }
         dialog.setOnDismissListener {
-            android.os.Handler(android.os.Looper.getMainLooper()).removeCallbacks(poller)
+            pollHandler.removeCallbacks(poller)
         }
         dialog.setOnShowListener {
         }
