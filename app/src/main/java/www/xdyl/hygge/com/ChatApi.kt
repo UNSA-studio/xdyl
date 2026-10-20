@@ -118,29 +118,54 @@ object ChatApi {
             ""
         }
 
-    /**
-     * 生成候选端点列表（按优先级）。用户填的地址带端口时不做端口扩展。
-     */
-    private fun endpoints(base: String): List<String> {
-        val b = base.trimEnd('/')
-        val out = mutableListOf(b)
-        val m = Regex("""^([A-Za-z]+)://([^/:]+)(:\d+)?(/.*)?$""").find(b)
-        if (m != null) {
-            val scheme = m.groupValues[1].lowercase()
-            val host = m.groupValues[2]
-            val port = m.groupValues[3]
-            val rest = m.groupValues[4]
-            if (port.isBlank()) {
-                if (scheme == "https") {
-                    FALLBACK_HTTPS_PORTS.forEach { out.add("https://$host:$it$rest") }
-                    out.add("http://$host$rest")
-                } else {
-                    out.add("https://$host$rest")
-                    FALLBACK_HTTPS_PORTS.forEach { out.add("https://$host:$it$rest") }
-                }
-            }
+    private const val PREF_SCHEME = "chat_scheme"
+
+    private fun prefScheme(context: Context): String =
+        try {
+            context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+                .getString(PREF_SCHEME, "") ?: ""
+        } catch (e: Exception) {
+            ""
         }
-        return out.distinct()
+
+    private fun rememberScheme(context: Context, url: String) {
+        val scheme = if (url.startsWith("https://", ignoreCase = true)) "https" else "http"
+        try {
+            context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+                .edit().putString(PREF_SCHEME, scheme).apply()
+        } catch (e: Exception) {
+        }
+    }
+
+    /**
+     * 候选端点列表（按优先级）。
+     *
+     * 默认明文优先：实测这条网络对 Cloudflare 的 TLS 连接（443/8443/2053，
+     * 不管 Conscrypt 还是 BoringSSL）一律 RST，而明文能正常到达。
+     * 聊天正文本身是端到端加密的（X25519 + AES-GCM），明文链路只暴露元数据。
+     *
+     * 上次成功的协议会被记住并优先使用，所以换到允许 TLS 的网络后会自动恢复走 HTTPS。
+     */
+    private fun endpoints(base: String, prefer: String = ""): List<String> {
+        val b = base.trimEnd('/')
+        val m = Regex("""^([A-Za-z]+)://([^/:]+)(:\d+)?(/.*)?$""").find(b)
+        if (m == null) return listOf(b)
+
+        val host = m.groupValues[2]
+        val port = m.groupValues[3]
+        val rest = m.groupValues[4]
+        // 用户自己填了端口：不做扩展
+        if (port.isNotBlank()) return listOf(b)
+
+        val plain = "http://" + host + rest
+        val tls = "https://" + host + rest
+        val tlsPorts = FALLBACK_HTTPS_PORTS.map { "https://" + host + ":" + it + rest }
+
+        return if (prefer == "https") {
+            (listOf(tls) + tlsPorts + listOf(plain)).distinct()
+        } else {
+            (listOf(plain) + listOf(tls) + tlsPorts).distinct()
+        }
     }
 
     /**
@@ -156,7 +181,7 @@ object ChatApi {
         if (base.isBlank()) return null
         val auth = authOf(context)
         val jsonType = "application/json".toMediaType()
-        val list = endpoints(base)
+        val list = endpoints(base, prefScheme(context))
 
         val payload = if (method == "GET") null else (body ?: JSONObject()).toString().toByteArray(Charsets.UTF_8)
         val httpHeaders = LinkedHashMap<String, String>()
@@ -175,7 +200,7 @@ object ChatApi {
             var via = "okhttp"
             var done = false
 
-            if (cronetReady) {
+            if (cronetReady && url.startsWith("https://", ignoreCase = true)) {
                 val r = CronetHttp.request(url, method, httpHeaders, payload, CRONET_TIMEOUT_MS)
                 if (r != null) {
                     code = r.code
@@ -205,6 +230,7 @@ object ChatApi {
             }
 
             if (code in 200..299) {
+                rememberScheme(context, url)
                 if (idx > 0) {
                     LogManager.i("[CHAT] " + method + " " + PLATFORM_PREFIX + path + " 已切换到备用端点 " + shortEp(ep) + "（" + via + "）")
                 } else {
