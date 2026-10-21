@@ -180,7 +180,8 @@ object ChatApi {
         val tls = "https://" + host + rest
         val tlsPorts = FALLBACK_HTTPS_PORTS.map { "https://" + host + ":" + it + rest }
 
-        val ordered = if (prefer == "https") {
+        // ECH 可用时走 HTTPS（加密 SNI，不怕阻断）；否则明文优先
+        val ordered = if (prefer == "https" || EchTls.available()) {
             (listOf(tls) + tlsPorts + listOf(plain)).distinct()
         } else {
             (listOf(plain) + listOf(tls) + tlsPorts).distinct()
@@ -275,7 +276,24 @@ object ChatApi {
             var via = "okhttp"
 
 
-                try {
+            // ① ECH（BoringSSL，加密 SNI）：绕过明文 SNI 阻断，HTTPS 端点首选
+            if (ep.startsWith("https://", ignoreCase = true) && EchTls.available()) {
+                val echResp = EchChannel.request(
+                    context,
+                    ep,
+                    PLATFORM_PREFIX + path,
+                    method,
+                    httpHeaders,
+                    if (method == "GET") null else (body ?: JSONObject()).toString().toByteArray(Charsets.UTF_8)
+                )
+                if (echResp != null) {
+                    code = echResp.code
+                    text = echResp.body
+                    via = "ech"
+                }
+            }
+            // ② 回退：系统 TLS / 明文（GET 用 POST+__alias 伪装）
+            if (code < 0) try {
                     val rb = Request.Builder().url(url)
                     httpHeaders.forEach { (k, v) -> rb.header(k, v) }
                     rb.post((payload ?: ByteArray(0)).toRequestBody(jsonType))
