@@ -10,3 +10,5 @@ build/
 # Local configuration
 local.properties
 .gradle/
+app/src/main/jniLibs/
+app/src/main/cpp/boringssl/

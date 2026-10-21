@@ -48,7 +48,13 @@ jobs:
           -DBUILD_SHARED_LIBS=1 .
         ninja -C build-arm64 ssl crypto
         mkdir -p $GITHUB_WORKSPACE/app/src/main/jniLibs/arm64-v8a
+        mkdir -p $GITHUB_WORKSPACE/app/src/main/cpp/boringssl
+        rm -rf $GITHUB_WORKSPACE/app/src/main/cpp/boringssl/include
+        cp -r /tmp/bs/include $GITHUB_WORKSPACE/app/src/main/cpp/boringssl/include
         cp build-arm64/libssl.so build-arm64/libcrypto.so $GITHUB_WORKSPACE/app/src/main/jniLibs/arm64-v8a/
+        STRIP=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip
+        $STRIP --strip-unneeded $GITHUB_WORKSPACE/app/src/main/jniLibs/arm64-v8a/libssl.so || true
+        $STRIP --strip-unneeded $GITHUB_WORKSPACE/app/src/main/jniLibs/arm64-v8a/libcrypto.so || true
         ls -la $GITHUB_WORKSPACE/app/src/main/jniLibs/arm64-v8a/
 
     - name: Build Android Debug APK

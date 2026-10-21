@@ -46,6 +46,14 @@ android {
         }
     }
 
+    // ECH 原生层（BoringSSL，由 CI 编译并放进 jniLibs）
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+
     // 只保留中英文资源（去掉库里其它语言的 strings）
     defaultConfig {
         resourceConfigurations += listOf("zh", "en")
