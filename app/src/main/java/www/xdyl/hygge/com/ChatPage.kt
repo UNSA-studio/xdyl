@@ -508,9 +508,20 @@ object ChatPage {
                     return@Thread
                 }
                 val cipher = ChatCrypto.encrypt(key, text)
-                val ok = ChatApi.send(activity, myName, peerKey, msgId, cipher, now)
+                val (ok, err) = ChatApi.send(activity, myName, peerKey, msgId, cipher, now)
                 ChatStore.updateMessageState(activity, peerKey, msgId, if (ok) "sent" else "failed")
                 activity.runOnUiThread { render() }
+                if (!ok) {
+                    val tip = when {
+                        peerKey == myName || err == "INVALID_REQUEST" -> "不能给自己发消息"
+                        err == "USER_NOT_FOUND" || err == "recipient not found" ->
+                            "对方还没有上传公钥：让对方装新版并打开一次私聊页"
+                        err == "NETWORK" -> "网络不通（ECH 与备用通道都失败了）"
+                        else -> "发送失败：" + err
+                    }
+                    LogManager.w("[CHAT] 发送失败：" + err)
+                    AppDialogs.tip(activity, "消息未发出", tip)
+                }
             }.start()
         }
 

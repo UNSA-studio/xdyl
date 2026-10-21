@@ -292,11 +292,6 @@ object ChatApi {
                     via = "ech"
                 }
             }
-            // ECH 返回 400（协议/字段层面被拒）时也回退一次，确认是不是通道差异
-            if (code == 400 && via == "ech") {
-                LogManager.w("[CHAT] ECH 返回 400，回退系统 TLS/明文重试一次")
-                code = -1
-            }
             // ② 回退：系统 TLS / 明文（GET 用 POST+__alias 伪装）
             if (code < 0) try {
                     val rb = Request.Builder().url(url)
@@ -388,7 +383,13 @@ object ChatApi {
         return null
     }
 
-    /** 发送密文（服务端按 (from, msgId) 幂等） */
+    /**
+     * 发送密文（服务端按 (from, msgId) 幂等）。
+     *
+     * @return Pair(是否成功, 错误码)；错误码为空表示成功。
+     *         服务端会拒绝「收件人 == 自己」，返回 INVALID_REQUEST；
+     *         对方没上传公钥时返回 USER_NOT_FOUND / recipient not found。
+     */
     fun send(
         context: Context,
         from: String,
@@ -396,14 +397,16 @@ object ChatApi {
         msgId: String,
         cipher: String,
         ts: Long
-    ): Boolean {
+    ): Pair<Boolean, String> {
         val r = post(context, "/chat/send", JSONObject()
             .put("from", from)
             .put("to", to)
             .put("msgId", msgId)
             .put("cipher", cipher)
-            .put("ts", ts)) ?: return false
-        return r.optBoolean("ok", false) || r.optInt("code", 0) == 200
+            .put("ts", ts)) ?: return false to "NETWORK"
+        if (r.optBoolean("ok", false) || r.optInt("code", 0) == 200) return true to ""
+        val err = r.optString("error", "")
+        return false to (if (err.isBlank()) "UNKNOWN" else err)
     }
 
     /** 一页拉取结果 */
