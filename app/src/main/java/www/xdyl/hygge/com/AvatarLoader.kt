@@ -9,6 +9,7 @@ import android.widget.ImageView
 import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -48,6 +49,13 @@ object AvatarLoader {
         return BASE + a
     }
 
+    /** 磁盘缓存：进程被杀 / 重启后不用重新下载 */
+    private fun diskFile(context: android.content.Context, url: String): File {
+        val dir = File(context.cacheDir, "avatars")
+        if (!dir.isDirectory) dir.mkdirs()
+        return File(dir, Integer.toHexString(url.hashCode()) + ".img")
+    }
+
     /** 加载到 ImageView；成功回调 true，失败回调 false */
     fun load(iv: ImageView, avatar: String?, onDone: ((Boolean) -> Unit)? = null) {
         val url = urlOf(avatar)
@@ -61,7 +69,25 @@ object AvatarLoader {
             onDone?.invoke(true)
             return
         }
+        val ctx = iv.context
         pool.execute {
+            // ① 磁盘命中：直接解码，不发请求
+            try {
+                val disk = diskFile(ctx, url)
+                if (disk.isFile) {
+                    val cachedFile = BitmapFactory.decodeFile(disk.absolutePath)
+                    if (cachedFile != null) {
+                        cache.put(url, cachedFile)
+                        main.post {
+                            iv.setImageDrawable(circle(iv, cachedFile))
+                            onDone?.invoke(true)
+                        }
+                        return@execute
+                    }
+                }
+            } catch (e: Throwable) {
+            }
+            // ② 网络下载
             try {
                 val req = Request.Builder().url(url).get().build()
                 client.newCall(req).execute().use { resp ->
@@ -82,6 +108,10 @@ object AvatarLoader {
                         return@execute
                     }
                     cache.put(url, bmp)
+                    try {
+                        diskFile(ctx, url).writeBytes(bytes)
+                    } catch (e: Throwable) {
+                    }
                     main.post {
                         iv.setImageDrawable(circle(iv, bmp))
                         onDone?.invoke(true)
