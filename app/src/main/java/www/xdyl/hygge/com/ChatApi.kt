@@ -49,7 +49,6 @@ object ChatApi {
     const val PLATFORM_PREFIX = "/Android"
 
     /** Cronet 单次请求超时（ms） */
-    private const val CRONET_TIMEOUT_MS = 12000L
 
     /** 单页请求条数 */
     const val PAGE_SIZE = 200
@@ -254,26 +253,14 @@ object ChatApi {
         if (auth.isNotBlank()) httpHeaders["Authorization"] = "Bearer " + auth
         if (payload != null) httpHeaders["Content-Type"] = "application/json"
 
-        val cronetReady = CronetHttp.ensure(context)
 
         for ((idx, ep) in list.withIndex()) {
             val url = ep + PLATFORM_PREFIX + path + aliasQuery
             var code = -1
             var text = ""
             var via = "okhttp"
-            var done = false
 
-            if (cronetReady && url.startsWith("https://", ignoreCase = true)) {
-                val r = CronetHttp.request(url, httpMethod, httpHeaders, payload, CRONET_TIMEOUT_MS)
-                if (r != null) {
-                    code = r.code
-                    text = r.body
-                    via = "cronet"
-                    done = true
-                }
-            }
 
-            if (!done) {
                 try {
                     val rb = Request.Builder().url(url)
                     httpHeaders.forEach { (k, v) -> rb.header(k, v) }
@@ -286,7 +273,6 @@ object ChatApi {
                     LogManager.w("[CHAT] " + method + " " + PLATFORM_PREFIX + path + " @" + shortEp(ep) + " 失败: " + e.message)
                     continue
                 }
-            }
 
             if (code in 200..299) {
                 rememberScheme(context, url)

@@ -91,5 +91,4 @@ dependencies {
     implementation("dev.mobile:dadb:2.0.0")            // ADB 客户端库
     implementation("pl.droidsonroids.gif:android-gif-drawable:1.2.28") // GIF 动图（自带 native 解码，避开系统 AnimatedImageDrawable 崩溃）
     implementation("androidx.media3:media3-exoplayer:1.4.1")
-    implementation("org.chromium.net:cronet-embedded:119.6045.31")  // 内置 BoringSSL（Chrome 同款 TLS 指纹）
 }

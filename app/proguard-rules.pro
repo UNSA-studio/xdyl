@@ -50,7 +50,3 @@
 -keepclassmembers class kotlinx.coroutines.** { volatile <fields>; }
 -dontwarn kotlinx.coroutines.**
 
-# 7) Cronet（内嵌 Chromium 网络栈，JNI 绑定不能被裁剪）
--keep class org.chromium.net.** { *; }
--keep class org.chromium.** { *; }
--dontwarn org.chromium.**
