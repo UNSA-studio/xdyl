@@ -1093,7 +1093,7 @@ class MainActivity : AppCompatActivity() {
                 val root = api.get(path, requiresAuth = requiresAuth)
                 val items = api.extractList(root)
                 val list: List<JSONObject> = (0 until items.length()).map { idx -> items.getJSONObject(idx) }
-                val rendered: List<Triple<String, String, String>> = list.map { obj ->
+                val rendered: List<CommunityRow> = list.map { obj ->
                     when (key) {
                         "FORUM" -> {
                             val title = HtmlText.plain(api.firstString(obj, "title")).ifBlank { "(无标题)" }
@@ -1106,24 +1106,24 @@ class MainActivity : AppCompatActivity() {
                                 if (lk > 0) parts.add("赞 " + lk)
                                 val rc = obj.optInt("reply_count", 0)
                                 if (rc > 0) parts.add("回复 " + rc)
-                                Triple(title, parts.joinToString(" · "), HtmlText.plain(api.firstString(obj, "content")))
+                                CommunityRow(title, parts.joinToString(" · "), HtmlText.plain(api.firstString(obj, "content")), obj.optString("avatar", ""))
                             }
                         }
-                        "RANK" -> Triple(
+                        "RANK" -> CommunityRow(
                             "#" + obj.optInt("rank", 0) + "  " + (api.firstString(obj, "nickname", "player_name", "username") ?: ""),
-                            obj.optInt("coins", 0).toString() + " 喵币", ""
+                            obj.optInt("coins", 0).toString() + " 喵币", "", obj.optString("avatar", "")
                         )
                         "PLAYTIME" -> {
                             val seconds = obj.optLong("seconds", 0)
-                            Triple(
+                            CommunityRow(
                                 "#" + obj.optInt("rank", 0) + "  " + (api.firstString(obj, "player_name", "nickname") ?: ""),
-                                (seconds / 3600).toString() + "小时" + ((seconds % 3600) / 60) + "分", ""
+                                (seconds / 3600).toString() + "小时" + ((seconds % 3600) / 60) + "分", "", obj.optString("avatar", "")
                             )
                         }
-                        else -> Triple(
+                        else -> CommunityRow(
                             HtmlText.plain(api.firstString(obj, "title")).ifBlank { "公告" },
                             TimeFmt.server(api.firstString(obj, "created_at")),
-                            HtmlText.plain(api.firstString(obj, "content"))
+                            HtmlText.plain(api.firstString(obj, "content")), null
                         )
                     }
                 }
@@ -1137,7 +1137,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderCommunity(items: List<Triple<String, String, String>>) {
+    private fun renderCommunity(items: List<CommunityRow>) {
         communityBinding.communityProgress.visibility = View.GONE
         if (items.isEmpty()) {
             communityBinding.communityEmpty.visibility = View.VISIBLE
@@ -1146,8 +1146,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         communityBinding.communityEmpty.visibility = View.GONE
-        val mapped: List<Pair<String, String>> = items.map { Triple(it.first, it.second, it.third); Pair(it.first, it.second) }
-        communityBinding.communityRecycler.adapter = InlineItemAdapter(items.map { InlineItem(it.first, it.second, it.third) }) { item ->
+        communityBinding.communityRecycler.adapter = InlineItemAdapter(items.map { InlineItem(it.title, it.subtitle, it.detail, it.avatar) }) { item ->
             val pid = communityPostIds[item.title]
             if (pid != null && pid > 0) {
                 // 论坛帖子 → 打开详情（含图片 / 点赞 / 回复）
@@ -1256,6 +1255,10 @@ class MainActivity : AppCompatActivity() {
                 try {
                     val root = api.get("/user/profile")
                     val data = root.optJSONObject("data")
+                    // 头像：avatar 是文件名，解析为 /user/avatar/{filename}
+                    data?.optString("avatar", "")?.takeIf { it.isNotBlank() }?.let { av ->
+                        AvatarLoader.load(profileBinding.ivAvatar, av)
+                    }
                     // 遍历所有键，找出「含 qq 且值有效」的字段
                     var qq = ""
                     if (data != null) {
@@ -1547,7 +1550,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    data class InlineItem(val title: String, val subtitle: String, val detail: String)
+    /** 社区/榜单行数据（带头像） */
+    data class CommunityRow(
+        val title: String,
+        val subtitle: String,
+        val detail: String,
+        val avatar: String? = null
+    )
+
+    data class InlineItem(val title: String, val subtitle: String, val detail: String, val avatar: String? = null)
 
     /** 通用行适配器（社区/商城共用） */
     inner class InlineItemAdapter(
@@ -1583,11 +1594,27 @@ class MainActivity : AppCompatActivity() {
             val item = items[position]
             holder.row.removeAllViews()
             val ctx = holder.row.context
-            holder.row.addView(TextView(ctx).apply {
+            // 标题行：头像 + 标题（排行榜 / 帖子都带头像）
+            val titleRow = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+            }
+            if (!item.avatar.isNullOrBlank()) {
+                val d = ctx.resources.displayMetrics.density
+                val av = AvatarView(ctx).apply {
+                    layoutParams = LinearLayout.LayoutParams((32 * d).toInt(), (32 * d).toInt()).apply {
+                        marginEnd = (10 * d).toInt()
+                    }
+                }
+                av.bind(item.title, item.avatar, 13f)
+                titleRow.addView(av)
+            }
+            titleRow.addView(TextView(ctx).apply {
                 setTextColor(0xFFA0C4FF.toInt())
                 textSize = 16f
                 RichText.apply(this, item.title)
             })
+            holder.row.addView(titleRow)
             if (item.subtitle.isNotBlank()) {
                 holder.row.addView(TextView(ctx).apply {
                     setTextColor(0xCCFFFFFF.toInt())

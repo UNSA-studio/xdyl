@@ -42,6 +42,43 @@ object ChatPage {
 
     private fun dp(c: Context, v: Int) = (v * c.resources.displayMetrics.density).toInt()
 
+    // ==================== 头像 ====================
+    /** 玩家 username -> avatar 文件名 */
+    private val avatarCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private val avatarLoading = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+    private val uiHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val avatarClient = okhttp3.OkHttpClient.Builder()
+        .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
+    /** 取某玩家的头像文件名；未命中时后台请求，拿到后回调 */
+    fun peerAvatar(username: String, onReady: (String) -> Unit) {
+        if (username.isBlank()) return
+        avatarCache[username]?.let { onReady(it); return }
+        if (avatarLoading.putIfAbsent(username, true) != null) return
+        Thread {
+            try {
+                val url = "https://login.lanternwaves.fun/player/info/" + android.net.Uri.encode(username)
+                val req = okhttp3.Request.Builder().url(url).get().build()
+                avatarClient.newCall(req).execute().use { r ->
+                    if (!r.isSuccessful) return@use
+                    val body = r.body?.string() ?: return@use
+                    val data = org.json.JSONObject(body).optJSONObject("data") ?: return@use
+                    val av = data.optString("avatar", "").trim()
+                    if (av.isNotEmpty()) {
+                        avatarCache[username] = av
+                        uiHandler.post { onReady(av) }
+                    }
+                }
+            } catch (e: Exception) {
+                LogManager.w("[CHAT] 取头像失败 ${e.message}")
+            } finally {
+                avatarLoading.remove(username)
+            }
+        }.start()
+    }
+
     // ==================== 会话列表 ====================
 
     private var convRefreshHandler: android.os.Handler? = null
@@ -203,19 +240,12 @@ object ChatPage {
             setPadding(dp(activity, 14), dp(activity, 12), dp(activity, 14), dp(activity, 12))
         }
 
-        // 圆形头像（首字母）
-        val avatar = TextView(activity).apply {
-            text = peer.nickname.take(1).uppercase()
-            setTextColor(ON_PRIMARY)
-            textSize = 17f
-            gravity = Gravity.CENTER
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(PRIMARY)
-            }
+        // 圆形头像：优先真实图片，失败回退首字母
+        val avatar = AvatarView(activity).apply {
             layoutParams = LinearLayout.LayoutParams(dp(activity, 44), dp(activity, 44))
         }
+        avatar.bind(peer.nickname, avatarCache[peer.peerKey], 17f, PRIMARY, ON_PRIMARY)
+        peerAvatar(peer.peerKey) { av -> avatar.bind(peer.nickname, av, 17f, PRIMARY, ON_PRIMARY) }
         row.addView(avatar)
 
         val mid = LinearLayout(activity).apply {
@@ -608,20 +638,14 @@ object ChatPage {
 
         // 对方侧头像
         if (!out) {
-            val avatar = TextView(activity).apply {
-                text = (peerName.take(1).ifBlank { "?" }).uppercase()
-                setTextColor(ON_SURFACE)
-                textSize = 13f
-                gravity = Gravity.CENTER
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(0xFF3A3A3A.toInt())
-                }
+            val avatar = AvatarView(activity).apply {
                 layoutParams = LinearLayout.LayoutParams(dp(activity, 32), dp(activity, 32)).apply {
                     topMargin = dp(activity, 2)
                     marginEnd = dp(activity, 8)
                 }
             }
+            avatar.bind(peerName, avatarCache[peerName], 13f)
+            peerAvatar(peerName) { av -> avatar.bind(peerName, av, 13f) }
             row.addView(avatar)
         }
 
