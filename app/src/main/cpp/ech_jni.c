@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <android/log.h>
+#include <pthread.h>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -25,6 +26,11 @@
 #define TAG "EchJni"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
+
+/* TLS 会话复用：免掉每次请求的完整握手（否则每请求多 300~500ms） */
+static pthread_mutex_t g_sess_lock = PTHREAD_MUTEX_INITIALIZER;
+static SSL_SESSION *g_sess = NULL;
+static char g_sess_host[256] = {0};
 
 static int tcp_connect(const char *host, int port) {
     struct addrinfo hints;
@@ -88,6 +94,12 @@ Java_www_xdyl_hygge_com_EchTls_request(JNIEnv *env, jclass cls,
         if (ssl == NULL) { LOGE("SSL_new failed"); break; }
         SSL_set_fd(ssl, fd);
 
+        pthread_mutex_lock(&g_sess_lock);
+        if (g_sess != NULL && strcmp(g_sess_host, host) == 0) {
+            SSL_set_session(ssl, g_sess);
+        }
+        pthread_mutex_unlock(&g_sess_lock);
+
         /* 真实域名：ECH 被接受时该值在加密的 inner ClientHello 里 */
         SSL_set_tlsext_host_name(ssl, host);
         SSL_set1_host(ssl, host);
@@ -109,7 +121,17 @@ Java_www_xdyl_hygge_com_EchTls_request(JNIEnv *env, jclass cls,
                  SSL_get_verify_result(ssl));
             break;
         }
-        LOGI("handshake ok: %s", SSL_get_version(ssl));
+        LOGI("handshake ok: %s%s", SSL_get_version(ssl), SSL_session_reused(ssl) ? " (resumed)" : "");
+
+        SSL_SESSION *ns = SSL_get1_session(ssl);
+        if (ns != NULL) {
+            pthread_mutex_lock(&g_sess_lock);
+            if (g_sess != NULL) SSL_SESSION_free(g_sess);
+            g_sess = ns;
+            strncpy(g_sess_host, host, sizeof(g_sess_host) - 1);
+            g_sess_host[sizeof(g_sess_host) - 1] = 0;
+            pthread_mutex_unlock(&g_sess_lock);
+        }
 
         if (req != NULL && reqLen > 0) {
             int off = 0;
