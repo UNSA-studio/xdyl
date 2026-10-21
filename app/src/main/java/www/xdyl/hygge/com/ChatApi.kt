@@ -292,6 +292,11 @@ object ChatApi {
                     via = "ech"
                 }
             }
+            // ECH 返回 400（协议/字段层面被拒）时也回退一次，确认是不是通道差异
+            if (code == 400 && via == "ech") {
+                LogManager.w("[CHAT] ECH 返回 400，回退系统 TLS/明文重试一次")
+                code = -1
+            }
             // ② 回退：系统 TLS / 明文（GET 用 POST+__alias 伪装）
             if (code < 0) try {
                     val rb = Request.Builder().url(url)

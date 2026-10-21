@@ -72,6 +72,7 @@ object EchChannel {
 
         val head = sb.toString().toByteArray(Charsets.UTF_8)
         val raw = head + (body ?: ByteArray(0))
+        LogManager.d("[ECH] → ${method} ${pathWithQuery} head=${head.size} body=${body?.size ?: 0} total=${raw.size}")
 
         val respBytes = EchTls.request(host, 443, cfg, raw) ?: run {
             LogManager.w("[ECH] 请求失败（${method} $pathWithQuery）")
