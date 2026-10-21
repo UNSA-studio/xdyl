@@ -198,6 +198,11 @@ object ChatApi {
     @Volatile
     private var echProbed = false
 
+    /** 启动时自检：取 ECHConfig + 用 ECH 打一次 ping（无需登录，结果写日志） */
+    fun echSelfTest(context: Context) {
+        probeEchOnce(context)
+    }
+
     /** 首次请求时后台探测一次：这台网络能否拿到 ECHConfig（决定内置 ECH 是否可行） */
     private fun probeEchOnce(context: Context) {
         if (echProbed) return

@@ -153,6 +153,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         LogManager.log("MainActivity 创建")
+        Thread { ChatApi.echSelfTest(this) }.start()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         instance = this
