@@ -202,7 +202,22 @@ class MainActivity : AppCompatActivity() {
         Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
             val sw = StringWriter()
             ex.printStackTrace(PrintWriter(sw))
-            LogManager.log("崩溃: ${sw.toString()}")
+            val stamp = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
+                .format(java.util.Date())
+            val report = "崩溃时间: " + stamp + "\n线程: " + thread.name + "\n" + sw.toString()
+            LogManager.log("崩溃: " + sw.toString())
+            // ① 同步落盘到公共目录（LogManager 是异步的，进程被杀时可能丢）
+            try {
+                val dir = java.io.File("/sdcard/Download/NebulaUpdater")
+                dir.mkdirs()
+                java.io.File(dir, "crash_" + System.currentTimeMillis() + ".txt").writeText(report)
+            } catch (e: Exception) {
+            }
+            // ② 同时进 logcat 的 crash buffer，方便 adb 抓
+            try {
+                android.util.Log.e("NebulaUpdater", report)
+            } catch (e: Exception) {
+            }
             defaultHandler?.uncaughtException(thread, ex)
         }
 

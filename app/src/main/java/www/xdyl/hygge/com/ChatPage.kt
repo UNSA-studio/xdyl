@@ -520,7 +520,8 @@ object ChatPage {
                         else -> "发送失败：" + err
                     }
                     LogManager.w("[CHAT] 发送失败：" + err)
-                    AppDialogs.tip(activity, "消息未发出", tip)
+                    // 弹窗必须在主线程创建（这里在 Thread 里跑，之前漏了 runOnUiThread 会崩）
+                    activity.runOnUiThread { AppDialogs.tip(activity, "消息未发出", tip) }
                 }
             }.start()
         }
