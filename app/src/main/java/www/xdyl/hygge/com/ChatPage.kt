@@ -45,10 +45,33 @@ object ChatPage {
     // ==================== 会话列表 ====================
 
     private var convRefreshHandler: android.os.Handler? = null
+    private var convNetTick = 0
     private val convRefreshTask = object : Runnable {
         override fun run() {
-            lastConvContainer?.let { c ->
-                if (c.isAttachedToWindow) refreshConversationList(c)
+            val c = lastConvContainer
+            if (c != null && c.isAttachedToWindow) {
+                refreshConversationList(c)
+                // 每 5 个 tick（约 20 秒）向后端同步一次：
+                // 以前只在进入聊天窗口时才 pull，停在列表页永远收不到新消息。
+                convNetTick++
+                if (convNetTick % 5 == 0) {
+                    val act = c.context as? AppCompatActivity
+                    if (act != null) {
+                        Thread {
+                            val updated = try {
+                                pullMessages(act, "")
+                            } catch (e: Exception) {
+                                LogManager.w("[CHAT] 列表同步失败：${e.message}")
+                                false
+                            }
+                            if (updated) {
+                                act.runOnUiThread {
+                                    lastConvContainer?.let { refreshConversationList(it) }
+                                }
+                            }
+                        }.start()
+                    }
+                }
             }
             convRefreshHandler?.postDelayed(this, 4000L)
         }
