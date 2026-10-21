@@ -211,6 +211,15 @@ object ChatApi {
                 val info = EchProbe.fetch(host)
                 if (info != null) {
                     LogManager.i("[ECH] 探测成功：${info.echLen} 字节，DNS=${info.dns}，outer=${info.outerName}")
+                    // 实测：用 BoringSSL + ECH 打一次 /chat/ping
+                    val r = EchChannel.request(
+                        context, "https://" + host, "/chat/ping", "GET", emptyMap(), null
+                    )
+                    if (r != null) {
+                        LogManager.i("[ECH] ★ ping 成功：code=${r.code}，chunked=${r.chunked}，body=${r.body.take(140)}")
+                    } else {
+                        LogManager.w("[ECH] ping 失败：ECH 通道没通")
+                    }
                 } else {
                     LogManager.w("[ECH] 探测失败：拿不到 ECHConfig，内置 ECH 不可行")
                 }
