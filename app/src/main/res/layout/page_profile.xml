@@ -38,7 +38,7 @@
                 android:id="@+id/tvNickname"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="未登录"
+                android:text="加载中…"
                 android:textColor="@color/primary_light_blue"
                 android:textSize="18sp"
                 android:textStyle="bold" />

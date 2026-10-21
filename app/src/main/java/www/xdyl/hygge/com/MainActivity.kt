@@ -187,7 +187,14 @@ class MainActivity : AppCompatActivity() {
                 3 -> R.id.nav_profile
                 else -> R.id.nav_audio
             }
-            if (target == 1) ensureCommunityLoaded()
+            // 恢复分页时必须把该页的数据加载也补上，否则界面停在 XML 默认值
+            when (target) {
+                1 -> ensureCommunityLoaded()
+                2 -> ensureShopLoaded()
+                3 -> refreshProfileUI()
+            }
+            // 已登录时后台预加载资料，任何页面切过来都不会再看到「未登录」
+            if (target != 3 && session.isLoggedIn) refreshProfileUI()
         }
         binding.pageHome.tvLog.movementMethod = ScrollingMovementMethod()
 
