@@ -24,6 +24,8 @@ import android.text.TextUtils;
  */
 class LrcEntry implements Comparable<LrcEntry> {
     private long time;
+    /** 该行结束时间（毫秒），-1 表示未提供（自定义格式 [开始]正文[结束]） */
+    private long endTime = -1L;
     private String text;
     private String secondText;
     private StaticLayout staticLayout;
@@ -39,6 +41,14 @@ class LrcEntry implements Comparable<LrcEntry> {
     public static final int GRAVITY_CENTER = 0;
     public static final int GRAVITY_LEFT = 1;
     public static final int GRAVITY_RIGHT = 2;
+
+    long getEndTime() {
+        return endTime;
+    }
+
+    void setEndTime(long endTime) {
+        this.endTime = endTime;
+    }
 
     LrcEntry(long time, String text) {
         this.time = time;

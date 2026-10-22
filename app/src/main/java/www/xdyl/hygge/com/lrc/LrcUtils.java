@@ -143,6 +143,21 @@ class LrcUtils {
             }
         }
 
+        // 单文件双语：相同开始时间的相邻两行 → 第二行作为翻译
+        if (entryList.size() > 1) {
+            List<LrcEntry> merged = new ArrayList<>();
+            for (LrcEntry e : entryList) {
+                LrcEntry prev = merged.isEmpty() ? null : merged.get(merged.size() - 1);
+                if (prev != null && prev.getTime() == e.getTime() && TextUtils.isEmpty(prev.getSecondText())) {
+                    prev.setSecondText(e.getText());
+                    if (prev.getEndTime() <= prev.getTime()) prev.setEndTime(e.getEndTime());
+                } else {
+                    merged.add(e);
+                }
+            }
+            entryList = merged;
+        }
+
         Collections.sort(entryList);
         return entryList;
     }
@@ -220,6 +235,35 @@ class LrcUtils {
         }
         String text = cleaned.toString();
 
+        // 自定义格式：[开始]正文[结束] —— 末尾的时间标签作为本行结束时间
+        long endTime = -1L;
+        {
+            Matcher tailM = PATTERN_TIME.matcher(text);
+            int tailStart = -1;
+            String tailStr = null;
+            while (tailM.find()) {
+                if (text.substring(tailM.end()).trim().isEmpty()) {
+                    tailStart = tailM.start();
+                    tailStr = tailM.group();
+                }
+            }
+            if (tailStart >= 0 && tailStr != null) {
+                Matcher one = PATTERN_TIME.matcher(tailStr);
+                if (one.find()) {
+                    try {
+                        long mm = Long.parseLong(one.group(1));
+                        long ss = Long.parseLong(one.group(2));
+                        String ms = one.group(3);
+                        long msv = Long.parseLong(ms);
+                        if (ms.length() == 2) msv *= 10;
+                        endTime = mm * DateUtils.MINUTE_IN_MILLIS + ss * DateUtils.SECOND_IN_MILLIS + msv;
+                    } catch (Exception ignored) {
+                    }
+                }
+                text = text.substring(0, tailStart).trim();
+            }
+        }
+
         List<LrcEntry> entryList = new ArrayList<>();
 
         // [00:17.65]
@@ -235,6 +279,7 @@ class LrcUtils {
             }
             long time = min * DateUtils.MINUTE_IN_MILLIS + sec * DateUtils.SECOND_IN_MILLIS + mil;
             LrcEntry entry = new LrcEntry(time, text);
+            entry.setEndTime(endTime);
             if (!wTimes.isEmpty()) {
                 long[] wt = new long[wTimes.size()];
                 for (int k = 0; k < wt.length; k++) wt[k] = wTimes.get(k);

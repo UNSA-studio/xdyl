@@ -432,12 +432,21 @@ public class LrcView extends View {
                     invalidate();
                 }
             }
-            // KTV：计算本行演唱进度（当前行开始 -> 下一行开始）
+            // KTV：计算本行演唱进度
+            // 优先用歌词自带结束时间 [开始]正文[结束]，这样区间只覆盖“真正在唱”的部分，
+            // 不会被后面的伴奏/间奏拉长导致匀速假动画。没给结束时间才退回“到下一行开始”。
             if (line >= 0 && line < mLrcEntryList.size()) {
-                long startT = mLrcEntryList.get(line).getTime();
-                long endT = (line + 1 < mLrcEntryList.size())
-                        ? mLrcEntryList.get(line + 1).getTime()
-                        : startT + 4000L;
+                LrcEntry cur = mLrcEntryList.get(line);
+                long startT = cur.getTime();
+                long declaredEnd = cur.getEndTime();
+                long endT;
+                if (declaredEnd > startT) {
+                    endT = declaredEnd;
+                } else if (line + 1 < mLrcEntryList.size()) {
+                    endT = mLrcEntryList.get(line + 1).getTime();
+                } else {
+                    endT = startT + 4000L;
+                }
                 long span = Math.max(endT - startT, 200L);
                 mLineProgress = Math.max(0f, Math.min(1f, (time - startT) / (float) span));
                 mCurrentTime = time;
