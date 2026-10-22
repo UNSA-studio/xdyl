@@ -91,7 +91,7 @@ object ChatPage {
                 // 每 5 个 tick（约 20 秒）向后端同步一次：
                 // 以前只在进入聊天窗口时才 pull，停在列表页永远收不到新消息。
                 convNetTick++
-                if (convNetTick % 5 == 0) {
+                if (convNetTick % 8 == 0) {
                     val act = c.context as? AppCompatActivity
                     if (act != null) {
                         Thread {
@@ -605,7 +605,7 @@ object ChatPage {
                     pollFail == 2 -> 2L
                     else -> 4L
                 }
-                val next = (15000L * factor).coerceAtMost(60000L)
+                val next = (6500L * factor).coerceAtMost(30000L)
                 pollHandler.postDelayed(this, next)
             }
         }
