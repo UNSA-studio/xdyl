@@ -126,6 +126,10 @@ class LrcEntry implements Comparable<LrcEntry> {
     }
 
 
+    String getSecondText() {
+        return secondText;
+    }
+
     void setSecondText(String secondText) {
         this.secondText = secondText;
     }
