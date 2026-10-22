@@ -369,27 +369,12 @@ class MainActivity : AppCompatActivity() {
             audioBinding.lyricView.updateTime(0)
             return
         }
-
-        val lines = LrcParser.parseFile(sidecar)
-        if (lines.isEmpty()) {
-            audioBinding.lyricView.loadLrc(sidecar)
-            audioBinding.lyricView.updateTime(0)
-            return
-        }
-
-        val hasTranslation = lines.any { it.translation != null }
-        if (hasTranslation) {
-            val mainSb = StringBuilder()
-            val transSb = StringBuilder()
-            lines.forEach { l ->
-                val ts = formatLrcTime(l.timeMs)
-                mainSb.append(ts).append(l.text).append("\n")
-                transSb.append(ts).append(l.translation ?: "").append("\n")
-            }
-            audioBinding.lyricView.loadLrc(mainSb.toString(), transSb.toString())
-        } else {
-            audioBinding.lyricView.loadLrc(sidecar)
-        }
+        // 直接交给 LrcView 内部的 LrcUtils：
+        //   · 支持 [开始]正文[结束] 自定义格式（含结束时间，KTV 区间更准）
+        //   · 同时间戳的两行自动合并成「原文 + 译词」
+        // 以前这里先用旧 LrcParser 拆译文再拼回文本，会把行尾的 [00:17.46] 当成新时间戳，
+        // 导致一句话被拆成两句、并且丢掉结束时间。
+        audioBinding.lyricView.loadLrc(sidecar)
         audioBinding.lyricView.updateTime(0)
     }
 
