@@ -605,7 +605,7 @@ object ChatPage {
                     pollFail == 2 -> 2L
                     else -> 4L
                 }
-                val next = (6500L * factor).coerceAtMost(30000L)
+                val next = (3000L * factor).coerceAtMost(20000L)
                 pollHandler.postDelayed(this, next)
             }
         }
