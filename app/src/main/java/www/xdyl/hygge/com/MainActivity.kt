@@ -552,18 +552,27 @@ class MainActivity : AppCompatActivity() {
         return (s / 60).toString() + ":" + String.format(Locale.US, "%02d", s % 60)
     }
 
+    /** 每日歌曲卡片：展开 / 收起切换 */
+    private fun applySongCardCollapsed(collapsed: Boolean) {
+        val ph = binding.pageHome
+        ph.cardSong.visibility = if (collapsed) View.GONE else View.VISIBLE
+        ph.cardSongMini.visibility = if (collapsed) View.VISIBLE else View.GONE
+    }
+
     private fun showSongCard() {
         val ph = binding.pageHome
         val song = MusicPack.dailySong(prefs)
         if (song == null) {
             ph.cardSong.visibility = View.GONE
+            ph.cardSongMini.visibility = View.GONE
             ph.cardQuote.visibility = View.VISIBLE
             return
         }
         ph.cardQuote.visibility = View.GONE
-        ph.cardSong.visibility = View.VISIBLE
+        applySongCardCollapsed(prefs.getBoolean("song_card_collapsed", false))
         ph.tvSongTitle.text = "今日歌曲"
         ph.tvSongName.text = song.nameWithoutExtension
+        ph.tvSongNameMini.text = song.nameWithoutExtension
         ph.tvSongArtist.text = ""
         ph.tvSongArtist.visibility = View.GONE
         ph.tvSongLine.text = ""
@@ -590,9 +599,16 @@ class MainActivity : AppCompatActivity() {
             val bgH = (184 * ms.density).toInt()
             val bg = if (bmp != null) Blur.blurForBackground(bmp, bgW, bgH) else null
             withContext(Dispatchers.Main) {
-                if (bmp != null) ph.ivSongCover.setImageBitmap(bmp)
-                if (bg != null) ph.ivSongBg.setImageBitmap(bg)
+                if (bmp != null) {
+                    ph.ivSongCover.setImageBitmap(bmp)
+                    ph.ivSongCoverMini.setImageBitmap(bmp)
+                }
+                if (bg != null) {
+                    ph.ivSongBg.setImageBitmap(bg)
+                    ph.ivSongBgMini.setImageBitmap(bg)
+                }
                 ph.tvSongArtist.text = artist
+                ph.tvSongArtistMini.text = artist
                 ph.tvSongArtist.visibility = if (artist.isBlank()) View.GONE else View.VISIBLE
             }
             LogManager.log("[SONG] ID3 title=" + meta.title + " artist=" + artist + " coverBytes=" + (meta.cover?.size ?: 0))
@@ -600,6 +616,20 @@ class MainActivity : AppCompatActivity() {
 
         ph.btnSongPlay.setOnClickListener {
             AudioPlayer.play(this, song.absolutePath)
+        }
+
+        ph.btnSongPlayMini.setOnClickListener {
+            AudioPlayer.play(this, song.absolutePath)
+        }
+
+        ph.btnSongCollapse.setOnClickListener {
+            prefs.edit().putBoolean("song_card_collapsed", true).apply()
+            applySongCardCollapsed(true)
+        }
+
+        ph.btnSongExpand.setOnClickListener {
+            prefs.edit().putBoolean("song_card_collapsed", false).apply()
+            applySongCardCollapsed(false)
         }
 
         ph.sbSong.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
@@ -626,13 +656,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         AudioPlayer.onState = { st ->
-            ph.btnSongPlay.text = when {
+            val label = when {
                 st.startsWith("playing") -> "暂停"
                 st.startsWith("paused") -> "继续"
                 st.startsWith("completed") -> "重播"
                 st.startsWith("error") -> "播放失败"
                 else -> "播放"
             }
+            ph.btnSongPlay.text = label
+            ph.btnSongPlayMini.text = label
         }
 
         // 自动播放（同一首不重头播）
