@@ -13,7 +13,3 @@ local.properties
 app/src/main/jniLibs/
 app/src/main/cpp/boringssl/
 
-# secrets (never commit)
-*.pem
-*.pfx
-*.key
