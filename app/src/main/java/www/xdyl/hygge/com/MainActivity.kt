@@ -559,33 +559,24 @@ class MainActivity : AppCompatActivity() {
     private fun applySongCardCollapsed(collapsed: Boolean, animate: Boolean = false) {
         val ph = binding.pageHome
         val c = ph.songContainer
-        val full = ph.cardSong
-        val mini = ph.cardSongMini
+        val full = ph.songContentFull
+        val mini = ph.songContentMini
         val target = dp(if (collapsed) 66 else 184)
 
         if (!animate) {
             c.layoutParams = c.layoutParams.also { it.height = target }
-            if (collapsed) {
-                full.visibility = View.INVISIBLE
-                full.alpha = 0f
-                mini.visibility = View.VISIBLE
-                mini.alpha = 1f
-            } else {
-                full.visibility = View.VISIBLE
-                full.alpha = 1f
-                mini.visibility = View.INVISIBLE
-                mini.alpha = 0f
-            }
+            full.alpha = if (collapsed) 0f else 1f
+            mini.alpha = if (collapsed) 1f else 0f
             c.requestLayout()
             return
         }
 
         val startH = c.layoutParams.height
         if (startH == target) {
-            if (collapsed) full.visibility = View.INVISIBLE else mini.visibility = View.INVISIBLE
+            full.alpha = if (collapsed) 0f else 1f
+            mini.alpha = if (collapsed) 1f else 0f
             return
         }
-        if (collapsed) mini.visibility = View.VISIBLE else full.visibility = View.VISIBLE
 
         val va = android.animation.ValueAnimator.ofInt(startH, target)
         va.duration = 240L
@@ -602,11 +593,6 @@ class MainActivity : AppCompatActivity() {
                 mini.alpha = 1f - t
             }
         }
-        va.addListener(object : android.animation.AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: android.animation.Animator) {
-                if (collapsed) full.visibility = View.INVISIBLE else mini.visibility = View.INVISIBLE
-            }
-        })
         va.start()
     }
 
@@ -654,10 +640,7 @@ class MainActivity : AppCompatActivity() {
                     ph.ivSongCover.setImageBitmap(bmp)
                     ph.ivSongCoverMini.setImageBitmap(bmp)
                 }
-                if (bg != null) {
-                    ph.ivSongBg.setImageBitmap(bg)
-                    ph.ivSongBgMini.setImageBitmap(bg)
-                }
+                if (bg != null) ph.ivSongBg.setImageBitmap(bg)
                 ph.tvSongArtist.text = artist
                 ph.tvSongArtistMini.text = artist
                 ph.tvSongArtist.visibility = if (artist.isBlank()) View.GONE else View.VISIBLE
