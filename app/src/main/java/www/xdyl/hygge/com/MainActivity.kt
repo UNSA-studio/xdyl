@@ -656,9 +656,6 @@ class MainActivity : AppCompatActivity() {
             AudioPlayer.play(this, song.absolutePath)
         }
 
-        ph.boxSongPlayMini.setOnClickListener {
-            AudioPlayer.play(this, song.absolutePath)
-        }
 
         ph.btnSongCollapse.setOnClickListener {
             prefs.edit().putBoolean("song_card_collapsed", true).apply()
@@ -687,7 +684,7 @@ class MainActivity : AppCompatActivity() {
         AudioPlayer.onProgress = { cur, total ->
             val p = if (total > 0) (cur * 1000L / total).toInt() else 0
             ph.sbSong.progress = p
-            ph.ringSongMini.progress = p / 1000f
+            ph.pbSongCover.progress = p
             ph.tvSongTime.text = fmtTime(cur) + " / " + fmtTime(total)
             if (songLyric.isNotEmpty()) {
                 val line = SongLyric.lineAt(songLyric, cur)

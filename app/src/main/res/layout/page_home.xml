@@ -433,21 +433,37 @@
                     android:paddingStart="12dp"
                     android:paddingEnd="8dp">
 
-                    <com.google.android.material.card.MaterialCardView
+                    <FrameLayout
                         android:layout_width="42dp"
-                        android:layout_height="42dp"
-                        app:cardCornerRadius="8dp"
-                        app:cardElevation="0dp"
-                        app:strokeWidth="0dp"
-                        app:cardBackgroundColor="#33FFFFFF">
+                        android:layout_height="42dp">
 
-                        <ImageView
-                            android:id="@+id/ivSongCoverMini"
+                        <com.google.android.material.card.MaterialCardView
                             android:layout_width="match_parent"
                             android:layout_height="match_parent"
-                            android:scaleType="centerCrop"
-                            android:contentDescription="封面" />
-                    </com.google.android.material.card.MaterialCardView>
+                            app:cardCornerRadius="8dp"
+                            app:cardElevation="0dp"
+                            app:strokeWidth="0dp"
+                            app:cardBackgroundColor="#33FFFFFF">
+
+                            <ImageView
+                                android:id="@+id/ivSongCoverMini"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:scaleType="centerCrop"
+                                android:contentDescription="封面" />
+                        </com.google.android.material.card.MaterialCardView>
+
+                        <ProgressBar
+                            android:id="@+id/pbSongCover"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="2.5dp"
+                            android:layout_gravity="bottom"
+                            android:max="1000"
+                            android:progress="0"
+                            android:progressTint="@color/primary_light_blue"
+                            android:progressBackgroundTint="#33FFFFFF" />
+                    </FrameLayout>
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -476,26 +492,15 @@
                             android:textSize="11sp" />
                     </LinearLayout>
 
-                    <FrameLayout
-                        android:id="@+id/boxSongPlayMini"
-                        android:layout_width="44dp"
-                        android:layout_height="44dp">
-
-                        <www.xdyl.hygge.com.RingProgressView
-                            android:id="@+id/ringSongMini"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent" />
-
-                        <ImageView
-                            android:id="@+id/btnSongPlayMini"
-                            android:layout_width="30dp"
-                            android:layout_height="30dp"
-                            android:layout_gravity="center"
-                            android:padding="5dp"
-                            android:src="@drawable/ic_play"
-                            android:tint="#FFFFFFFF"
-                            android:contentDescription="播放" />
-                    </FrameLayout>
+                    <ImageView
+                        android:id="@+id/btnSongPlayMini"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:padding="9dp"
+                        android:src="@drawable/ic_play"
+                        android:tint="#FFFFFFFF"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="播放" />
 
                     <ImageView
                         android:id="@+id/btnSongExpand"
