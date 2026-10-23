@@ -544,6 +544,7 @@ class MainActivity : AppCompatActivity() {
 
     // ===== \u6bcf\u65e5\u6b4c\u66f2 =====
     private var songLyric: List<Pair<Int, String>> = emptyList()
+    private var autoPlayedSong: String = ""
 
     private fun fmtTime(ms: Int): String {
         if (ms < 0) return "0:00"
@@ -630,10 +631,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         // 自动播放（同一首不重头播）
-        if (AudioPlayer.currentSourcePath() != song.absolutePath) {
+        if (autoPlayedSong != song.absolutePath) {
+            autoPlayedSong = song.absolutePath
             AudioPlayer.play(this, song.absolutePath)
-        } else if (!AudioPlayer.isPlaying) {
-            AudioPlayer.toggle()
         }
 
         LogManager.log("[SONG] 首页歌曲: " + song.name + "，歌词 " + songLyric.size + " 行")
