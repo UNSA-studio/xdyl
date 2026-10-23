@@ -542,12 +542,86 @@ class MainActivity : AppCompatActivity() {
         LogManager.log("没有可恢复的目录，targetModsDir 保持为 ${targetModsDir?.absolutePath ?: "null"}")
     }
 
+    // ===== \u6bcf\u65e5\u6b4c\u66f2 =====
+    private var songLyric: List<Pair<Int, String>> = emptyList()
+
+    private fun fmtTime(ms: Int): String {
+        if (ms < 0) return "0:00"
+        val s = ms / 1000
+        return (s / 60).toString() + ":" + String.format(Locale.US, "%02d", s % 60)
+    }
+
+    private fun showSongCard() {
+        val ph = binding.pageHome
+        val song = MusicPack.dailySong(prefs)
+        if (song == null) {
+            ph.cardSong.visibility = View.GONE
+            ph.cardQuote.visibility = View.VISIBLE
+            return
+        }
+        ph.cardQuote.visibility = View.GONE
+        ph.cardSong.visibility = View.VISIBLE
+        ph.tvSongTitle.text = "\u4eca\u65e5\u6b4c\u66f2"
+        ph.tvSongName.text = song.nameWithoutExtension
+        songLyric = SongLyric.load(MusicPack.sidecar(song))
+        ph.tvSongLine.text = if (songLyric.isEmpty()) "" else "\u70b9\u64ad\u653e\uff0c\u6b4c\u8bcd\u968f\u8fdb\u5ea6\u6eda\u52a8"
+        ph.tvSongTime.text = "0:00 / 0:00"
+        ph.sbSong.max = 1000
+        ph.sbSong.progress = 0
+        ph.btnSongPlay.text = "\u64ad\u653e"
+
+        ph.btnSongPlay.setOnClickListener {
+            AudioPlayer.play(this, song.absolutePath)
+        }
+
+        ph.sbSong.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                val dur = AudioPlayer.durationMs
+                if (dur > 0) {
+                    val target = dur * progress / 1000
+                    AudioPlayer.seekTo(target)
+                    ph.tvSongTime.text = fmtTime(target) + " / " + fmtTime(dur)
+                }
+            }
+            override fun onStartTrackingTouch(sb: android.widget.SeekBar?) {}
+            override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {}
+        })
+
+        AudioPlayer.onProgress = { cur, total ->
+            ph.sbSong.progress = if (total > 0) (cur * 1000L / total).toInt() else 0
+            ph.tvSongTime.text = fmtTime(cur) + " / " + fmtTime(total)
+            if (songLyric.isNotEmpty()) {
+                val line = SongLyric.lineAt(songLyric, cur)
+                if (ph.tvSongLine.text != line) ph.tvSongLine.text = line
+            }
+        }
+
+        AudioPlayer.onState = { st ->
+            ph.btnSongPlay.text = when {
+                st.startsWith("playing") -> "\u6682\u505c"
+                st.startsWith("paused") -> "\u7ee7\u7eed"
+                st.startsWith("completed") -> "\u91cd\u64ad"
+                st.startsWith("error") -> "\u64ad\u653e\u5931\u8d25"
+                else -> "\u64ad\u653e"
+            }
+        }
+
+        LogManager.log("[SONG] \u9996\u9875\u6b4c\u66f2: " + song.name + "\uff0c\u6b4c\u8bcd " + songLyric.size + " \u884c")
+    }
+
     // ========== 每日名言 ==========
     private var quoteLoading = false
     private var cachedQuote: Pair<String, Quote>? = null
     private var cachedQuoteDate: String = ""
 
     private fun loadDailyQuote() {
+        // 每日歌曲开启且曲库就绪 → 用歌曲卡片替换名言
+        if (prefs.getBoolean("daily_song_enabled", false) and MusicPack.isReady()) {
+            showSongCard()
+            return
+        }
+
         if (quoteLoading) return
         val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
         // 内存缓存命中，直接显示

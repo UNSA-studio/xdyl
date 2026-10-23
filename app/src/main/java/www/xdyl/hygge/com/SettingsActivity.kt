@@ -103,8 +103,133 @@ class SettingsActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
         }
 
+        // ===== 每日歌曲（主设置） =====
+        binding.swDailySong.isChecked = prefs.getBoolean("daily_song_enabled", false)
+        updateSongPackStatus()
+
+        binding.swDailySong.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                if (MusicPack.isReady()) {
+                    prefs.edit().putBoolean("daily_song_enabled", true).commit()
+                    askRestartForSong()
+                } else {
+                    MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+                        .setTitle("每日歌曲")
+                        .setMessage("需要先下载音乐包（约 224 MB，35 首）。\n\n下载并解压完成后需要重启应用才能生效。")
+                        .setPositiveButton("开始下载") { _, _ -> startSongPackDownload() }
+                        .setNegativeButton("取消") { _, _ -> binding.swDailySong.isChecked = false }
+                        .setOnCancelListener { binding.swDailySong.isChecked = false }
+                        .show()
+                }
+            } else {
+                prefs.edit().putBoolean("daily_song_enabled", false).commit()
+                MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+                    .setTitle("每日歌曲")
+                    .setMessage("已关闭每日歌曲。\n\n需要重启应用后才会恢复显示「今日名言」。")
+                    .setPositiveButton("立即重启") { _, _ -> restartApp() }
+                    .setNegativeButton("稍后", null)
+                    .show()
+            }
+        }
+
+        binding.btnSongPack.setOnClickListener {
+            if (MusicPack.isReady()) {
+                prefs.edit().putBoolean("daily_song_enabled", true).commit()
+                updateSongPackStatus()
+                askRestartForSong()
+            } else {
+                startSongPackDownload()
+            }
+        }
+
         binding.btnErrorCodes.setOnClickListener { showErrorCodes() }
         binding.btnAbout.setOnClickListener { showAbout() }
+    }
+
+    // ===== 每日歌曲：状态与下载 =====
+
+    private fun updateSongPackStatus() {
+        val ready = MusicPack.isReady()
+        val enabled = prefs.getBoolean("daily_song_enabled", false)
+        binding.tvSongPackStatus.text = when {
+            ready -> "音乐包已就绪（" + MusicPack.songs().size + " 首）· 当前状态：" +
+                    (if (enabled) "已开启" else "已关闭")
+            MusicPack.archiveFile().exists() -> "音乐包已下载，尚未解压"
+            else -> "音乐包未下载（约 224 MB，35 首）"
+        }
+        if (ready) {
+            binding.btnSongPack.visibility = View.GONE
+        } else {
+            binding.btnSongPack.visibility = View.VISIBLE
+            binding.btnSongPack.text =
+                if (MusicPack.archiveFile().exists()) "继续解压音乐包" else "下载音乐包"
+        }
+    }
+
+    private fun askRestartForSong() {
+        MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+            .setTitle("每日歌曲已开启")
+            .setMessage("设置已保存，需要重启应用才能生效。
+
+重启后首页的「今日名言」会换成「今日歌曲」。")
+            .setPositiveButton("立即重启") { _, _ -> restartApp() }
+            .setNegativeButton("稍后", null)
+            .show()
+    }
+
+    private fun restartApp() {
+        finishAffinity()
+        val intent = packageManager.getLaunchIntentForPackage(packageName)
+        if (intent != null) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            startActivity(intent)
+        }
+        System.exit(0)
+    }
+
+    private fun startSongPackDownload() {
+        binding.btnSongPack.isEnabled = false
+        binding.pbSongPack.visibility = View.VISIBLE
+        binding.pbSongPack.isIndeterminate = false
+        binding.pbSongPack.progress = 0
+        binding.tvSongPackStatus.text = "正在下载音乐包… 0%"
+        var lastPct = -1
+        scope.launch {
+            val okDl = withContext(Dispatchers.IO) {
+                MusicPack.download { done, total ->
+                    val pct = if (total > 0) (done * 100 / total).toInt() else 0
+                    if (pct != lastPct) {
+                        lastPct = pct
+                        runOnUiThread {
+                            binding.pbSongPack.progress = pct
+                            binding.tvSongPackStatus.text = "正在下载音乐包… " + pct + "%（" +
+                                    (done / 1048576) + " / " + (total / 1048576) + " MB）"
+                        }
+                    }
+                }
+            }
+            if (!okDl) {
+                binding.pbSongPack.visibility = View.GONE
+                binding.btnSongPack.isEnabled = true
+                binding.btnSongPack.text = "继续下载音乐包"
+                binding.tvSongPackStatus.text = "下载失败，可重新点击继续（支持断点续传）"
+                return@launch
+            }
+            binding.pbSongPack.isIndeterminate = true
+            binding.tvSongPackStatus.text = "正在解压音乐包…"
+            val okUnzip = withContext(Dispatchers.IO) { MusicPack.extract() }
+            binding.pbSongPack.isIndeterminate = false
+            binding.btnSongPack.isEnabled = true
+            if (okUnzip) {
+                prefs.edit().putBoolean("daily_song_enabled", true).commit()
+                binding.pbSongPack.visibility = View.GONE
+                updateSongPackStatus()
+                askRestartForSong()
+            } else {
+                binding.tvSongPackStatus.text = "解压失败，可重新点击重试"
+                binding.btnSongPack.text = "重新解压"
+            }
+        }
     }
 
     private fun loadPrefs() {

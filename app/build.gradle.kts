@@ -99,4 +99,7 @@ dependencies {
     implementation("dev.mobile:dadb:2.0.0")            // ADB 客户端库
     implementation("pl.droidsonroids.gif:android-gif-drawable:1.2.28") // GIF 动图（自带 native 解码，避开系统 AnimatedImageDrawable 崩溃）
     implementation("androidx.media3:media3-exoplayer:1.4.1")
+    // 7z 解压（纯 Java：commons-compress + xz）
+    implementation("org.apache.commons:commons-compress:1.26.2")
+    implementation("org.tukaani:xz:1.9")
 }
