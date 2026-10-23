@@ -553,34 +553,74 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** 每日歌曲卡片：展开 / 收起切换 */
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+    /** 每日歌曲：展开 / 收起（高度收缩动画，像 QQ音乐） */
     private fun applySongCardCollapsed(collapsed: Boolean, animate: Boolean = false) {
         val ph = binding.pageHome
-        if (animate) {
-            val set = android.transition.TransitionSet()
-            set.addTransition(android.transition.ChangeBounds())
-            set.addTransition(android.transition.Fade())
-            set.duration = 220L
-            try {
-                android.transition.TransitionManager.beginDelayedTransition(ph.root, set)
-            } catch (e: Exception) {
-                LogManager.log("[SONG] transition failed: " + e.message)
+        val c = ph.songContainer
+        val full = ph.cardSong
+        val mini = ph.cardSongMini
+        val target = dp(if (collapsed) 66 else 184)
+
+        if (!animate) {
+            c.layoutParams = c.layoutParams.also { it.height = target }
+            if (collapsed) {
+                full.visibility = View.INVISIBLE
+                full.alpha = 0f
+                mini.visibility = View.VISIBLE
+                mini.alpha = 1f
+            } else {
+                full.visibility = View.VISIBLE
+                full.alpha = 1f
+                mini.visibility = View.INVISIBLE
+                mini.alpha = 0f
+            }
+            c.requestLayout()
+            return
+        }
+
+        val startH = c.layoutParams.height
+        if (startH == target) {
+            if (collapsed) full.visibility = View.INVISIBLE else mini.visibility = View.INVISIBLE
+            return
+        }
+        if (collapsed) mini.visibility = View.VISIBLE else full.visibility = View.VISIBLE
+
+        val va = android.animation.ValueAnimator.ofInt(startH, target)
+        va.duration = 240L
+        va.interpolator = android.view.animation.DecelerateInterpolator()
+        va.addUpdateListener { a ->
+            val t = a.animatedFraction
+            c.layoutParams = c.layoutParams.also { it.height = (startH + (target - startH) * t).toInt() }
+            c.requestLayout()
+            if (collapsed) {
+                full.alpha = 1f - t
+                mini.alpha = t
+            } else {
+                full.alpha = t
+                mini.alpha = 1f - t
             }
         }
-        ph.cardSong.visibility = if (collapsed) View.GONE else View.VISIBLE
-        ph.cardSongMini.visibility = if (collapsed) View.VISIBLE else View.GONE
+        va.addListener(object : android.animation.AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: android.animation.Animator) {
+                if (collapsed) full.visibility = View.INVISIBLE else mini.visibility = View.INVISIBLE
+            }
+        })
+        va.start()
     }
 
     private fun showSongCard() {
         val ph = binding.pageHome
         val song = MusicPack.dailySong(prefs)
         if (song == null) {
-            ph.cardSong.visibility = View.GONE
-            ph.cardSongMini.visibility = View.GONE
+            ph.songContainer.visibility = View.GONE
             ph.cardQuote.visibility = View.VISIBLE
             return
         }
         ph.cardQuote.visibility = View.GONE
-        applySongCardCollapsed(prefs.getBoolean("song_card_collapsed", false))
+        ph.songContainer.visibility = View.VISIBLE
+        applySongCardCollapsed(prefs.getBoolean("song_card_collapsed", false), false)
         ph.tvSongTitle.text = "今日歌曲"
         ph.tvSongName.text = song.nameWithoutExtension
         ph.tvSongNameMini.text = song.nameWithoutExtension

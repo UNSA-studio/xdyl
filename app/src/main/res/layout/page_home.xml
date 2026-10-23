@@ -239,22 +239,27 @@
     </LinearLayout>
 
     <!-- 每日歌曲面板（封面模糊打底） -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/cardSong"
+    <FrameLayout
+        android:id="@+id/songContainer"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="184dp"
         android:visibility="gone"
-        app:cardBackgroundColor="#1C2330"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="0dp"
-        app:strokeWidth="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardSong"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:cardBackgroundColor="#1C2330"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="184dp">
+            android:layout_height="match_parent">
 
             <ImageView
                 android:id="@+id/ivSongBg"
@@ -413,16 +418,15 @@
     <!-- 每日歌曲：收起后的迷你条 -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardSongMini"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="66dp"
+        android:layout_gravity="bottom"
         android:visibility="gone"
+        android:alpha="0"
         app:cardBackgroundColor="#1C2330"
         app:cardCornerRadius="16dp"
         app:cardElevation="0dp"
-        app:strokeWidth="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+        app:strokeWidth="0dp">
 
         <FrameLayout
             android:layout_width="match_parent"
@@ -526,6 +530,8 @@
 
         </FrameLayout>
     </com.google.android.material.card.MaterialCardView>
+
+    </FrameLayout>
 
     <!-- 绿色覆盖层 -->
     <View
