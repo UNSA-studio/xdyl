@@ -17,7 +17,7 @@ class RingProgressView @JvmOverloads constructor(
 ) : View(context, attrs, defStyle) {
 
     private val density = resources.displayMetrics.density
-    private val strokePx = 2.5f * density
+    private val strokePx = 3f * density
 
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -28,7 +28,7 @@ class RingProgressView @JvmOverloads constructor(
     private val fgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = strokePx
-        color = 0xD9FFFFFF.toInt()
+        color = 0xFFA0C4FF.toInt()
         strokeCap = Paint.Cap.ROUND
     }
 
