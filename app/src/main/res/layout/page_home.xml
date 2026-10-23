@@ -292,21 +292,15 @@
                         android:textStyle="bold"
                         android:letterSpacing="0.12" />
 
-                    <com.google.android.material.button.MaterialButton
+                    <ImageView
                         android:id="@+id/btnSongPlay"
-                        android:layout_width="wrap_content"
-                        android:layout_height="30dp"
-                        android:text="播放"
-                        android:textSize="12sp"
-                        android:textColor="#0B1017"
-                        android:minWidth="0dp"
-                        android:minHeight="0dp"
-                        android:paddingLeft="18dp"
-                        android:paddingRight="18dp"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        app:backgroundTint="#F2FFFFFF"
-                        app:cornerRadius="15dp" />
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_circle_white"
+                        android:padding="11dp"
+                        android:src="@drawable/ic_play"
+                        android:tint="#0B1017"
+                        android:contentDescription="播放" />
 
                     <ImageView
                         android:id="@+id/btnSongCollapse"
@@ -497,21 +491,15 @@
                         android:textSize="11sp" />
                 </LinearLayout>
 
-                <com.google.android.material.button.MaterialButton
+                <ImageView
                     android:id="@+id/btnSongPlayMini"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:text="播放"
-                    android:textSize="12sp"
-                    android:textColor="#0B1017"
-                    android:minWidth="0dp"
-                    android:minHeight="0dp"
-                    android:paddingLeft="16dp"
-                    android:paddingRight="16dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    app:backgroundTint="#F2FFFFFF"
-                    app:cornerRadius="15dp" />
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:background="@drawable/bg_circle_white"
+                    android:padding="9dp"
+                    android:src="@drawable/ic_play"
+                    android:tint="#0B1017"
+                    android:contentDescription="播放" />
 
                 <ImageView
                     android:id="@+id/btnSongExpand"
@@ -525,6 +513,17 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="展开" />
             </LinearLayout>
+            <ProgressBar
+                android:id="@+id/pbSongMini"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:layout_gravity="bottom"
+                android:max="1000"
+                android:progress="0"
+                android:progressTint="#D9FFFFFF"
+                android:progressBackgroundTint="#33FFFFFF" />
+
         </FrameLayout>
     </com.google.android.material.card.MaterialCardView>
 

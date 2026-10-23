@@ -553,8 +553,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** 每日歌曲卡片：展开 / 收起切换 */
-    private fun applySongCardCollapsed(collapsed: Boolean) {
+    private fun applySongCardCollapsed(collapsed: Boolean, animate: Boolean = false) {
         val ph = binding.pageHome
+        if (animate) {
+            val set = android.transition.TransitionSet()
+            set.addTransition(android.transition.ChangeBounds())
+            set.addTransition(android.transition.Fade())
+            set.duration = 220L
+            try {
+                android.transition.TransitionManager.beginDelayedTransition(ph.root, set)
+            } catch (e: Exception) {
+                LogManager.log("[SONG] transition failed: " + e.message)
+            }
+        }
         ph.cardSong.visibility = if (collapsed) View.GONE else View.VISIBLE
         ph.cardSongMini.visibility = if (collapsed) View.VISIBLE else View.GONE
     }
@@ -624,12 +635,12 @@ class MainActivity : AppCompatActivity() {
 
         ph.btnSongCollapse.setOnClickListener {
             prefs.edit().putBoolean("song_card_collapsed", true).apply()
-            applySongCardCollapsed(true)
+            applySongCardCollapsed(true, true)
         }
 
         ph.btnSongExpand.setOnClickListener {
             prefs.edit().putBoolean("song_card_collapsed", false).apply()
-            applySongCardCollapsed(false)
+            applySongCardCollapsed(false, true)
         }
 
         ph.sbSong.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
@@ -647,7 +658,9 @@ class MainActivity : AppCompatActivity() {
         })
 
         AudioPlayer.onProgress = { cur, total ->
-            ph.sbSong.progress = if (total > 0) (cur * 1000L / total).toInt() else 0
+            val p = if (total > 0) (cur * 1000L / total).toInt() else 0
+            ph.sbSong.progress = p
+            ph.pbSongMini.progress = p
             ph.tvSongTime.text = fmtTime(cur) + " / " + fmtTime(total)
             if (songLyric.isNotEmpty()) {
                 val line = SongLyric.lineAt(songLyric, cur)
@@ -656,15 +669,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         AudioPlayer.onState = { st ->
-            val label = when {
-                st.startsWith("playing") -> "暂停"
-                st.startsWith("paused") -> "继续"
-                st.startsWith("completed") -> "重播"
-                st.startsWith("error") -> "播放失败"
-                else -> "播放"
-            }
-            ph.btnSongPlay.text = label
-            ph.btnSongPlayMini.text = label
+            val icon = if (st.startsWith("playing")) R.drawable.ic_pause else R.drawable.ic_play
+            ph.btnSongPlay.setImageResource(icon)
+            ph.btnSongPlayMini.setImageResource(icon)
         }
 
         // 自动播放（同一首不重头播）
