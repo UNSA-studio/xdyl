@@ -22,13 +22,13 @@ class RingProgressView @JvmOverloads constructor(
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = strokePx
-        color = 0x33FFFFFF
+        color = 0x33FFFFFF.toInt()
     }
 
     private val fgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = strokePx
-        color = 0xD9FFFFFF
+        color = 0xD9FFFFFF.toInt()
         strokeCap = Paint.Cap.ROUND
     }
 
