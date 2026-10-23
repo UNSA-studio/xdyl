@@ -238,142 +238,171 @@
             </LinearLayout>
     </LinearLayout>
 
-    <!-- 每日歌曲面板（开启每日歌曲时替代名言） -->
-    <LinearLayout
+    <!-- 每日歌曲面板（封面模糊打底） -->
+    <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardSong"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@drawable/song_card_bg"
-        android:padding="14dp"
         android:visibility="gone"
+        app:cardBackgroundColor="#1C2330"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <LinearLayout
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:layout_height="wrap_content">
 
-            <TextView
-                android:id="@+id/tvSongTitle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="今日歌曲"
-                android:textColor="@color/primary_light_blue"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.05" />
+            <ImageView
+                android:id="@+id/ivSongBg"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:alpha="0.9"
+                android:contentDescription="背景" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnSongPlay"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text="播放"
-                android:textSize="12sp"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:paddingLeft="16dp"
-                android:paddingRight="16dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:cornerRadius="16dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="top"
-            android:layout_marginTop="10dp">
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="0dp"
-                app:strokeWidth="0dp"
-                app:cardBackgroundColor="#33FFFFFF">
-
-                <ImageView
-                    android:id="@+id/ivSongCover"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:scaleType="centerCrop"
-                    android:contentDescription="封面" />
-            </com.google.android.material.card.MaterialCardView>
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/song_bg_scrim" />
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:orientation="vertical"
-                android:layout_marginStart="10dp">
+                android:padding="16dp">
 
-                <TextView
-                    android:id="@+id/tvSongName"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    android:textColor="@android:color/white"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:fontFamily="sans-serif" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
-                <TextView
-                    android:id="@+id/tvSongArtist"
+                    <TextView
+                        android:id="@+id/tvSongTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="今日歌曲"
+                        android:textColor="#E6FFFFFF"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.12" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSongPlay"
+                        android:layout_width="wrap_content"
+                        android:layout_height="30dp"
+                        android:text="播放"
+                        android:textSize="12sp"
+                        android:textColor="#0B1017"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:paddingLeft="18dp"
+                        android:paddingRight="18dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        app:backgroundTint="#F2FFFFFF"
+                        app:cornerRadius="15dp" />
+                </LinearLayout>
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    android:textColor="#A0FFFFFF"
-                    android:textSize="11sp"
-                    android:fontFamily="sans-serif" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="12dp">
 
-                <TextView
-                    android:id="@+id/tvSongLine"
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="58dp"
+                        android:layout_height="58dp"
+                        app:cardCornerRadius="10dp"
+                        app:cardElevation="6dp"
+                        app:strokeWidth="1dp"
+                        app:strokeColor="#40FFFFFF"
+                        app:cardBackgroundColor="#33FFFFFF">
+
+                        <ImageView
+                            android:id="@+id/ivSongCover"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:contentDescription="封面" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="12dp">
+
+                        <TextView
+                            android:id="@+id/tvSongName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            android:textColor="@android:color/white"
+                            android:textSize="17sp"
+                            android:textStyle="bold"
+                            android:fontFamily="sans-serif" />
+
+                        <TextView
+                            android:id="@+id/tvSongArtist"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="3dp"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            android:textColor="#B3FFFFFF"
+                            android:textSize="12sp"
+                            android:fontFamily="sans-serif" />
+
+                        <TextView
+                            android:id="@+id/tvSongLine"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            android:minHeight="16dp"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="12sp"
+                            android:fontFamily="sans-serif" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    android:minHeight="16dp"
-                    android:textColor="#CCFFFFFF"
-                    android:textSize="12sp"
-                    android:fontFamily="sans-serif" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp">
+
+                    <SeekBar
+                        android:id="@+id/sbSong"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:paddingTop="0dp"
+                        android:paddingBottom="0dp" />
+
+                    <TextView
+                        android:id="@+id/tvSongTime"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0:00 / 0:00"
+                        android:textColor="#99FFFFFF"
+                        android:textSize="10sp"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
             </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginTop="6dp">
-
-            <SeekBar
-                android:id="@+id/sbSong"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:paddingTop="0dp"
-                android:paddingBottom="0dp" />
-
-            <TextView
-                android:id="@+id/tvSongTime"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0:00 / 0:00"
-                android:textColor="#A0FFFFFF"
-                android:textSize="10sp"
-                android:layout_marginStart="8dp" />
-        </LinearLayout>
-    </LinearLayout>
+        </FrameLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- 绿色覆盖层 -->
     <View
