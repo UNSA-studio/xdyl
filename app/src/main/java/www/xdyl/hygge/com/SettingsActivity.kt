@@ -169,9 +169,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun askRestartForSong() {
         MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
             .setTitle("每日歌曲已开启")
-            .setMessage("设置已保存，需要重启应用才能生效。
-
-重启后首页的「今日名言」会换成「今日歌曲」。")
+            .setMessage("设置已保存，需要重启应用才能生效。\n\n重启后首页的「今日名言」会换成「今日歌曲」。")
             .setPositiveButton("立即重启") { _, _ -> restartApp() }
             .setNegativeButton("稍后", null)
             .show()
