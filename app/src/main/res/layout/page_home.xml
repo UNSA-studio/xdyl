@@ -244,77 +244,135 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@drawable/quote_card_bg"
-        android:padding="12dp"
+        android:background="@drawable/song_card_bg"
+        android:padding="14dp"
         android:visibility="gone"
-        android:layout_marginTop="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <TextView
-            android:id="@+id/tvSongTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="今日歌曲"
-            android:textColor="@color/primary_light_blue"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tvSongName"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:maxLines="2"
-            android:ellipsize="end"
-            android:textColor="@android:color/white"
-            android:textSize="16sp"
-            android:fontFamily="sans-serif" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-        <TextView
-            android:id="@+id/tvSongLine"
+            <TextView
+                android:id="@+id/tvSongTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="今日歌曲"
+                android:textColor="@color/primary_light_blue"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSongPlay"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="播放"
+                android:textSize="12sp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingLeft="16dp"
+                android:paddingRight="16dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                app:cornerRadius="16dp" />
+        </LinearLayout>
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:maxLines="2"
-            android:ellipsize="end"
-            android:minHeight="20dp"
-            android:textColor="#CCFFFFFF"
-            android:textSize="13sp"
-            android:fontFamily="sans-serif" />
+            android:orientation="horizontal"
+            android:gravity="top"
+            android:layout_marginTop="10dp">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="#33FFFFFF">
+
+                <ImageView
+                    android:id="@+id/ivSongCover"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="封面" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="10dp">
+
+                <TextView
+                    android:id="@+id/tvSongName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:textColor="@android:color/white"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif" />
+
+                <TextView
+                    android:id="@+id/tvSongArtist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:textColor="#A0FFFFFF"
+                    android:textSize="11sp"
+                    android:fontFamily="sans-serif" />
+
+                <TextView
+                    android:id="@+id/tvSongLine"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:minHeight="16dp"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif" />
+            </LinearLayout>
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="4dp">
+            android:layout_marginTop="6dp">
 
             <SeekBar
                 android:id="@+id/sbSong"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1" />
+                android:layout_weight="1"
+                android:paddingTop="0dp"
+                android:paddingBottom="0dp" />
 
             <TextView
                 android:id="@+id/tvSongTime"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="0:00 / 0:00"
-                android:textColor="#B0FFFFFF"
-                android:textSize="11sp"
+                android:textColor="#A0FFFFFF"
+                android:textSize="10sp"
                 android:layout_marginStart="8dp" />
         </LinearLayout>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSongPlay"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginTop="4dp"
-            android:text="播放"
-            android:textSize="13sp" />
     </LinearLayout>
 
     <!-- 绿色覆盖层 -->

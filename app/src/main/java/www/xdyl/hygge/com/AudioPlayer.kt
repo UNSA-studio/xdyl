@@ -112,6 +112,9 @@ object AudioPlayer {
         }
     }
 
+    /** 当前播放源路径（未播放时为空） */
+    fun currentSourcePath(): String = currentSource
+
     /** 当场读取播放位置（毫秒）——用于逐帧驱动歌词，不依赖轮询缓存 */
     fun currentPositionNow(): Int {
         return player?.let {

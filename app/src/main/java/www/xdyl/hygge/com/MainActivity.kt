@@ -561,14 +561,36 @@ class MainActivity : AppCompatActivity() {
         }
         ph.cardQuote.visibility = View.GONE
         ph.cardSong.visibility = View.VISIBLE
-        ph.tvSongTitle.text = "\u4eca\u65e5\u6b4c\u66f2"
+        ph.tvSongTitle.text = "今日歌曲"
         ph.tvSongName.text = song.nameWithoutExtension
-        songLyric = SongLyric.load(MusicPack.sidecar(song))
-        ph.tvSongLine.text = if (songLyric.isEmpty()) "" else "\u70b9\u64ad\u653e\uff0c\u6b4c\u8bcd\u968f\u8fdb\u5ea6\u6eda\u52a8"
+        ph.tvSongArtist.text = ""
+        ph.tvSongArtist.visibility = View.GONE
+        ph.tvSongLine.text = ""
         ph.tvSongTime.text = "0:00 / 0:00"
         ph.sbSong.max = 1000
         ph.sbSong.progress = 0
-        ph.btnSongPlay.text = "\u64ad\u653e"
+        val lrcFile = MusicPack.sidecar(song)
+        songLyric = SongLyric.load(lrcFile)
+
+        // 封面 / 艺术家：读 ID3（IO 线程）
+        scope.launch(Dispatchers.IO) {
+            val meta = SongMeta.read(song)
+            var bmp: android.graphics.Bitmap? = null
+            if (meta.cover != null && meta.cover.isNotEmpty()) {
+                bmp = try {
+                    android.graphics.BitmapFactory.decodeByteArray(meta.cover, 0, meta.cover.size)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            val artist = if (meta.artist.isBlank()) SongLyric.tag(lrcFile, "ar") else meta.artist
+            withContext(Dispatchers.Main) {
+                if (bmp != null) ph.ivSongCover.setImageBitmap(bmp)
+                ph.tvSongArtist.text = artist
+                ph.tvSongArtist.visibility = if (artist.isBlank()) View.GONE else View.VISIBLE
+            }
+            LogManager.log("[SONG] ID3 title=" + meta.title + " artist=" + artist + " coverBytes=" + (meta.cover?.size ?: 0))
+        }
 
         ph.btnSongPlay.setOnClickListener {
             AudioPlayer.play(this, song.absolutePath)
@@ -599,15 +621,22 @@ class MainActivity : AppCompatActivity() {
 
         AudioPlayer.onState = { st ->
             ph.btnSongPlay.text = when {
-                st.startsWith("playing") -> "\u6682\u505c"
-                st.startsWith("paused") -> "\u7ee7\u7eed"
-                st.startsWith("completed") -> "\u91cd\u64ad"
-                st.startsWith("error") -> "\u64ad\u653e\u5931\u8d25"
-                else -> "\u64ad\u653e"
+                st.startsWith("playing") -> "暂停"
+                st.startsWith("paused") -> "继续"
+                st.startsWith("completed") -> "重播"
+                st.startsWith("error") -> "播放失败"
+                else -> "播放"
             }
         }
 
-        LogManager.log("[SONG] \u9996\u9875\u6b4c\u66f2: " + song.name + "\uff0c\u6b4c\u8bcd " + songLyric.size + " \u884c")
+        // 自动播放（同一首不重头播）
+        if (AudioPlayer.currentSourcePath() != song.absolutePath) {
+            AudioPlayer.play(this, song.absolutePath)
+        } else if (!AudioPlayer.isPlaying) {
+            AudioPlayer.toggle()
+        }
+
+        LogManager.log("[SONG] 首页歌曲: " + song.name + "，歌词 " + songLyric.size + " 行")
     }
 
     // ========== 每日名言 ==========

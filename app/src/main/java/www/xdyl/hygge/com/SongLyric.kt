@@ -44,4 +44,20 @@ object SongLyric {
         }
         return res
     }
+
+    /** 读取 lrc 头部标签，例如 tag(f, "ar") 取歌手 */
+    fun tag(file: File, key: String): String {
+        if (!file.exists()) return ""
+        return try {
+            file.readLines(Charsets.UTF_8).forEach { l ->
+                val t = l.trim()
+                if (t.startsWith("[" + key + ":")) {
+                    return t.substringAfter(":").substringBefore("]").trim()
+                }
+            }
+            ""
+        } catch (_: Exception) {
+            ""
+        }
+    }
 }
