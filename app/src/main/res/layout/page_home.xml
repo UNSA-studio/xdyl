@@ -254,14 +254,14 @@
 
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="184dp">
 
             <ImageView
                 android:id="@+id/ivSongBg"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:scaleType="centerCrop"
-                android:alpha="0.9"
+                android:alpha="1.0"
                 android:contentDescription="背景" />
 
             <View

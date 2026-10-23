@@ -587,7 +587,7 @@ class MainActivity : AppCompatActivity() {
             val artist = if (meta.artist.isBlank()) SongLyric.tag(lrcFile, "ar") else meta.artist
             val ms = resources.displayMetrics
             val bgW = ms.widthPixels
-            val bgH = (150 * ms.density).toInt()
+            val bgH = (184 * ms.density).toInt()
             val bg = if (bmp != null) Blur.blurForBackground(bmp, bgW, bgH) else null
             withContext(Dispatchers.Main) {
                 if (bmp != null) ph.ivSongCover.setImageBitmap(bmp)
