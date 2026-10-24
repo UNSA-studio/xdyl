@@ -20,8 +20,11 @@ import kotlin.random.Random
  * 音乐包由 VPS 8090 下载专区提供（明文 HTTP，不经 Cloudflare，无 SNI 问题）：
  *   http://160.202.237.166:8090/music_pack.7z
  *
- * 注意：8090 是 Python SimpleHTTP 服务，**不支持 Range**（带 Range 头会直接断连），
- * 因此下载逻辑必须先尝试续传，失败则自动回退为全量下载。
+ * 注意：8090 是 VPS 侧 gpusc_web.py（Python SimpleHTTP），v7 起启用鉴权：
+ *   - 需要 header：`Authorization: Bearer <music_pack.7z.pass 里的专用口令>`
+ *   - 无凭据 / 错口令 → 服务器直接断连（socket close，无任何响应字节）
+ *   - Range 断点续传可用（206 + Content-Range）
+ * 因此下载务必带 Authorization；全量回退仅作为兜底。
  *
  * 解压目标：/sdcard/NebulaUpdater/music_pack/（公共目录，用户可直接访问）
  */
@@ -86,9 +89,14 @@ object MusicPack {
         runCatching { fetch(target, 0L, onProgress) }.getOrDefault(false)
     }
 
+    /** 音乐包专用下载口令（仅对 music_pack.7z 生效，由 VPS 侧 music_pack.7z.pass 提供） */
+    private const val PACK_PASS = "nupd-music-9f3a"
+
     /** 单次连接拉取。start>0 表示从 start 处续传；服务端回 200 时自动改为全量重写 */
     private fun fetch(target: File, start: Long, onProgress: (Long, Long) -> Unit): Boolean {
-        val builder = Request.Builder().url(URL)
+        val builder = Request.Builder()
+            .url(URL)
+            .header("Authorization", "Bearer $PACK_PASS")
         if (start > 0) builder.header("Range", "bytes=$start-")
         return http.newCall(builder.build()).execute().use { resp ->
             if (!resp.isSuccessful) {
