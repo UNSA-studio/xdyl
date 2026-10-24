@@ -387,18 +387,19 @@
                                 android:fontFamily="sans-serif" />
 
                         </LinearLayout>
+                        <www.xdyl.hygge.com.lrc.LrcView
+                            android:id="@+id/lvSong"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            app:lrcTextSize="12sp"
+                            app:lrcNormalTextSize="9sp"
+                            app:lrcCurrentTextColor="#FFFFFFFF"
+                            app:lrcNormalTextColor="#99FFFFFF"
+                            app:lrcLabel="纯音乐，请欣赏" />
                     </LinearLayout>
 
-                    <www.xdyl.hygge.com.lrc.LrcView
-                        android:id="@+id/lvSong"
-                        android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:layout_marginTop="3dp"
-                        app:lrcTextSize="12sp"
-                        app:lrcNormalTextSize="9sp"
-                        app:lrcCurrentTextColor="#FFFFFFFF"
-                        app:lrcNormalTextColor="#99FFFFFF"
-                        app:lrcLabel="纯音乐，请欣赏" />
 
                     <LinearLayout
                         android:layout_width="match_parent"

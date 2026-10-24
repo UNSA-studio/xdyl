@@ -611,27 +611,34 @@ class MainActivity : AppCompatActivity() {
             .start()
     }
 
-    /** 把单文件双语 LRC 拆成「中文 / 原文」两份文本，供 LrcView 双参数加载 */
-    private fun bilingualTexts(file: File): Pair<String, String>? {
+    /** 首页卡片只用「一条歌词流」：双语时取原文，纯中文歌取原文 */
+    private fun cardLyricText(file: File): String? {
         val lines = SongLyric.load(file)
         if (lines.isEmpty()) return null
-        val cjk = Regex("[\\u4e00-\\u9fff]")
-        val main = StringBuilder()
-        val sec = StringBuilder()
+        val cjk = Regex("[\u4e00-\u9fff]")
+        var bilingual = false
+        for ((_, s) in lines) {
+            val parts = s.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+            if (parts.any { cjk.containsMatchIn(it) } && parts.any { !cjk.containsMatchIn(it) }) {
+                bilingual = true
+                break
+            }
+        }
+        val sb = StringBuilder()
         for ((ms, s) in lines) {
             val parts = s.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
-            if (parts.size < 2) return null
-            val cn = parts.filter { cjk.containsMatchIn(it) }.joinToString(" ")
-            val en = parts.filterNot { cjk.containsMatchIn(it) }.joinToString(" ")
-            if (cn.isEmpty() || en.isEmpty()) return null
+            val pick = if (bilingual) {
+                parts.firstOrNull { !cjk.containsMatchIn(it) } ?: parts.firstOrNull() ?: continue
+            } else {
+                parts.joinToString(" ")
+            }
             val tag = String.format(
                 java.util.Locale.US, "[%02d:%02d.%02d]",
                 ms / 60000, (ms % 60000) / 1000, (ms % 1000) / 10
             )
-            main.append(tag).append(cn).append("\n")
-            sec.append(tag).append(en).append("\n")
+            sb.append(tag).append(pick).append("\n")
         }
-        return if (main.isEmpty()) null else main.toString() to sec.toString()
+        return if (sb.isEmpty()) null else sb.toString()
     }
 
     /** 首页卡片歌词逐帧刷新（复用 LrcView，滚动才顺滑） */
@@ -675,10 +682,9 @@ class MainActivity : AppCompatActivity() {
         songLyric = SongLyric.load(lrcFile)
         // 歌词：复用音频页的 LrcView（支持滚动/双语），无歌词走 label 占位
         if (lrcFile.exists()) {
-            val dual = bilingualTexts(lrcFile)
-            if (dual != null) {
-                // 原文（第一个参数）在主行、翻译（第二个参数）在下面 —— 正常双语格局
-                ph.lvSong.loadLrc(dual.second, dual.first)
+            val single = cardLyricText(lrcFile)
+            if (single != null) {
+                ph.lvSong.loadLrc(single)
             } else {
                 ph.lvSong.loadLrc(lrcFile)
             }
