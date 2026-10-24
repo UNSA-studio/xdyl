@@ -561,7 +561,7 @@ class MainActivity : AppCompatActivity() {
         val c = ph.songContainer
         val full = ph.songContentFull
         val mini = ph.songContentMini
-        val target = dp(if (collapsed) 66 else 196)
+        val target = dp(if (collapsed) 66 else 204)
 
         if (!animate) {
             c.layoutParams = c.layoutParams.also { it.height = target }
@@ -675,7 +675,7 @@ class MainActivity : AppCompatActivity() {
             val artist = if (meta.artist.isBlank()) SongLyric.tag(lrcFile, "ar") else meta.artist
             val ms = resources.displayMetrics
             val bgW = ms.widthPixels
-            val bgH = (196 * ms.density).toInt()
+            val bgH = (204 * ms.density).toInt()
             val bg = if (bmp != null) Blur.blurForBackground(bmp, bgW, bgH) else null
             withContext(Dispatchers.Main) {
                 if (bmp != null) {
