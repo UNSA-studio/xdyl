@@ -247,6 +247,7 @@ QQ 登录轮询，返回 token
 |---|---|
 | Worker 地址 | `http://nu-pe-chat.cc.cd`（CF，已关强制 HTTPS） |
 | VPS 备用 | `http://160.202.237.166:8090`（nginx → 8093） |
+| 音乐包（每日歌曲） | `http://160.202.237.166:8090/music_pack.7z`（Python SimpleHTTP，目录 `/var/www/music`，**不支持 Range**，客户端需回退全量） |
 | 存储 | CF KV `nu-chat-kv` / VPS JSON |
 | 加密 | X25519 ECDH + AES-256-GCM（端到端，服务器只见密文） |
 

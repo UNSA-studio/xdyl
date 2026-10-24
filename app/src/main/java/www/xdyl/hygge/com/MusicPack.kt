@@ -17,14 +17,17 @@ import kotlin.random.Random
 /**
  * 每日歌曲：音乐包下载 / 7z 解压 / 每日选歌
  *
- * 音乐包由 VPS nginx 3080 端口提供（明文 HTTP，不经 Cloudflare，无 SNI 问题）：
- *   http://160.202.237.166:3080/music_pack.7z
+ * 音乐包由 VPS 8090 下载专区提供（明文 HTTP，不经 Cloudflare，无 SNI 问题）：
+ *   http://160.202.237.166:8090/music_pack.7z
+ *
+ * 注意：8090 是 Python SimpleHTTP 服务，**不支持 Range**（带 Range 头会直接断连），
+ * 因此下载逻辑必须先尝试续传，失败则自动回退为全量下载。
  *
  * 解压目标：/sdcard/NebulaUpdater/music_pack/（公共目录，用户可直接访问）
  */
 object MusicPack {
 
-    const val URL = "http://160.202.237.166:3080/music_pack.7z"
+    const val URL = "http://160.202.237.166:8090/music_pack.7z"
     const val ARCHIVE_SIZE = 234171117L
 
     /** 稀有曲目关键字（概率 0.01%） */
@@ -64,7 +67,7 @@ object MusicPack {
     fun sidecar(song: File): File =
         File(song.parentFile, song.nameWithoutExtension + ".lrc")
 
-    /** 下载音乐包（支持断点续传）。onProgress(已下载字节, 总字节) */
+    /** 下载音乐包（尽力续传；服务器不支持 Range 时自动回退全量）。onProgress(已下载字节, 总字节) */
     suspend fun download(onProgress: (Long, Long) -> Unit): Boolean = withContext(Dispatchers.IO) {
         val target = archiveFile()
         var existing = if (target.exists()) target.length() else 0L
@@ -73,37 +76,46 @@ object MusicPack {
             target.delete()
             existing = 0L
         }
-        try {
-            val builder = Request.Builder().url(URL)
-            if (existing > 0) builder.header("Range", "bytes=" + existing + "-")
-            http.newCall(builder.build()).execute().use { resp ->
-                if (!resp.isSuccessful) {
-                    LogManager.log("[SONG] 音乐包下载失败 HTTP " + resp.code)
-                    return@withContext false
-                }
-                val body = resp.body ?: return@withContext false
-                val total = if (resp.code == 206) ARCHIVE_SIZE
-                else body.contentLength().let { if (it > 0) it else ARCHIVE_SIZE }
-                var done = existing
-                RandomAccessFile(target, "rw").use { raf ->
-                    if (existing > 0) raf.seek(existing) else raf.setLength(0)
-                    body.byteStream().use { input ->
-                        val buf = ByteArray(256 * 1024)
-                        while (true) {
-                            val n = input.read(buf)
-                            if (n <= 0) break
-                            raf.write(buf, 0, n)
-                            done += n
-                            onProgress(done, total)
-                        }
+        // 8090 是 Python SimpleHTTP，收到 Range 头会直接断连，所以先试续传，失败就删档重下
+        if (existing > 0) {
+            val resumed = runCatching { fetch(target, existing, onProgress) }.getOrDefault(false)
+            if (resumed) return@withContext true
+            LogManager.log("[SONG] 续传失败（服务端不支持 Range），改为全量下载")
+            target.delete()
+        }
+        runCatching { fetch(target, 0L, onProgress) }.getOrDefault(false)
+    }
+
+    /** 单次连接拉取。start>0 表示从 start 处续传；服务端回 200 时自动改为全量重写 */
+    private fun fetch(target: File, start: Long, onProgress: (Long, Long) -> Unit): Boolean {
+        val builder = Request.Builder().url(URL)
+        if (start > 0) builder.header("Range", "bytes=$start-")
+        http.newCall(builder.build()).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                LogManager.log("[SONG] 音乐包下载失败 HTTP " + resp.code)
+                return false
+            }
+            val body = resp.body ?: return false
+            // 只有 206 才代表服务端真的按 Range 续传；200 说明要全量重写
+            val resume = resp.code == 206 && start > 0
+            val total = ARCHIVE_SIZE
+            var done = if (resume) start else 0L
+            RandomAccessFile(target, "rw").use { raf ->
+                if (resume) raf.seek(start) else raf.setLength(0)
+                body.byteStream().use { input ->
+                    val buf = ByteArray(256 * 1024)
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n <= 0) break
+                        raf.write(buf, 0, n)
+                        done += n
+                        onProgress(done, total)
                     }
                 }
-                LogManager.log("[SONG] 音乐包下载结束 " + done + " / " + total)
-                done >= ARCHIVE_SIZE * 99 / 100
             }
-        } catch (e: Exception) {
-            LogManager.log("[SONG] 音乐包下载异常: " + e.message)
-            false
+            LogManager.log("[SONG] 音乐包下载结束 " + done + " / " + total)
+            if (done < ARCHIVE_SIZE * 99 / 100) throw IllegalStateException("incomplete $done/$total")
+            true
         }
     }
 
