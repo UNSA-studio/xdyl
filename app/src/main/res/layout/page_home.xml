@@ -389,14 +389,14 @@
                             <LinearLayout
                                 android:id="@+id/lyricBox"
                                 android:layout_width="match_parent"
-                                android:layout_height="50dp"
+                                android:layout_height="56dp"
                                 android:orientation="vertical"
                                 android:layout_marginTop="1dp">
 
                                 <TextView
                                     android:id="@+id/tvLyricPrev"
                                     android:layout_width="match_parent"
-                                    android:layout_height="12dp"
+                                    android:layout_height="13dp"
                                     android:maxLines="1"
                                     android:ellipsize="end"
                                     android:alpha="0.4"
@@ -407,9 +407,11 @@
                                 <TextView
                                     android:id="@+id/tvSongLine"
                                     android:layout_width="match_parent"
-                                    android:layout_height="26dp"
+                                    android:layout_height="30dp"
                                     android:maxLines="2"
                                     android:ellipsize="end"
+                                    android:includeFontPadding="false"
+                                    android:lineSpacingExtra="0.5dp"
                                     android:textColor="#FFFFFFFF"
                                     android:textSize="11sp"
                                     android:fontFamily="sans-serif" />
@@ -417,7 +419,7 @@
                                 <TextView
                                     android:id="@+id/tvLyricNext"
                                     android:layout_width="match_parent"
-                                    android:layout_height="12dp"
+                                    android:layout_height="13dp"
                                     android:maxLines="1"
                                     android:ellipsize="end"
                                     android:alpha="0.4"
