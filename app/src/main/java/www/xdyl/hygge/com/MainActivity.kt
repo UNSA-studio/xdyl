@@ -621,7 +621,7 @@ class MainActivity : AppCompatActivity() {
             .setDuration(110)
             .withEndAction {
                 tv.text = text
-                tv.translationY(h * 0.5f)
+                tv.translationY = h * 0.5f
                 tv.animate().translationY(0f).alpha(1f).setDuration(180).start()
             }
             .start()
