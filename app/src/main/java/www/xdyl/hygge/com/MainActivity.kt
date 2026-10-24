@@ -677,7 +677,8 @@ class MainActivity : AppCompatActivity() {
         if (lrcFile.exists()) {
             val dual = bilingualTexts(lrcFile)
             if (dual != null) {
-                ph.lvSong.loadLrc(dual.first, dual.second)
+                // LrcView 把「次行」画在上面，所以中文传第二个参数 → 中文在上、原文在下
+                ph.lvSong.loadLrc(dual.second, dual.first)
             } else {
                 ph.lvSong.loadLrc(lrcFile)
             }
