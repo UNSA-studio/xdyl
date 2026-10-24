@@ -611,63 +611,22 @@ class MainActivity : AppCompatActivity() {
             .start()
     }
 
-    /** 当前歌词行号（-2=未初始化，-1=无歌词） */
-    private var lyricIndex = -2
-
-    /** 双语歌词：中文正常字号，第二行（原文）略小 */
-    private fun lyricSpanned(s: String): CharSequence {
-        val parts = s.split("\n")
-        if (parts.size <= 1) return s
-        val sb = android.text.SpannableStringBuilder()
-        sb.append(parts[0])
-        sb.append("\n")
-        val start = sb.length
-        sb.append(parts[1])
-        sb.setSpan(
-            android.text.style.RelativeSizeSpan(0.82f),
-            start, sb.length,
-            android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-        )
-        return sb
+    /** 首页卡片歌词逐帧刷新（复用 LrcView，滚动才顺滑） */
+    private val lyricTicker = object : Runnable {
+        override fun run() {
+            val ph = binding.pageHome
+            if (ph.songContainer.visibility == View.VISIBLE) {
+                ph.lvSong.updateTime(AudioPlayer.currentPositionNow().toLong())
+            }
+            handler.postDelayed(this, 100)
+        }
     }
 
-    /** 卡拉OK式歌词：上一句 / 当前句（高亮）/ 下一句，换行时整体上滚 */
-    private fun renderLyric(index: Int, animate: Boolean) {
-        if (index == lyricIndex) return
-        lyricIndex = index
-        val ph = binding.pageHome
-        val box = ph.lyricBox
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
 
-        fun firstLine(i: Int): String {
-            val s = songLyric.getOrNull(i)?.second ?: return ""
-            return s.lineSequence().firstOrNull().orEmpty()
-        }
-
-        val cur = songLyric.getOrNull(index)?.second.orEmpty()
-        val prev = firstLine(index - 1)
-        val next = firstLine(index + 1)
-
-        fun apply() {
-            ph.tvLyricPrev.text = prev
-            ph.tvSongLine.text = if (cur.isEmpty()) "" else lyricSpanned(cur)
-            ph.tvLyricNext.text = next
-        }
-
-        if (!animate) {
-            apply()
-            box.translationY = 0f
-            box.alpha = 1f
-            return
-        }
-        val h = (box.height.coerceAtLeast(50).toFloat() / 3f)
-        box.animate().cancel()
-        box.animate().translationY(-h * 0.7f).alpha(0.25f).setDuration(110).start()
-        box.postDelayed({
-            if (lyricIndex != index) return@postDelayed
-            apply()
-            box.translationY = h * 0.7f
-            box.animate().translationY(0f).alpha(1f).setDuration(190).start()
-        }, 110)
+    private fun startLyricTicker() {
+        handler.removeCallbacks(lyricTicker)
+        handler.post(lyricTicker)
     }
 
     private fun showSongCard() {
@@ -686,24 +645,19 @@ class MainActivity : AppCompatActivity() {
         ph.tvSongNameMini.text = song.nameWithoutExtension
         ph.tvSongArtist.text = ""
         ph.tvSongArtist.visibility = View.INVISIBLE
-        ph.tvSongLine.text = ""
         ph.tvSongTime.text = "0:00 / 0:00"
         ph.sbSong.max = 1000
         ph.sbSong.progress = 0
         val lrcFile = MusicPack.sidecar(song)
         songLyric = SongLyric.load(lrcFile)
-        // 歌词初始化：无歌词显示占位；有歌词先渲染第一句
-        lyricIndex = -2
-        if (songLyric.isEmpty()) {
-            ph.tvLyricPrev.text = ""
-            ph.tvSongLine.text = "纯音乐，请欣赏"
-            ph.tvLyricNext.text = ""
-            ph.lyricBox.translationY = 0f
-            ph.lyricBox.alpha = 1f
-            lyricIndex = -1
+        // 歌词：复用音频页的 LrcView（支持滚动/双语），无歌词走 label 占位
+        if (lrcFile.exists()) {
+            ph.lvSong.loadLrc(lrcFile)
         } else {
-            renderLyric(0, false)
+            ph.lvSong.setLabel("纯音乐，请欣赏")
+            ph.lvSong.loadLrc("")
         }
+        startLyricTicker()
 
         // 封面 / 艺术家：读 ID3（IO 线程）
         scope.launch(Dispatchers.IO) {
@@ -773,7 +727,7 @@ class MainActivity : AppCompatActivity() {
             ph.ringSongMini.progress = p / 1000f
             ph.tvSongTime.text = fmtTime(cur) + " / " + fmtTime(total)
             if (songLyric.isNotEmpty()) {
-                renderLyric(SongLyric.indexAt(songLyric, cur), true)
+                // 由 lyricTicker 逐帧驱动 LrcView，这里不再手动刷新
             }
         }
 
@@ -1183,7 +1137,7 @@ class MainActivity : AppCompatActivity() {
         LogManager.log("CSV loaded, length: ${csv.length}")
     }
 
-    override fun onDestroy() { instance = null; job.cancel(); super.onDestroy() }
+    override fun onDestroy() { handler.removeCallbacks(lyricTicker); instance = null; job.cancel(); super.onDestroy() }
 
     // ==================== 以下为内嵌页面逻辑（社区/商城/我的） ====================
     private fun ensureCommunityLoaded() {
