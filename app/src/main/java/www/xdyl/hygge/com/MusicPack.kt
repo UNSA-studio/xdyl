@@ -117,6 +117,11 @@ object MusicPack {
     private fun multiThreadFetch(target: File, total: Long, onProgress: (Long, Long) -> Unit): Boolean {
         val chunk = (total + THREADS - 1) / THREADS
         val progress = java.util.concurrent.atomic.AtomicLongArray(THREADS)
+        fun totalDone(): Long {
+            var s = 0L
+            for (k in 0 until THREADS) s += progress.get(k)
+            return s
+        }
         val errors = java.util.Collections.synchronizedList(mutableListOf<java.lang.Exception>())
         val latch = java.util.concurrent.CountDownLatch(THREADS)
         val pool = java.util.concurrent.Executors.newFixedThreadPool(THREADS) { r ->
@@ -153,7 +158,7 @@ object MusicPack {
                                     w.write(buf, 0, n)
                                     pos += n
                                     progress.set(i, pos - start)
-                                    onProgress(progress.sum(), total)
+                                    onProgress(totalDone(), total)
                                 }
                             }
                             val got = pos - start
