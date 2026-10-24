@@ -90,7 +90,7 @@ object MusicPack {
     private fun fetch(target: File, start: Long, onProgress: (Long, Long) -> Unit): Boolean {
         val builder = Request.Builder().url(URL)
         if (start > 0) builder.header("Range", "bytes=$start-")
-        http.newCall(builder.build()).execute().use { resp ->
+        return http.newCall(builder.build()).execute().use { resp ->
             if (!resp.isSuccessful) {
                 LogManager.log("[SONG] 音乐包下载失败 HTTP " + resp.code)
                 return false
