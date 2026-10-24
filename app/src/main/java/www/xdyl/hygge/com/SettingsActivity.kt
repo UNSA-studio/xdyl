@@ -142,6 +142,11 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
+        // ===== 缓存与维护 =====
+        binding.btnClearCache.setOnClickListener { confirmClearCache() }
+        binding.btnReinstallMusic.setOnClickListener { confirmReinstallMusic() }
+        updateCacheInfo()
+
         binding.btnErrorCodes.setOnClickListener { showErrorCodes() }
         binding.btnAbout.setOnClickListener { showAbout() }
     }
@@ -227,6 +232,88 @@ class SettingsActivity : AppCompatActivity() {
                 binding.tvSongPackStatus.text = "解压失败，可重新点击重试"
                 binding.btnSongPack.text = "重新解压"
             }
+        }
+    }
+
+    // ===== 缓存与维护：实现 =====
+
+    private fun fmtBytes(b: Long): String = when {
+        b >= (1L shl 30) -> String.format(java.util.Locale.US, "%.1f GB", b / 1073741824.0)
+        b >= (1L shl 20) -> String.format(java.util.Locale.US, "%.1f MB", b / 1048576.0)
+        b >= 1024L -> String.format(java.util.Locale.US, "%.0f KB", b / 1024.0)
+        else -> "$b B"
+    }
+
+    private fun dirSize(f: File?): Long {
+        if (f == null || !f.exists()) return 0L
+        if (f.isFile) return f.length()
+        return f.listFiles()?.sumOf { dirSize(it) } ?: 0L
+    }
+
+    private fun musicDir() = File(android.os.Environment.getExternalStorageDirectory(), "NebulaUpdater")
+
+    private fun updateCacheInfo() {
+        scope.launch {
+            val sizes = withContext(Dispatchers.IO) {
+                val c = dirSize(cacheDir) + dirSize(externalCacheDir)
+                val m = dirSize(musicDir())
+                c to m
+            }
+            binding.tvCacheInfo.text = "缓存 " + fmtBytes(sizes.first) +
+                    " · 音乐资源 " + fmtBytes(sizes.second) + " · 清理不影响登录状态"
+        }
+    }
+
+    private fun confirmClearCache() {
+        MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+            .setTitle("清理全局缓存")
+            .setMessage("将删除：\n\n· 图片缓存（含私聊头像）\n· 模糊背景等临时文件\n· 头像地址映射表\n\n不会删除登录状态、设置项和已下载的音乐资源。")
+            .setPositiveButton("清理") { _, _ -> doClearCache() }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun doClearCache() {
+        scope.launch {
+            val freed = withContext(Dispatchers.IO) {
+                var n = 0L
+                listOf(cacheDir, externalCacheDir).forEach { dir ->
+                    dir?.listFiles()?.forEach { f ->
+                        n += dirSize(f)
+                        runCatching { f.deleteRecursively() }
+                    }
+                }
+                n
+            }
+            AvatarLoader.clearMemory()
+            ChatPage.clearAvatarCache()
+            updateCacheInfo()
+            Toast.makeText(this@SettingsActivity, "已清理 " + fmtBytes(freed), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun confirmReinstallMusic() {
+        val count = MusicPack.songs().size
+        MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+            .setTitle("重新安装音乐资源")
+            .setMessage("将删除本地音乐包归档与已解压的 " + count +
+                    " 首歌曲，然后重新下载约 224 MB 并解压。\n\n这会清空所有音乐相关数据缓存，需要联网，耗时数分钟。")
+            .setPositiveButton("重新安装") { _, _ -> doReinstallMusic() }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun doReinstallMusic() {
+        scope.launch {
+            binding.tvSongPackStatus.text = "正在清理本地音乐资源…"
+            withContext(Dispatchers.IO) {
+                runCatching { MusicPack.rootDir().deleteRecursively() }
+                runCatching { MusicPack.archiveFile().delete() }
+            }
+            prefs.edit().remove("song_date").remove("song_name").apply()
+            updateSongPackStatus()
+            updateCacheInfo()
+            startSongPackDownload()
         }
     }
 

@@ -126,4 +126,20 @@ object AvatarLoader {
 
     private fun circle(iv: ImageView, bmp: Bitmap) =
         RoundedBitmapDrawableFactory.create(iv.resources, bmp).apply { isCircular = true }
+
+    /** 清空内存缓存（清理全局缓存时调用） */
+    fun clearMemory() {
+        cache.evictAll()
+    }
+
+    /** 删除全部头像磁盘缓存，返回释放字节数 */
+    fun clearDisk(context: android.content.Context): Long {
+        val dir = File(context.cacheDir, "avatars")
+        var freed = 0L
+        dir.listFiles()?.forEach { f ->
+            freed += f.length()
+            f.delete()
+        }
+        return freed
+    }
 }

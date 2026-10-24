@@ -70,27 +70,108 @@ object MusicPack {
     fun sidecar(song: File): File =
         File(song.parentFile, song.nameWithoutExtension + ".lrc")
 
-    /** 下载音乐包（尽力续传；服务器不支持 Range 时自动回退全量）。onProgress(已下载字节, 总字节) */
+    /** 下载音乐包：优先 4 线程分块并发，失败回退单线程。onProgress(已下载字节, 总字节) */
     suspend fun download(onProgress: (Long, Long) -> Unit): Boolean = withContext(Dispatchers.IO) {
         val target = archiveFile()
-        var existing = if (target.exists()) target.length() else 0L
-        if (existing == ARCHIVE_SIZE) return@withContext true
-        if (existing > ARCHIVE_SIZE) {
-            target.delete()
-            existing = 0L
+        val total = remoteSize()
+        if (target.exists() && target.length() == total) return@withContext true
+        // 分块写入要求整块偏移对齐，因此每次都从头开始
+        if (target.exists()) target.delete()
+        try {
+            LogManager.log("[SONG] 多线程下载开始 ${THREADS} 线程 / $total 字节")
+            if (multiThreadFetch(target, total, onProgress)) {
+                LogManager.log("[SONG] 多线程下载完成 $total 字节")
+                return@withContext true
+            }
+        } catch (e: Exception) {
+            LogManager.log("[SONG] 多线程下载失败: " + e.message + "，回退单线程")
         }
-        // 8090 是 Python SimpleHTTP，收到 Range 头会直接断连，所以先试续传，失败就删档重下
-        if (existing > 0) {
-            val resumed = runCatching { fetch(target, existing, onProgress) }.getOrDefault(false)
-            if (resumed) return@withContext true
-            LogManager.log("[SONG] 续传失败（服务端不支持 Range），改为全量下载")
-            target.delete()
-        }
+        target.delete()
         runCatching { fetch(target, 0L, onProgress) }.getOrDefault(false)
     }
 
     /** 音乐包专用下载口令（仅对 music_pack.7z 生效，由 VPS 侧 music_pack.7z.pass 提供） */
     private const val PACK_PASS = "nupd-music-9f3a"
+
+    /** 分块下载线程数 */
+    private const val THREADS = 4
+
+    /** 探测服务端文件真实大小（Range 0-0 取 Content-Range 总长），失败回退常量 */
+    private fun remoteSize(): Long {
+        return try {
+            val req = Request.Builder().url(URL)
+                .header("Authorization", "Bearer $PACK_PASS")
+                .header("Range", "bytes=0-0")
+                .build()
+            http.newCall(req).execute().use { resp ->
+                val cr = resp.header("Content-Range") ?: return@use ARCHIVE_SIZE
+                val total = cr.substringAfterLast('/').trim().toLongOrNull()
+                if (total != null && total > 0) total else ARCHIVE_SIZE
+            }
+        } catch (e: Exception) {
+            ARCHIVE_SIZE
+        }
+    }
+
+    /** 多线程分块并发下载，每块 Range 独立写入同一文件的对应偏移 */
+    private fun multiThreadFetch(target: File, total: Long, onProgress: (Long, Long) -> Unit): Boolean {
+        val chunk = (total + THREADS - 1) / THREADS
+        val progress = java.util.concurrent.atomic.AtomicLongArray(THREADS)
+        val errors = java.util.Collections.synchronizedList(mutableListOf<java.lang.Exception>())
+        val latch = java.util.concurrent.CountDownLatch(THREADS)
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(THREADS) { r ->
+            Thread(r, "song-dl").apply { isDaemon = true }
+        }
+        RandomAccessFile(target, "rw").use { it.setLength(total) }
+
+        for (i in 0 until THREADS) {
+            val start = i * chunk
+            if (start >= total) {
+                latch.countDown()
+                continue
+            }
+            val end = minOf(total - 1, start + chunk - 1)
+            pool.execute {
+                try {
+                    val req = Request.Builder().url(URL)
+                        .header("Authorization", "Bearer $PACK_PASS")
+                        .header("Range", "bytes=$start-$end")
+                        .build()
+                    http.newCall(req).execute().use { resp ->
+                        if (resp.code != 206) {
+                            throw java.io.IOException("块 $i HTTP " + resp.code)
+                        }
+                        val body = resp.body ?: throw java.io.IOException("块 $i 无响应体")
+                        RandomAccessFile(target, "rw").use { w ->
+                            w.seek(start)
+                            var pos = start
+                            body.byteStream().use { input ->
+                                val buf = ByteArray(128 * 1024)
+                                while (true) {
+                                    val n = input.read(buf)
+                                    if (n <= 0) break
+                                    w.write(buf, 0, n)
+                                    pos += n
+                                    progress.set(i, pos - start)
+                                    onProgress(progress.sum(), total)
+                                }
+                            }
+                            val got = pos - start
+                            if (got < end - start + 1) throw java.io.IOException("块 $i 仅 $got 字节")
+                        }
+                    }
+                } catch (e: Exception) {
+                    errors.add(e)
+                } finally {
+                    latch.countDown()
+                }
+            }
+        }
+        latch.await(20, TimeUnit.MINUTES)
+        pool.shutdown()
+        if (errors.isNotEmpty()) throw java.io.IOException("分块下载失败: " + errors.first().message)
+        return target.length() == total
+    }
 
     /** 单次连接拉取。start>0 表示从 start 处续传；服务端回 200 时自动改为全量重写 */
     private fun fetch(target: File, start: Long, onProgress: (Long, Long) -> Unit): Boolean {

@@ -43,8 +43,35 @@ object ChatPage {
     private fun dp(c: Context, v: Int) = (v * c.resources.displayMetrics.density).toInt()
 
     // ==================== 头像 ====================
-    /** 玩家 username -> avatar 文件名 */
-    private val avatarCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+    /** 玩家 username -> avatar 文件名（内存 + 磁盘持久化，重启后不用重新查） */
+    private val avatarCache = java.util.concurrent.ConcurrentHashMap<String, String>().apply {
+        try {
+            App.ctx.getSharedPreferences(AVATAR_PREFS, Context.MODE_PRIVATE).all.forEach { (k, v) ->
+                if (k != null && v is String && v.isNotBlank()) put(k, v)
+            }
+        } catch (e: Throwable) {
+        }
+    }
+
+    private const val AVATAR_PREFS = "xdyl_avatar_map"
+
+    private fun rememberAvatar(username: String, file: String) {
+        avatarCache[username] = file
+        try {
+            App.ctx.getSharedPreferences(AVATAR_PREFS, Context.MODE_PRIVATE)
+                .edit().putString(username, file).apply()
+        } catch (e: Throwable) {
+        }
+    }
+
+    /** 清理全局缓存时调用：清空头像映射（内存 + 磁盘） */
+    fun clearAvatarCache() {
+        avatarCache.clear()
+        try {
+            App.ctx.getSharedPreferences(AVATAR_PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+        } catch (e: Throwable) {
+        }
+    }
     private val avatarLoading = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
     private val uiHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val avatarClient = okhttp3.OkHttpClient.Builder()
@@ -67,7 +94,7 @@ object ChatPage {
                     val data = org.json.JSONObject(body).optJSONObject("data") ?: return@use
                     val av = data.optString("avatar", "").trim()
                     if (av.isNotEmpty()) {
-                        avatarCache[username] = av
+                        rememberAvatar(username, av)
                         uiHandler.post { onReady(av) }
                     }
                 }

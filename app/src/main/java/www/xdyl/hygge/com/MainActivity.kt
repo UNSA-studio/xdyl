@@ -596,6 +596,21 @@ class MainActivity : AppCompatActivity() {
         va.start()
     }
 
+    /** 播放/暂停图标切换：淡出 + 轻微缩放 → 换图 → 淡入，避免硬切 */
+    private fun animatePlayIcon(iv: android.widget.ImageView, res: Int) {
+        if (iv.tag == res) return
+        iv.tag = res
+        iv.animate().cancel()
+        iv.animate()
+            .alpha(0f).scaleX(0.8f).scaleY(0.8f)
+            .setDuration(90)
+            .withEndAction {
+                iv.setImageResource(res)
+                iv.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(140).start()
+            }
+            .start()
+    }
+
     private fun showSongCard() {
         val ph = binding.pageHome
         val song = MusicPack.dailySong(prefs)
@@ -618,6 +633,8 @@ class MainActivity : AppCompatActivity() {
         ph.sbSong.progress = 0
         val lrcFile = MusicPack.sidecar(song)
         songLyric = SongLyric.load(lrcFile)
+        // 无歌词（纯音乐）时给占位文案
+        ph.tvSongLine.text = if (songLyric.isEmpty()) "纯音乐，请欣赏" else ""
 
         // 封面 / 艺术家：读 ID3（IO 线程）
         scope.launch(Dispatchers.IO) {
@@ -694,8 +711,8 @@ class MainActivity : AppCompatActivity() {
 
         AudioPlayer.onState = { st ->
             val icon = if (st.startsWith("playing")) R.drawable.ic_pause else R.drawable.ic_play
-            ph.btnSongPlay.setImageResource(icon)
-            ph.btnSongPlayMini.setImageResource(icon)
+            animatePlayIcon(ph.btnSongPlay, icon)
+            animatePlayIcon(ph.btnSongPlayMini, icon)
         }
 
         // 自动播放（同一首不重头播）
