@@ -561,7 +561,7 @@ class MainActivity : AppCompatActivity() {
         val c = ph.songContainer
         val full = ph.songContentFull
         val mini = ph.songContentMini
-        val target = dp(if (collapsed) 66 else 184)
+        val target = dp(if (collapsed) 66 else 196)
 
         if (!animate) {
             c.layoutParams = c.layoutParams.also { it.height = target }
@@ -596,26 +596,35 @@ class MainActivity : AppCompatActivity() {
         va.start()
     }
 
-    /** 播放/暂停图标切换：只交叉淡入图标图层，背景描边圈完全不动 */
+    /** 播放/暂停图标切换：只缩放淡入淡出图标层（其外层描边圈是独立的 View，不受影响） */
     private fun animatePlayIcon(iv: android.widget.ImageView, res: Int) {
         if (iv.tag == res) return
         iv.tag = res
-        val raw = iv.drawable
-        // 若上一次已是 TransitionDrawable，取其终态图层，避免层层嵌套累积
-        val cur = if (raw is android.graphics.drawable.TransitionDrawable) {
-            runCatching { raw.getDrawable(1) }.getOrNull() ?: raw
-        } else {
-            raw
-        }
-        val next = androidx.core.content.ContextCompat.getDrawable(iv.context, res)
-        if (cur == null || next == null) {
-            iv.setImageResource(res)
-            return
-        }
-        val td = android.graphics.drawable.TransitionDrawable(arrayOf(cur, next))
-        td.isCrossFadeEnabled = true
-        iv.setImageDrawable(td)
-        td.startTransition(200)
+        iv.animate().cancel()
+        iv.animate()
+            .alpha(0f).scaleX(0.72f).scaleY(0.72f)
+            .setDuration(100)
+            .withEndAction {
+                iv.setImageResource(res)
+                iv.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(180).start()
+            }
+            .start()
+    }
+
+    /** 歌词换行：旧行上滑淡出，新行从下滑入（避免"突然出现"顶掉进度条） */
+    private fun setLyricLine(tv: android.widget.TextView, text: String) {
+        if (tv.text.toString() == text) return
+        tv.animate().cancel()
+        val h = (tv.height.takeIf { it > 0 } ?: 32).toFloat()
+        tv.animate()
+            .translationY(-h * 0.5f).alpha(0f)
+            .setDuration(110)
+            .withEndAction {
+                tv.text = text
+                tv.translationY(h * 0.5f)
+                tv.animate().translationY(0f).alpha(1f).setDuration(180).start()
+            }
+            .start()
     }
 
     private fun showSongCard() {
@@ -633,7 +642,7 @@ class MainActivity : AppCompatActivity() {
         ph.tvSongName.text = song.nameWithoutExtension
         ph.tvSongNameMini.text = song.nameWithoutExtension
         ph.tvSongArtist.text = ""
-        ph.tvSongArtist.visibility = View.GONE
+        ph.tvSongArtist.visibility = View.INVISIBLE
         ph.tvSongLine.text = ""
         ph.tvSongTime.text = "0:00 / 0:00"
         ph.sbSong.max = 1000
@@ -657,7 +666,7 @@ class MainActivity : AppCompatActivity() {
             val artist = if (meta.artist.isBlank()) SongLyric.tag(lrcFile, "ar") else meta.artist
             val ms = resources.displayMetrics
             val bgW = ms.widthPixels
-            val bgH = (184 * ms.density).toInt()
+            val bgH = (196 * ms.density).toInt()
             val bg = if (bmp != null) Blur.blurForBackground(bmp, bgW, bgH) else null
             withContext(Dispatchers.Main) {
                 if (bmp != null) {
@@ -667,7 +676,7 @@ class MainActivity : AppCompatActivity() {
                 if (bg != null) ph.ivSongBg.setImageBitmap(bg)
                 ph.tvSongArtist.text = artist
                 ph.tvSongArtistMini.text = artist
-                ph.tvSongArtist.visibility = if (artist.isBlank()) View.GONE else View.VISIBLE
+                ph.tvSongArtist.visibility = if (artist.isBlank()) View.INVISIBLE else View.VISIBLE
             }
             LogManager.log("[SONG] ID3 title=" + meta.title + " artist=" + artist + " coverBytes=" + (meta.cover?.size ?: 0))
         }
@@ -712,13 +721,13 @@ class MainActivity : AppCompatActivity() {
             ph.tvSongTime.text = fmtTime(cur) + " / " + fmtTime(total)
             if (songLyric.isNotEmpty()) {
                 val line = SongLyric.lineAt(songLyric, cur)
-                if (ph.tvSongLine.text != line) ph.tvSongLine.text = line
+                setLyricLine(ph.tvSongLine, line)
             }
         }
 
         AudioPlayer.onState = { st ->
             val icon = if (st.startsWith("playing")) R.drawable.ic_pause else R.drawable.ic_play
-            animatePlayIcon(ph.btnSongPlay, icon)
+            animatePlayIcon(ph.ivSongPlayIcon, icon)
             animatePlayIcon(ph.btnSongPlayMini, icon)
         }
 
