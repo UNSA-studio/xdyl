@@ -611,20 +611,25 @@ class MainActivity : AppCompatActivity() {
             .start()
     }
 
-    /** 歌词换行：旧行上滑淡出，新行从下滑入（避免"突然出现"顶掉进度条） */
+    /** 正在过渡到的歌词（用于去重；进度回调很密，不能每次都重启动画） */
+    private var lyricTarget: String? = null
+
+    /** 歌词换行：旧行上滑淡出 → 换文本 → 从下滑入。用 postDelayed 两段式，避免 cancel 吞掉结束动作 */
     private fun setLyricLine(tv: android.widget.TextView, text: String) {
         if (tv.text.toString() == text) return
-        tv.animate().cancel()
+        if (lyricTarget == text) return
+        lyricTarget = text
         val h = (tv.height.takeIf { it > 0 } ?: 32).toFloat()
-        tv.animate()
-            .translationY(-h * 0.5f).alpha(0f)
-            .setDuration(110)
-            .withEndAction {
-                tv.text = text
-                tv.translationY = h * 0.5f
-                tv.animate().translationY(0f).alpha(1f).setDuration(180).start()
-            }
-            .start()
+        tv.animate().cancel()
+        tv.animate().translationY(-h * 0.5f).alpha(0f).setDuration(110).start()
+        tv.postDelayed({
+            // 期间又来了更新的目标，就交给那一次处理
+            if (lyricTarget != text) return@postDelayed
+            tv.text = text
+            tv.translationY = h * 0.5f
+            tv.animate().translationY(0f).alpha(1f).setDuration(180).start()
+            lyricTarget = null
+        }, 110)
     }
 
     private fun showSongCard() {
@@ -649,7 +654,11 @@ class MainActivity : AppCompatActivity() {
         ph.sbSong.progress = 0
         val lrcFile = MusicPack.sidecar(song)
         songLyric = SongLyric.load(lrcFile)
-        // 无歌词（纯音乐）时给占位文案
+        // 无歌词（纯音乐）时给占位文案；同时复位可能残留的动画状态
+        ph.tvSongLine.animate().cancel()
+        ph.tvSongLine.alpha = 1f
+        ph.tvSongLine.translationY = 0f
+        lyricTarget = null
         ph.tvSongLine.text = if (songLyric.isEmpty()) "纯音乐，请欣赏" else ""
 
         // 封面 / 艺术家：读 ID3（IO 线程）
