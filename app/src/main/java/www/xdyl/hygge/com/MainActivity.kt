@@ -611,6 +611,29 @@ class MainActivity : AppCompatActivity() {
             .start()
     }
 
+    /** 把单文件双语 LRC 拆成「中文 / 原文」两份文本，供 LrcView 双参数加载 */
+    private fun bilingualTexts(file: File): Pair<String, String>? {
+        val lines = SongLyric.load(file)
+        if (lines.isEmpty()) return null
+        val cjk = Regex("[\\u4e00-\\u9fff]")
+        val main = StringBuilder()
+        val sec = StringBuilder()
+        for ((ms, s) in lines) {
+            val parts = s.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+            if (parts.size < 2) return null
+            val cn = parts.filter { cjk.containsMatchIn(it) }.joinToString(" ")
+            val en = parts.filterNot { cjk.containsMatchIn(it) }.joinToString(" ")
+            if (cn.isEmpty() || en.isEmpty()) return null
+            val tag = String.format(
+                java.util.Locale.US, "[%02d:%02d.%02d]",
+                ms / 60000, (ms % 60000) / 1000, (ms % 1000) / 10
+            )
+            main.append(tag).append(cn).append("\n")
+            sec.append(tag).append(en).append("\n")
+        }
+        return if (main.isEmpty()) null else main.toString() to sec.toString()
+    }
+
     /** 首页卡片歌词逐帧刷新（复用 LrcView，滚动才顺滑） */
     private val lyricTicker = object : Runnable {
         override fun run() {
@@ -652,7 +675,12 @@ class MainActivity : AppCompatActivity() {
         songLyric = SongLyric.load(lrcFile)
         // 歌词：复用音频页的 LrcView（支持滚动/双语），无歌词走 label 占位
         if (lrcFile.exists()) {
-            ph.lvSong.loadLrc(lrcFile)
+            val dual = bilingualTexts(lrcFile)
+            if (dual != null) {
+                ph.lvSong.loadLrc(dual.first, dual.second)
+            } else {
+                ph.lvSong.loadLrc(lrcFile)
+            }
         } else {
             ph.lvSong.setLabel("纯音乐，请欣赏")
             ph.lvSong.loadLrc("")
