@@ -242,7 +242,7 @@
     <FrameLayout
         android:id="@+id/songContainer"
         android:layout_width="0dp"
-        android:layout_height="204dp"
+        android:layout_height="184dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -281,7 +281,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="8dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -334,12 +337,12 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginTop="8dp">
+                        android:gravity="top"
+                        android:layout_marginTop="6dp">
 
                         <com.google.android.material.card.MaterialCardView
-                            android:layout_width="62dp"
-                            android:layout_height="62dp"
+                            android:layout_width="58dp"
+                            android:layout_height="58dp"
                             app:cardCornerRadius="10dp"
                             app:cardElevation="6dp"
                             app:strokeWidth="1dp"
@@ -383,17 +386,45 @@
                                 android:textSize="12sp"
                                 android:fontFamily="sans-serif" />
 
-                            <TextView
-                                android:id="@+id/tvSongLine"
+                            <LinearLayout
+                                android:id="@+id/lyricBox"
                                 android:layout_width="match_parent"
-                                android:layout_height="40dp"
-                                android:layout_marginTop="4dp"
-                                android:maxLines="2"
-                                android:ellipsize="end"
-                                android:lineSpacingExtra="1dp"
-                                android:textColor="#E6FFFFFF"
-                                android:textSize="11sp"
-                                android:fontFamily="sans-serif" />
+                                android:layout_height="50dp"
+                                android:orientation="vertical"
+                                android:layout_marginTop="1dp">
+
+                                <TextView
+                                    android:id="@+id/tvLyricPrev"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="12dp"
+                                    android:maxLines="1"
+                                    android:ellipsize="end"
+                                    android:alpha="0.4"
+                                    android:textColor="#FFFFFFFF"
+                                    android:textSize="9sp"
+                                    android:fontFamily="sans-serif" />
+
+                                <TextView
+                                    android:id="@+id/tvSongLine"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="26dp"
+                                    android:maxLines="2"
+                                    android:ellipsize="end"
+                                    android:textColor="#FFFFFFFF"
+                                    android:textSize="11sp"
+                                    android:fontFamily="sans-serif" />
+
+                                <TextView
+                                    android:id="@+id/tvLyricNext"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="12dp"
+                                    android:maxLines="1"
+                                    android:ellipsize="end"
+                                    android:alpha="0.4"
+                                    android:textColor="#FFFFFFFF"
+                                    android:textSize="9sp"
+                                    android:fontFamily="sans-serif" />
+                            </LinearLayout>
                         </LinearLayout>
                     </LinearLayout>
 

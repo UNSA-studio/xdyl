@@ -54,12 +54,18 @@ object SongLyric {
 
     /** 取当前播放位置对应的那一行 */
     fun lineAt(lines: List<Pair<Int, String>>, posMs: Int): String {
-        if (lines.isEmpty()) return ""
-        var res = ""
-        for (l in lines) {
-            if (l.first <= posMs) res = l.second else break
+        val i = indexAt(lines, posMs)
+        return if (i in lines.indices) lines[i].second else ""
+    }
+
+    /** 取当前播放位置对应的行号（卡拉OK滚动用） */
+    fun indexAt(lines: List<Pair<Int, String>>, posMs: Int): Int {
+        if (lines.isEmpty()) return -1
+        var r = 0
+        for (i in lines.indices) {
+            if (lines[i].first <= posMs) r = i else break
         }
-        return res
+        return r
     }
 
     /** 读取 lrc 头部标签，例如 tag(f, "ar") 取歌手 */

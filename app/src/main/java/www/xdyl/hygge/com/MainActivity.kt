@@ -561,7 +561,7 @@ class MainActivity : AppCompatActivity() {
         val c = ph.songContainer
         val full = ph.songContentFull
         val mini = ph.songContentMini
-        val target = dp(if (collapsed) 66 else 204)
+        val target = dp(if (collapsed) 66 else 184)
 
         if (!animate) {
             c.layoutParams = c.layoutParams.also { it.height = target }
@@ -611,24 +611,62 @@ class MainActivity : AppCompatActivity() {
             .start()
     }
 
-    /** 正在过渡到的歌词（用于去重；进度回调很密，不能每次都重启动画） */
-    private var lyricTarget: String? = null
+    /** 当前歌词行号（-2=未初始化，-1=无歌词） */
+    private var lyricIndex = -2
 
-    /** 歌词换行：旧行上滑淡出 → 换文本 → 从下滑入。用 postDelayed 两段式，避免 cancel 吞掉结束动作 */
-    private fun setLyricLine(tv: android.widget.TextView, text: String) {
-        if (tv.text.toString() == text) return
-        if (lyricTarget == text) return
-        lyricTarget = text
-        val h = (tv.height.takeIf { it > 0 } ?: 32).toFloat()
-        tv.animate().cancel()
-        tv.animate().translationY(-h * 0.5f).alpha(0f).setDuration(110).start()
-        tv.postDelayed({
-            // 期间又来了更新的目标，就交给那一次处理
-            if (lyricTarget != text) return@postDelayed
-            tv.text = text
-            tv.translationY = h * 0.5f
-            tv.animate().translationY(0f).alpha(1f).setDuration(180).start()
-            lyricTarget = null
+    /** 双语歌词：中文正常字号，第二行（原文）略小 */
+    private fun lyricSpanned(s: String): CharSequence {
+        val parts = s.split("\n")
+        if (parts.size <= 1) return s
+        val sb = android.text.SpannableStringBuilder()
+        sb.append(parts[0])
+        sb.append("\n")
+        val start = sb.length
+        sb.append(parts[1])
+        sb.setSpan(
+            android.text.style.RelativeSizeSpan(0.82f),
+            start, sb.length,
+            android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+        return sb
+    }
+
+    /** 卡拉OK式歌词：上一句 / 当前句（高亮）/ 下一句，换行时整体上滚 */
+    private fun renderLyric(index: Int, animate: Boolean) {
+        if (index == lyricIndex) return
+        lyricIndex = index
+        val ph = binding.pageHome
+        val box = ph.lyricBox
+
+        fun firstLine(i: Int): String {
+            val s = songLyric.getOrNull(i)?.second ?: return ""
+            return s.lineSequence().firstOrNull().orEmpty()
+        }
+
+        val cur = songLyric.getOrNull(index)?.second.orEmpty()
+        val prev = firstLine(index - 1)
+        val next = firstLine(index + 1)
+
+        fun apply() {
+            ph.tvLyricPrev.text = prev
+            ph.tvSongLine.text = if (cur.isEmpty()) "" else lyricSpanned(cur)
+            ph.tvLyricNext.text = next
+        }
+
+        if (!animate) {
+            apply()
+            box.translationY = 0f
+            box.alpha = 1f
+            return
+        }
+        val h = (box.height.coerceAtLeast(50).toFloat() / 3f)
+        box.animate().cancel()
+        box.animate().translationY(-h * 0.7f).alpha(0.25f).setDuration(110).start()
+        box.postDelayed({
+            if (lyricIndex != index) return@postDelayed
+            apply()
+            box.translationY = h * 0.7f
+            box.animate().translationY(0f).alpha(1f).setDuration(190).start()
         }, 110)
     }
 
@@ -654,12 +692,18 @@ class MainActivity : AppCompatActivity() {
         ph.sbSong.progress = 0
         val lrcFile = MusicPack.sidecar(song)
         songLyric = SongLyric.load(lrcFile)
-        // 无歌词（纯音乐）时给占位文案；同时复位可能残留的动画状态
-        ph.tvSongLine.animate().cancel()
-        ph.tvSongLine.alpha = 1f
-        ph.tvSongLine.translationY = 0f
-        lyricTarget = null
-        ph.tvSongLine.text = if (songLyric.isEmpty()) "纯音乐，请欣赏" else ""
+        // 歌词初始化：无歌词显示占位；有歌词先渲染第一句
+        lyricIndex = -2
+        if (songLyric.isEmpty()) {
+            ph.tvLyricPrev.text = ""
+            ph.tvSongLine.text = "纯音乐，请欣赏"
+            ph.tvLyricNext.text = ""
+            ph.lyricBox.translationY = 0f
+            ph.lyricBox.alpha = 1f
+            lyricIndex = -1
+        } else {
+            renderLyric(0, false)
+        }
 
         // 封面 / 艺术家：读 ID3（IO 线程）
         scope.launch(Dispatchers.IO) {
@@ -675,7 +719,7 @@ class MainActivity : AppCompatActivity() {
             val artist = if (meta.artist.isBlank()) SongLyric.tag(lrcFile, "ar") else meta.artist
             val ms = resources.displayMetrics
             val bgW = ms.widthPixels
-            val bgH = (204 * ms.density).toInt()
+            val bgH = (184 * ms.density).toInt()
             val bg = if (bmp != null) Blur.blurForBackground(bmp, bgW, bgH) else null
             withContext(Dispatchers.Main) {
                 if (bmp != null) {
@@ -729,8 +773,7 @@ class MainActivity : AppCompatActivity() {
             ph.ringSongMini.progress = p / 1000f
             ph.tvSongTime.text = fmtTime(cur) + " / " + fmtTime(total)
             if (songLyric.isNotEmpty()) {
-                val line = SongLyric.lineAt(songLyric, cur)
-                setLyricLine(ph.tvSongLine, line)
+                renderLyric(SongLyric.indexAt(songLyric, cur), true)
             }
         }
 
