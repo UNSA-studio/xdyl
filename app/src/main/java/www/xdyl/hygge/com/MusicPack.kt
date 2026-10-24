@@ -94,7 +94,7 @@ object MusicPack {
     private const val PACK_PASS = "nupd-music-9f3a"
 
     /** 分块下载线程数 */
-    private const val THREADS = 4
+    private const val THREADS = 8
 
     /** 探测服务端文件真实大小（Range 0-0 取 Content-Range 总长），失败回退常量 */
     private fun remoteSize(): Long {

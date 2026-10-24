@@ -596,19 +596,26 @@ class MainActivity : AppCompatActivity() {
         va.start()
     }
 
-    /** 播放/暂停图标切换：淡出 + 轻微缩放 → 换图 → 淡入，避免硬切 */
+    /** 播放/暂停图标切换：只交叉淡入图标图层，背景描边圈完全不动 */
     private fun animatePlayIcon(iv: android.widget.ImageView, res: Int) {
         if (iv.tag == res) return
         iv.tag = res
-        iv.animate().cancel()
-        iv.animate()
-            .alpha(0f).scaleX(0.8f).scaleY(0.8f)
-            .setDuration(90)
-            .withEndAction {
-                iv.setImageResource(res)
-                iv.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(140).start()
-            }
-            .start()
+        val raw = iv.drawable
+        // 若上一次已是 TransitionDrawable，取其终态图层，避免层层嵌套累积
+        val cur = if (raw is android.graphics.drawable.TransitionDrawable) {
+            runCatching { raw.getDrawable(1) }.getOrNull() ?: raw
+        } else {
+            raw
+        }
+        val next = androidx.core.content.ContextCompat.getDrawable(iv.context, res)
+        if (cur == null || next == null) {
+            iv.setImageResource(res)
+            return
+        }
+        val td = android.graphics.drawable.TransitionDrawable(arrayOf(cur, next))
+        td.isCrossFadeEnabled = true
+        iv.setImageDrawable(td)
+        td.startTransition(200)
     }
 
     private fun showSongCard() {

@@ -15,7 +15,8 @@ object SongLyric {
 
     fun load(file: File): List<Pair<Int, String>> {
         if (!file.exists()) return emptyList()
-        val out = ArrayList<Pair<Int, String>>()
+        // 同一时间戳可能有双语两行（原文 + 译文），先按时间戳聚合
+        val buckets = LinkedHashMap<Int, MutableList<String>>()
         try {
             file.readLines(Charsets.UTF_8).forEach { line ->
                 val tags = TIME.findAll(line).toList()
@@ -27,12 +28,28 @@ object SongLyric {
                 val cs = frac.toIntOrNull() ?: 0
                 val ms = mm * 60000 + ss * 1000 + if (frac.length >= 3) cs else cs * 10
                 val text = TIME.replace(line, "").trim()
-                if (text.isNotEmpty()) out.add(ms to text)
+                if (text.isEmpty()) return@forEach
+                val list = buckets[ms]
+                if (list == null) {
+                    buckets[ms] = mutableListOf(text)
+                } else if (!list.contains(text)) {
+                    list.add(text)
+                }
             }
         } catch (_: Exception) {
         }
-        out.sortBy { it.first }
-        return out
+        val cjk = Regex("[\\u4e00-\\u9fff]")
+        val out = buckets.map { (ms, texts) ->
+            // 双语：中文放第一行，其余（原文）放第二行
+            val cn = texts.filter { cjk.containsMatchIn(it) }
+            val other = texts.filterNot { cjk.containsMatchIn(it) }
+            val merged = when {
+                cn.isEmpty() || other.isEmpty() -> texts.joinToString("\n")
+                else -> (cn + other).joinToString("\n")
+            }
+            ms to merged
+        }
+        return out.sortedBy { it.first }
     }
 
     /** 取当前播放位置对应的那一行 */
