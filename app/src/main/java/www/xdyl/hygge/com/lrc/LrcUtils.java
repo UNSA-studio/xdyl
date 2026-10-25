@@ -44,6 +44,8 @@ class LrcUtils {
     /** 字级时间标签 <mm:ss.xx> */
     private static final Pattern PATTERN_WORD_TIME = Pattern.compile("<(\\d{1,2}):(\\d{1,2})[.:](\\d{1,3})>");
     private static final Pattern PATTERN_TIME = Pattern.compile("\\[(\\d\\d):(\\d\\d)\\.(\\d{2,3})\\]");
+    /** 中文（用于判断“翻译行”） */
+    private static final Pattern PATTERN_CJK = Pattern.compile("[\\u4e00-\\u9fff]");
 
     /**
      * 从文件解析双语歌词
@@ -143,12 +145,14 @@ class LrcUtils {
             }
         }
 
-        // 单文件双语：相同开始时间的相邻两行 → 第二行作为翻译
+        // 单文件双语：相邻的「原文 + 翻译」两行 → 第二行作为翻译。
+        // 注意：QQ音乐/网易云的双语 LRC，中文翻译的时间戳常常和原文不完全相等（按中文演唱起始单独标了），
+        // 所以不能只认时间戳完全相等，否则翻译会被当成独立的歌词行、污染“下一句开始时间”的预估。
         if (entryList.size() > 1) {
             List<LrcEntry> merged = new ArrayList<>();
             for (LrcEntry e : entryList) {
                 LrcEntry prev = merged.isEmpty() ? null : merged.get(merged.size() - 1);
-                if (prev != null && prev.getTime() == e.getTime() && TextUtils.isEmpty(prev.getSecondText())) {
+                if (prev != null && TextUtils.isEmpty(prev.getSecondText()) && isTranslationPair(prev, e)) {
                     prev.setSecondText(e.getText());
                     if (prev.getEndTime() <= prev.getTime()) prev.setEndTime(e.getEndTime());
                 } else {
@@ -160,6 +164,20 @@ class LrcUtils {
 
         Collections.sort(entryList);
         return entryList;
+    }
+
+    /**
+     * 判断 prev 与 cur 是否构成「原文 + 翻译」配对。
+     * 条件：时间接近（翻译在原文之后 0~1 秒内）、且一个是中文一个是非中文。
+     */
+    private static boolean isTranslationPair(LrcEntry prev, LrcEntry cur) {
+        long diff = cur.getTime() - prev.getTime();
+        if (diff < 0 || diff > 1000) {
+            return false;
+        }
+        boolean prevCn = PATTERN_CJK.matcher(prev.getText()).find();
+        boolean curCn = PATTERN_CJK.matcher(cur.getText()).find();
+        return prevCn != curCn;
     }
 
     /**
