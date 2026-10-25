@@ -496,7 +496,10 @@ public class LrcView extends View {
             @SuppressLint("DrawAllocation")
             StaticLayout staticLayout = new StaticLayout(mDefaultLabel, mLrcPaint,
                     (int) getLrcWidth(), Layout.Alignment.ALIGN_CENTER, 1f, 0f, false);
-            drawText(canvas, staticLayout, centerY);
+            canvas.save();
+            canvas.translate(mLrcPadding, centerY - (staticLayout.getHeight() >> 1));
+            staticLayout.draw(canvas);
+            canvas.restore();
             return;
         }
 
