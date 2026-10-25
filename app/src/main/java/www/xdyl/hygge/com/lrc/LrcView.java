@@ -55,6 +55,7 @@ public class LrcView extends View {
 
     private List<LrcEntry> mLrcEntryList = new ArrayList<>();
     private TextPaint mLrcPaint = new TextPaint();
+    private TextPaint mSecondPaint = new TextPaint();
     private TextPaint mTimePaint = new TextPaint();
     private Paint.FontMetrics mTimeFontMetrics;
     private Drawable mPlayDrawable;
@@ -169,6 +170,11 @@ public class LrcView extends View {
         mLrcPaint.setAntiAlias(true);
         mLrcPaint.setTextSize(mCurrentTextSize);
         mLrcPaint.setTextAlign(Paint.Align.LEFT);
+        // 译词画笔：比原文小一号、颜色用普通行色，视觉上明显是「翻译」而非歌词
+        mSecondPaint.setAntiAlias(true);
+        mSecondPaint.setTextSize(mNormalTextSize * 0.72f);
+        mSecondPaint.setTextAlign(Paint.Align.LEFT);
+        mSecondPaint.setColor(mNormalTextColor);
         mTimePaint.setAntiAlias(true);
         mTimePaint.setTextSize(timeTextSize);
         mTimePaint.setTextAlign(Paint.Align.CENTER);
@@ -513,7 +519,8 @@ public class LrcView extends View {
 
         float y = 0;
         for (int i = 0; i < mLrcEntryList.size(); i++) {
-            int currentLineHeight = mLrcEntryList.get(i).getHeight();
+            LrcEntry entry = mLrcEntryList.get(i);
+            int currentLineHeight = entry.getHeight();
             if (i > 0) {
                 int lastLineHeight = mLrcEntryList.get(i - 1).getHeight();
                 y += lastLineHeight / 2f + mDividerHeight + currentLineHeight / 2f;
@@ -530,10 +537,11 @@ public class LrcView extends View {
                 mLrcPaint.setTextSize(mCurrentTextSize);
                 // 未唱部分：当前行颜色的暗化版（保留同一色系，避免跳色）
                 mLrcPaint.setColor(mNormalTextColor);
-                drawText(canvas, mLrcEntryList.get(i).getStaticLayout(), y);
+                drawText(canvas, entry, y);
                 // 已唱部分：按像素宽度裁剪逐字填充
                 if (mLineProgress > 0f) {
-                    drawTextKtv(canvas, mLrcEntryList.get(i).getStaticLayout(), y, mLineProgress, mLrcEntryList.get(i), mSungTextColor);
+                    int secondH = entry.getSecondLayout() != null ? entry.getSecondLayout().getHeight() : 0;
+                    drawTextKtv(canvas, entry.getStaticLayout(), y - secondH / 2f, mLineProgress, entry, mSungTextColor);
                 }
                 continue;
             } else if (isShowTimeline && i == centerLine) {
@@ -542,7 +550,7 @@ public class LrcView extends View {
                 mLrcPaint.setTextSize(mNormalTextSize);
                 mLrcPaint.setColor(mNormalTextColor);
             }
-            drawText(canvas, mLrcEntryList.get(i).getStaticLayout(), y);
+            drawText(canvas, entry, y);
         }
     }
 
@@ -551,11 +559,23 @@ public class LrcView extends View {
      *
      * @param y 歌词中心 Y 坐标
      */
-    private void drawText(Canvas canvas, StaticLayout staticLayout, float y) {
-        canvas.save();
-        canvas.translate(mLrcPadding, y - (staticLayout.getHeight() >> 1));
-        staticLayout.draw(canvas);
-        canvas.restore();
+    private void drawText(Canvas canvas, LrcEntry entry, float y) {
+        StaticLayout main = entry.getStaticLayout();
+        StaticLayout second = entry.getSecondLayout();
+        int mainH = main != null ? main.getHeight() : 0;
+        int secondH = second != null ? second.getHeight() : 0;
+        if (main != null) {
+            canvas.save();
+            canvas.translate(mLrcPadding, (y - secondH / 2f) - mainH / 2f);
+            main.draw(canvas);
+            canvas.restore();
+        }
+        if (second != null) {
+            canvas.save();
+            canvas.translate(mLrcPadding, (y + mainH / 2f) - secondH / 2f);
+            second.draw(canvas);
+            canvas.restore();
+        }
     }
 
     /**
@@ -786,7 +806,7 @@ public class LrcView extends View {
         }
 
         for (LrcEntry lrcEntry : mLrcEntryList) {
-            lrcEntry.init(mLrcPaint, (int) getLrcWidth(), mTextGravity);
+            lrcEntry.init(mLrcPaint, mSecondPaint, (int) getLrcWidth(), mTextGravity);
         }
 
         mOffset = getHeight() / 2;

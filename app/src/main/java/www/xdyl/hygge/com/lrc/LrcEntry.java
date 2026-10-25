@@ -29,6 +29,7 @@ class LrcEntry implements Comparable<LrcEntry> {
     private String text;
     private String secondText;
     private StaticLayout staticLayout;
+    private StaticLayout secondLayout;
 
     /** 字级时间（毫秒），null = 该行无字级信息 */
     private long[] wordTimes;
@@ -61,7 +62,7 @@ class LrcEntry implements Comparable<LrcEntry> {
         this.secondText = secondText;
     }
 
-    void init(TextPaint paint, int width, int gravity) {
+    void init(TextPaint paint, TextPaint secondPaint, int width, int gravity) {
         Layout.Alignment align;
         switch (gravity) {
             case GRAVITY_LEFT:
@@ -77,7 +78,12 @@ class LrcEntry implements Comparable<LrcEntry> {
                 align = Layout.Alignment.ALIGN_OPPOSITE;
                 break;
         }
-        staticLayout = new StaticLayout(getShowText(), paint, width, align, 1f, 0f, false);
+        staticLayout = new StaticLayout(text, paint, width, align, 1f, 0f, false);
+        if (!TextUtils.isEmpty(secondText)) {
+            secondLayout = new StaticLayout(secondText, secondPaint, width, align, 1f, 0f, false);
+        } else {
+            secondLayout = null;
+        }
 
         offset = Float.MIN_VALUE;
     }
@@ -90,11 +96,19 @@ class LrcEntry implements Comparable<LrcEntry> {
         return staticLayout;
     }
 
+    StaticLayout getSecondLayout() {
+        return secondLayout;
+    }
+
     int getHeight() {
-        if (staticLayout == null) {
-            return 0;
+        int h = 0;
+        if (staticLayout != null) {
+            h += staticLayout.getHeight();
         }
-        return staticLayout.getHeight();
+        if (secondLayout != null) {
+            h += secondLayout.getHeight();
+        }
+        return h;
     }
 
     public long[] getWordTimes() {
@@ -132,14 +146,6 @@ class LrcEntry implements Comparable<LrcEntry> {
 
     void setSecondText(String secondText) {
         this.secondText = secondText;
-    }
-
-    private String getShowText() {
-        if (!TextUtils.isEmpty(secondText)) {
-            return text + "\n" + secondText;
-        } else {
-            return text;
-        }
     }
 
     @Override
