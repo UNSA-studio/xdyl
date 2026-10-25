@@ -374,7 +374,7 @@ class MainActivity : AppCompatActivity() {
         //   · 同时间戳的两行自动合并成「原文 + 译词」
         // 以前这里先用旧 LrcParser 拆译文再拼回文本，会把行尾的 [00:17.46] 当成新时间戳，
         // 导致一句话被拆成两句、并且丢掉结束时间。
-        audioBinding.lyricView.loadLrc(sidecar)
+        audioBinding.lyricView.loadLrc(sidecar.readText(Charsets.UTF_8))
         audioBinding.lyricView.updateTime(0)
     }
 
@@ -611,36 +611,6 @@ class MainActivity : AppCompatActivity() {
             .start()
     }
 
-    /** 首页卡片只用「一条歌词流」：双语时取原文，纯中文歌取原文 */
-    private fun cardLyricText(file: File): String? {
-        val lines = SongLyric.load(file)
-        if (lines.isEmpty()) return null
-        val cjk = Regex("[\u4e00-\u9fff]")
-        var bilingual = false
-        for ((_, s) in lines) {
-            val parts = s.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
-            if (parts.any { cjk.containsMatchIn(it) } && parts.any { !cjk.containsMatchIn(it) }) {
-                bilingual = true
-                break
-            }
-        }
-        val sb = StringBuilder()
-        for ((ms, s) in lines) {
-            val parts = s.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
-            val pick = if (bilingual) {
-                parts.firstOrNull { !cjk.containsMatchIn(it) } ?: parts.firstOrNull() ?: continue
-            } else {
-                parts.joinToString(" ")
-            }
-            val tag = String.format(
-                java.util.Locale.US, "[%02d:%02d.%02d]",
-                ms / 60000, (ms % 60000) / 1000, (ms % 1000) / 10
-            )
-            sb.append(tag).append(pick).append("\n")
-        }
-        return if (sb.isEmpty()) null else sb.toString()
-    }
-
     /** 首页卡片歌词逐帧刷新（复用 LrcView，滚动才顺滑） */
     private val lyricTicker = object : Runnable {
         override fun run() {
@@ -680,14 +650,9 @@ class MainActivity : AppCompatActivity() {
         ph.sbSong.progress = 0
         val lrcFile = MusicPack.sidecar(song)
         songLyric = SongLyric.load(lrcFile)
-        // 歌词：复用音频页的 LrcView（支持滚动/双语），无歌词走 label 占位
+        // 歌词：读成文本交给 LrcView，内部 LrcUtils 会把同时间戳的两行合并成「原文 + 译词」
         if (lrcFile.exists()) {
-            val single = cardLyricText(lrcFile)
-            if (single != null) {
-                ph.lvSong.loadLrc(single)
-            } else {
-                ph.lvSong.loadLrc(lrcFile)
-            }
+            ph.lvSong.loadLrc(lrcFile.readText(Charsets.UTF_8))
         } else {
             ph.lvSong.setLabel("纯音乐，请欣赏")
             ph.lvSong.loadLrc("")
