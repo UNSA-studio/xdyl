@@ -73,6 +73,7 @@ object ChatPage {
         }
     }
     private val avatarLoading = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+    private val avatarWaiters = mutableMapOf<String, MutableList<(String) -> Unit>>()
     private val uiHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val avatarClient = okhttp3.OkHttpClient.Builder()
         .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
@@ -83,25 +84,28 @@ object ChatPage {
     fun peerAvatar(username: String, onReady: (String) -> Unit) {
         if (username.isBlank()) return
         avatarCache[username]?.let { onReady(it); return }
-        if (avatarLoading.putIfAbsent(username, true) != null) return
+        synchronized(avatarLoading) {
+            avatarWaiters.getOrPut(username) { mutableListOf() }.add(onReady)
+            if (avatarLoading.putIfAbsent(username, true) != null) return
+        }
         Thread {
+            var result: String? = null
             try {
                 val url = "https://login.lanternwaves.fun/player/info/" + android.net.Uri.encode(username)
-                val req = okhttp3.Request.Builder().url(url).get().build()
-                avatarClient.newCall(req).execute().use { r ->
-                    if (!r.isSuccessful) return@use
-                    val body = r.body?.string() ?: return@use
-                    val data = org.json.JSONObject(body).optJSONObject("data") ?: return@use
-                    val av = data.optString("avatar", "").trim()
-                    if (av.isNotEmpty()) {
-                        rememberAvatar(username, av)
-                        uiHandler.post { onReady(av) }
+                avatarClient.newCall(okhttp3.Request.Builder().url(url).build()).execute().use { r ->
+                    if (r.isSuccessful) {
+                        val value = org.json.JSONObject(r.body?.string().orEmpty()).optJSONObject("data")
+                            ?.optString("avatar", "")?.trim().orEmpty()
+                        if (value.isNotEmpty()) { rememberAvatar(username, value); result = value }
                     }
                 }
-            } catch (e: Exception) {
-                LogManager.w("[CHAT] 取头像失败 ${e.message}")
-            } finally {
-                avatarLoading.remove(username)
+            } catch (e: Exception) { LogManager.w("[CHAT] 取头像失败 ${e.message}") }
+            finally {
+                val waiters = synchronized(avatarLoading) {
+                    avatarLoading.remove(username)
+                    avatarWaiters.remove(username).orEmpty().toList()
+                }
+                result?.let { avatar -> uiHandler.post { waiters.forEach { it(avatar) } } }
             }
         }.start()
     }
@@ -156,6 +160,31 @@ object ChatPage {
         convRefreshHandler = null
     }
 
+    private var activeDialog: android.app.Dialog? = null
+
+    fun resumeIfVisible() {
+        if (lastConvContainer?.isShown == true) startConversationAutoRefresh()
+    }
+
+    fun detach(activity: AppCompatActivity) {
+        if (lastConvContainer?.context === activity) {
+            stopConversationAutoRefresh()
+            lastConvContainer = null
+        }
+        if (activeDialog?.context === activity) { activeDialog?.dismiss(); activeDialog = null }
+    }
+
+    fun resetForAccountChange() {
+        stopConversationAutoRefresh()
+        uiHandler.post {
+            activeDialog?.dismiss()
+            activeDialog = null
+            lastConvContainer?.removeAllViews()
+            lastConvContainer = null
+        }
+        ChatCrypto.clearSessionKeys()
+    }
+
     fun renderConversations(activity: AppCompatActivity, container: LinearLayout) {
         lastConvContainer = container
         container.removeAllViews()
@@ -202,6 +231,7 @@ object ChatPage {
         val peers = ChatStore.loadIndex(activity)
         if (peers.isEmpty()) {
             container.addView(emptyState(activity, "还没有会话\n点右上角新建，输入对方的 username"))
+            startConversationAutoRefresh()
             return
         }
         container.tag = peers.hashCode()
@@ -400,6 +430,11 @@ object ChatPage {
         try { SessionStore(activity).accessToken } catch (e: Exception) { "" }
 
     fun openChat(activity: AppCompatActivity, peerKey: String, nickname: String) {
+        val owner = ChatIdentity.current(activity) ?: run {
+            AppDialogs.tip(activity, "请先登录", "请先登录并在「我的」页刷新资料后重试")
+            return
+        }
+        activeDialog?.dismiss()
         val root = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(SURFACE)
@@ -527,7 +562,7 @@ object ChatPage {
 
         fun render() {
             list.removeAllViews()
-            val msgs = ChatStore.loadMessages(activity, peerKey)
+            val msgs = ChatStore.loadMessages(activity, peerKey, owner)
             if (msgs.isEmpty()) {
                 list.addView(TextView(activity).apply {
                     text = "还没有消息，打个招呼吧"
@@ -556,6 +591,7 @@ object ChatPage {
         }
 
         fun send() {
+            if (!ChatIdentity.isCurrent(activity, owner)) { dialog.dismiss(); return }
             val text = etInput.text.toString().trim()
             if (text.isEmpty()) return
             val myName = meName(activity)
@@ -569,18 +605,22 @@ object ChatPage {
             }
             val msgId = ChatStore.newMessageId()
             val now = System.currentTimeMillis()
-            ChatStore.appendMessage(
+            if (!ChatStore.appendMessage(
                 activity, peerKey,
-                ChatStore.Message(msgId, myName, peerKey, text, now, outgoing = true, state = "pending")
-            )
-            ChatStore.setPeerNickname(activity, peerKey, nickname)
+                ChatStore.Message(msgId, myName, peerKey, text, now, outgoing = true, state = "pending"), owner
+            )) {
+                AppDialogs.tip(activity, "未发送", "无法保存本地消息，请检查剩余空间后重试")
+                return
+            }
+            ChatStore.setPeerNickname(activity, peerKey, nickname, owner)
             etInput.setText("")
             render()
 
             Thread {
-                val key = ensureSessionKey(activity, peerKey, myName)
+                if (!ChatIdentity.isCurrent(activity, owner)) return@Thread
+                val key = runCatching { ensureSessionKey(activity, peerKey, myName) }.getOrNull()
                 if (key == null) {
-                    ChatStore.updateMessageState(activity, peerKey, msgId, "failed")
+                    ChatStore.updateMessageState(activity, peerKey, msgId, "failed", owner)
                     activity.runOnUiThread {
                         AppDialogs.tip(activity, "发送失败", "对方不存在或服务器未返回公钥（404）")
                         render()
@@ -589,8 +629,8 @@ object ChatPage {
                 }
                 val cipher = ChatCrypto.encrypt(key, text)
                 val (ok, err) = ChatApi.send(activity, myName, peerKey, msgId, cipher, now)
-                ChatStore.updateMessageState(activity, peerKey, msgId, if (ok) "sent" else "failed")
-                activity.runOnUiThread { render() }
+                ChatStore.updateMessageState(activity, peerKey, msgId, if (ok) "sent" else "failed", owner)
+                activity.runOnUiThread { if (ChatIdentity.isCurrent(activity, owner)) render() }
                 if (!ok) {
                     val tip = when {
                         peerKey == myName || err == "INVALID_REQUEST" -> "不能给自己发消息"
@@ -609,6 +649,7 @@ object ChatPage {
         btnSend.setOnClickListener { send() }
         render()
         dialog.show()
+        activeDialog = dialog
 
         // 轮询：基础 15 秒；连续失败时指数退避（最多 60 秒）
         // 背景：这条网络对高频连接会直接 RST，原来 8 秒一次 + 4 个端点等于每 2 秒建连，必然被封
@@ -617,11 +658,12 @@ object ChatPage {
         val poller = object : Runnable {
             override fun run() {
                 Thread {
+                    if (!ChatIdentity.isCurrent(activity, owner)) return@Thread
                     val got = pullMessages(activity, peerKey)
                     if (got) {
                         pollFail = 0
                         activity.runOnUiThread {
-                            ChatStore.clearUnread(activity, peerKey); render()
+                            if (ChatIdentity.isCurrent(activity, owner)) { ChatStore.clearUnread(activity, peerKey, owner); render() }
                         }
                     } else {
                         pollFail++
@@ -638,6 +680,7 @@ object ChatPage {
         }
         dialog.setOnDismissListener {
             pollHandler.removeCallbacks(poller)
+            if (activeDialog === dialog) activeDialog = null
         }
         dialog.setOnShowListener {
         }
@@ -671,8 +714,9 @@ object ChatPage {
                     marginEnd = dp(activity, 8)
                 }
             }
-            avatar.bind(peerName, avatarCache[peerName], 13f)
-            peerAvatar(peerName) { av -> avatar.bind(peerName, av, 13f) }
+            val username = m.from
+            avatar.bind(peerName, avatarCache[username], 13f)
+            peerAvatar(username) { av -> avatar.bind(peerName, av, 13f) }
             row.addView(avatar)
         }
 
@@ -774,16 +818,18 @@ object ChatPage {
     // ==================== 加密 / 收发 ====================
 
     private fun ensureSessionKey(activity: AppCompatActivity, peerKey: String, myId: String): ByteArray? {
-        ChatCrypto.getCachedKey(peerKey)?.let { return it }
+        val owner = ChatIdentity.current(activity) ?: return null
         ChatCrypto.init(activity)
+        ChatCrypto.getCachedKey(peerKey, owner.scope)?.let { return it }
         ChatApi.uploadKey(activity, myId, ChatCrypto.publicKeyBase64())
         val peerPub = ChatApi.fetchPeerKey(activity, peerKey)
         if (peerPub == null) {
             LogManager.w("[CHAT] 对端 $peerKey 公钥不存在（404）")
             return null
         }
+        if (!ChatIdentity.isCurrent(activity, owner)) return null
         val key = ChatCrypto.deriveSessionKey(peerPub)
-        ChatCrypto.cacheKey(peerKey, key)
+        ChatCrypto.cacheKey(peerKey, key, owner.scope)
         LogManager.d("[CHAT] 会话密钥指纹 ${ChatCrypto.fingerprint(key)}（对端 $peerKey）")
         return key
     }
@@ -796,87 +842,63 @@ object ChatPage {
      *   2. 新版按 seq 严格递增，has_more 时继续翻页，直到拉完。
      *   3. 收件箱 + 发件箱都同步，多设备能看到自己发出的消息。
      */
+    private val pullLock = java.util.concurrent.locks.ReentrantLock()
+
     private fun pullMessages(activity: AppCompatActivity, peerKey: String): Boolean {
-        if (!ChatApi.isConfigured(activity)) return false
-        val myId = meName(activity)
-        if (myId.isBlank()) return false
-
-        var cursor = lastCursor(activity)
-        var updated = false
-        var pages = 0
-        val knownIds = mutableMapOf<String, MutableSet<String>>()
-
-        fun alreadyHave(peer: String, id: String): Boolean {
-            val set = knownIds.getOrPut(peer) {
-                ChatStore.loadMessages(activity, peer).map { it.id }.toMutableSet()
-            }
-            if (set.contains(id)) return true
-            set.add(id)
-            return false
-        }
-
-        while (pages < 50) {
-            val page = ChatApi.pullPage(activity, cursor) ?: break
-            for (o in page.items) {
+        if (!pullLock.tryLock()) return false
+        try {
+        val owner = ChatIdentity.current(activity) ?: return false
+        if (owner.server.isBlank()) return false
+        try {
+            var updated = false
+            val keyAttempts = mutableMapOf<String, ByteArray?>()
+            fun deliver(o: org.json.JSONObject, retry: Boolean): Boolean {
+                if (!ChatIdentity.isCurrent(activity, owner)) return false
                 val from = o.optString("from")
                 val to = o.optString("to")
-                val peer = when {
-                    to == myId -> from
-                    from == myId -> to
-                    else -> ""
+                val peer = when { to == owner.username -> from; from == owner.username -> to; else -> return true }
+                if (peer.isBlank() || peer == owner.username) return true
+                val id = o.optString("msgId").ifBlank { "srv-${o.optLong("seq")}" }
+                val existing = ChatStore.loadMessages(activity, peer, owner).firstOrNull { it.id == id }
+                if (existing != null) {
+                    val saved = ChatStore.appendMessage(activity, peer,
+                        existing.copy(state = if (existing.outgoing) "sent" else existing.state), owner)
+                    if (saved) ChatStore.removePending(activity, owner, o)
+                    return saved
                 }
-                if (peer.isBlank() || peer == myId) continue
-
-                val isMine = from == myId
-                val msgId = o.optString("msgId").ifBlank { "srv-" + o.optLong("seq") }
-                val ts = o.optLong("ts", System.currentTimeMillis())
-                val cipher = o.optString("cipher")
-
-                if (alreadyHave(peer, msgId)) {
-                    // 已在本地：自己发的不再是 pending
-                    if (isMine) ChatStore.updateMessageState(activity, peer, msgId, "sent")
-                    continue
+                val key = if (keyAttempts.containsKey(peer)) keyAttempts[peer] else {
+                    runCatching { ensureSessionKey(activity, peer, owner.username) }.getOrNull().also { keyAttempts[peer] = it }
                 }
-
-                if (cipher.isBlank()) continue
-                val key = ensureSessionKey(activity, peer, myId)
-                if (key == null) {
-                    LogManager.w("[CHAT] 缺少会话密钥，跳过 $msgId（对端 $peer）")
-                    continue
-                }
-                val plain = ChatCrypto.decrypt(key, cipher)
+                val plain = key?.let { ChatCrypto.decrypt(it, o.optString("cipher")) }
                 if (plain == null) {
-                    LogManager.e("[CHAT] 消息 $msgId 解密失败")
-                    continue
+                    ChatCrypto.invalidateSessionKey(peer, owner.scope)
+                    // The cursor may advance ONLY after this ciphertext is durable and retryable.
+                    return if (retry) false else ChatStore.defer(activity, owner, o)
                 }
-                ChatStore.appendMessage(
-                    activity, peer,
-                    ChatStore.Message(
-                        msgId, from, to, plain, ts,
-                        outgoing = isMine,
-                        state = if (isMine) "sent" else "delivered"
-                    )
-                )
-                updated = true
+                val saved = ChatStore.appendMessage(activity, peer,
+                    ChatStore.Message(id, from, to, plain, o.optLong("ts", System.currentTimeMillis()),
+                        outgoing = from == owner.username, state = if (from == owner.username) "sent" else "delivered"), owner)
+                if (saved) { updated = true; ChatStore.removePending(activity, owner, o) }
+                return saved
             }
-
-            if (page.nextCursor > cursor) {
-                cursor = page.nextCursor
-                saveCursor(activity, cursor)
+            ChatStore.pending(activity, owner).take(50).forEach { deliver(it, retry = true) }
+            var cursor = ChatStore.cursor(activity, owner)
+            repeat(50) {
+                if (!ChatIdentity.isCurrent(activity, owner)) return updated
+                val page = ChatApi.pullPage(activity, cursor) ?: return updated
+                if (!ChatIdentity.isCurrent(activity, owner)) return updated
+                for (item in page.items) if (!deliver(item, retry = false)) return updated
+                if (page.nextCursor > cursor) {
+                    if (!ChatStore.saveCursor(activity, owner, page.nextCursor)) return updated
+                    cursor = page.nextCursor
+                } else return updated
+                if (!page.hasMore || page.items.isEmpty()) return updated
             }
-            if (!page.hasMore || page.items.isEmpty()) break
-            pages++
+            return updated
+        } catch (e: Exception) {
+            LogManager.w("[CHAT] 同步未完成，游标/待重试密文保留: ${e.message}")
+            return false
         }
-        return updated
+        } finally { pullLock.unlock() }
     }
-
-    private fun lastCursor(activity: AppCompatActivity): Long =
-        activity.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
-            .getLong("chat_last_seq", 0L)
-
-    private fun saveCursor(activity: AppCompatActivity, seq: Long) {
-        activity.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
-            .edit().putLong("chat_last_seq", seq).apply()
-    }
-
 }

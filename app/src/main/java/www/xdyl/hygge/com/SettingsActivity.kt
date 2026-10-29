@@ -108,6 +108,7 @@ class SettingsActivity : AppCompatActivity() {
         updateSongPackStatus()
 
         binding.swDailySong.setOnCheckedChangeListener { _, isChecked ->
+            if (updatingSongSwitch) return@setOnCheckedChangeListener
             if (isChecked) {
                 if (MusicPack.isReady()) {
                     prefs.edit().putBoolean("daily_song_enabled", true).commit()
@@ -190,47 +191,62 @@ class SettingsActivity : AppCompatActivity() {
         System.exit(0)
     }
 
-    private fun startSongPackDownload() {
+    private var songInstallJob: Job? = null
+    private var updatingSongSwitch = false
+
+    private fun startSongPackDownload(force: Boolean = false) {
+        if (songInstallJob?.isActive == true || MusicPack.isInstalling) {
+            Toast.makeText(this, "音乐资源安装正在进行，请稍候", Toast.LENGTH_SHORT).show()
+            return
+        }
         binding.btnSongPack.isEnabled = false
+        binding.btnReinstallMusic.isEnabled = false
+        binding.swDailySong.isEnabled = false
         binding.pbSongPack.visibility = View.VISIBLE
         binding.pbSongPack.isIndeterminate = false
         binding.pbSongPack.progress = 0
-        binding.tvSongPackStatus.text = "正在下载音乐包… 0%"
-        var lastPct = -1
-        scope.launch {
-            val okDl = withContext(Dispatchers.IO) {
-                MusicPack.download { done, total ->
-                    val pct = if (total > 0) (done * 100 / total).toInt() else 0
-                    if (pct != lastPct) {
-                        lastPct = pct
-                        runOnUiThread {
+        binding.tvSongPackStatus.text = "正在验证/下载音乐包…"
+        songInstallJob = scope.launch {
+            try {
+                val ok = MusicPack.install(force, onProgress = { done, total ->
+                    val pct = if (total > 0) (done * 100 / total).toInt().coerceIn(0, 100) else 0
+                    runOnUiThread {
+                        if (!isDestroyed && !isFinishing && !binding.pbSongPack.isIndeterminate && pct >= binding.pbSongPack.progress) {
                             binding.pbSongPack.progress = pct
-                            binding.tvSongPackStatus.text = "正在下载音乐包… " + pct + "%（" +
-                                    (done / 1048576) + " / " + (total / 1048576) + " MB）"
+                            binding.tvSongPackStatus.text = "正在下载音乐包… $pct%（${done / 1048576} / ${total / 1048576} MB）"
                         }
                     }
+                }, onExtract = {
+                    runOnUiThread {
+                        if (!isDestroyed && !isFinishing) {
+                            binding.pbSongPack.isIndeterminate = true
+                            binding.tvSongPackStatus.text = "正在解压并验证音乐资源…"
+                        }
+                    }
+                })
+                if (ok) {
+                    if (force) prefs.edit().remove("song_date").remove("song_name").apply()
+                    prefs.edit().putBoolean("daily_song_enabled", true).commit()
+                    updatingSongSwitch = true
+                    try { binding.swDailySong.isChecked = true } finally { updatingSongSwitch = false }
+                    updateSongPackStatus()
+                    updateCacheInfo()
+                    askRestartForSong()
+                } else {
+                    binding.tvSongPackStatus.text = "安装失败，原有资源保留，可点击重试"
+                    binding.btnSongPack.visibility = View.VISIBLE
+                    binding.btnSongPack.text = "重新安装音乐包"
                 }
-            }
-            if (!okDl) {
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                binding.tvSongPackStatus.text = "安装失败：${e.message}"
+                binding.btnSongPack.visibility = View.VISIBLE
+            } finally {
                 binding.pbSongPack.visibility = View.GONE
+                binding.pbSongPack.isIndeterminate = false
                 binding.btnSongPack.isEnabled = true
-                binding.btnSongPack.text = "继续下载音乐包"
-                binding.tvSongPackStatus.text = "下载失败，可重新点击继续（支持断点续传）"
-                return@launch
-            }
-            binding.pbSongPack.isIndeterminate = true
-            binding.tvSongPackStatus.text = "正在解压音乐包…"
-            val okUnzip = withContext(Dispatchers.IO) { MusicPack.extract() }
-            binding.pbSongPack.isIndeterminate = false
-            binding.btnSongPack.isEnabled = true
-            if (okUnzip) {
-                prefs.edit().putBoolean("daily_song_enabled", true).commit()
-                binding.pbSongPack.visibility = View.GONE
-                updateSongPackStatus()
-                askRestartForSong()
-            } else {
-                binding.tvSongPackStatus.text = "解压失败，可重新点击重试"
-                binding.btnSongPack.text = "重新解压"
+                binding.btnReinstallMusic.isEnabled = true
+                binding.swDailySong.isEnabled = true
             }
         }
     }
@@ -255,7 +271,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun updateCacheInfo() {
         scope.launch {
             val sizes = withContext(Dispatchers.IO) {
-                val c = dirSize(cacheDir) + dirSize(externalCacheDir)
+                val c = dirSize(cacheDir) + dirSize(externalCacheDir) + SimpleImageLoader.diskCacheBytes(this@SettingsActivity)
                 val m = dirSize(musicDir())
                 c to m
             }
@@ -274,21 +290,22 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun doClearCache() {
+        binding.btnClearCache.isEnabled = false
         scope.launch {
-            val freed = withContext(Dispatchers.IO) {
-                var n = 0L
-                listOf(cacheDir, externalCacheDir).forEach { dir ->
-                    dir?.listFiles()?.forEach { f ->
-                        n += dirSize(f)
-                        runCatching { f.deleteRecursively() }
+            try {
+                val freed = withContext(Dispatchers.IO) {
+                    var removed = SimpleImageLoader.clearAll(this@SettingsActivity) + AvatarLoader.clearAll(this@SettingsActivity)
+                    listOf(cacheDir, externalCacheDir).forEach { dir ->
+                        val before = dirSize(dir)
+                        dir?.listFiles()?.forEach { runCatching { it.deleteRecursively() } }
+                        removed += (before - dirSize(dir)).coerceAtLeast(0L)
                     }
+                    removed
                 }
-                n
-            }
-            AvatarLoader.clearMemory()
-            ChatPage.clearAvatarCache()
-            updateCacheInfo()
-            Toast.makeText(this@SettingsActivity, "已清理 " + fmtBytes(freed), Toast.LENGTH_SHORT).show()
+                ChatPage.clearAvatarCache()
+                updateCacheInfo()
+                Toast.makeText(this@SettingsActivity, "已清理 " + fmtBytes(freed), Toast.LENGTH_SHORT).show()
+            } finally { binding.btnClearCache.isEnabled = true }
         }
     }
 
@@ -296,25 +313,15 @@ class SettingsActivity : AppCompatActivity() {
         val count = MusicPack.songs().size
         MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
             .setTitle("重新安装音乐资源")
-            .setMessage("将删除本地音乐包归档与已解压的 " + count +
-                    " 首歌曲，然后重新下载约 224 MB 并解压。\n\n这会清空所有音乐相关数据缓存，需要联网，耗时数分钟。")
+            .setMessage("将重新下载并完整安装音乐资源（当前 " + count +
+                    " 首）。\n\n成功后替换旧资源并重置今日选歌缓存；下载或验证失败时保留旧资源。需要联网，约 224 MB。")
             .setPositiveButton("重新安装") { _, _ -> doReinstallMusic() }
             .setNegativeButton("取消", null)
             .show()
     }
 
     private fun doReinstallMusic() {
-        scope.launch {
-            binding.tvSongPackStatus.text = "正在清理本地音乐资源…"
-            withContext(Dispatchers.IO) {
-                runCatching { MusicPack.rootDir().deleteRecursively() }
-                runCatching { MusicPack.archiveFile().delete() }
-            }
-            prefs.edit().remove("song_date").remove("song_name").apply()
-            updateSongPackStatus()
-            updateCacheInfo()
-            startSongPackDownload()
-        }
+        startSongPackDownload(force = true)
     }
 
     private fun loadPrefs() {

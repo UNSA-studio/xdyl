@@ -6,229 +6,192 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-/**
- * 【私聊本地存储】
- *
- * 目录：/sdcard/NebulaUpdater/chat/
- *   ├── index.json            会话索引（对端 id / 昵称 / 最后消息 / 未读数）
- *   ├── <peerId>.json         与某人的完整对话
- *   └── <peerId>.keys.json    与该对端的会话密钥材料（公钥等）
- *
- * 消息结构：
- * {
- *   "id": "1700000000000-abc",
- *   "from": 21, "to": 22,
- *   "text": "解密后的明文",
- *   "time": 1700000000000,
- *   "dir": "out" | "in",
- *   "state": "pending" | "sent" | "delivered" | "read" | "failed"
- * }
- */
+/** Serialized, atomic account-scoped storage. Legacy data is copied only after ownership checks. */
 object ChatStore {
+    data class Message(val id: String, val from: String, val to: String, val text: String,
+        val time: Long, val outgoing: Boolean, var state: String = if (outgoing) "pending" else "delivered")
+    data class Peer(val peerKey: String, val nickname: String, val lastText: String, val lastTime: Long, val unread: Int)
 
-    data class Message(
-        val id: String,
-        /** 发送者 username */
-        val from: String,
-        /** 接收者 username */
-        val to: String,
-        val text: String,
-        val time: Long,
-        val outgoing: Boolean,
-        var state: String = if (outgoing) "pending" else "delivered"
-    )
+    private fun base(context: Context): File = if (isPublicStorage(context))
+        File(Environment.getExternalStorageDirectory(), "NebulaUpdater/chat") else File(context.filesDir, "chat")
 
-    data class Peer(
-        /** 对端标识（username，如 OvalXD_chen）——主站 /player/info/{username} 的键 */
-        val peerKey: String,
-        val nickname: String,
-        val lastText: String,
-        val lastTime: Long,
-        val unread: Int
-    )
+    fun isPublicStorage(context: Context): Boolean = context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+        .getBoolean("chat_storage_public", false)
 
-    /**
-     * 存储目录
-     *
-     * 默认：App 私有目录 filesDir/chat（外部应用/ADB 普通权限都无法读取，防篡改）
-     * 可选：公开目录 /sdcard/NebulaUpdater/chat（便于导出，需 ADB 开关打开）
-     *       开关：adb broadcast -a www.xdyl.hygge.com.ENABLE_CHAT_PUBLIC ...
-     */
-    private fun root(context: Context): File {
-        val prefs = context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
-        val usePublic = prefs.getBoolean("chat_storage_public", false)
-        val base = if (usePublic) {
-            File(Environment.getExternalStorageDirectory(), "NebulaUpdater/chat")
-        } else {
-            File(context.filesDir, "chat")
-        }
-        if (!base.exists()) base.mkdirs()
-        return base
-    }
+    fun storagePath(context: Context): String = ChatIdentity.current(context)?.let { root(context, it).absolutePath }
+        ?: File(base(context), "accounts").absolutePath
 
-    /** 当前存储位置（用于设置页展示） */
-    fun storagePath(context: Context): String = root(context).absolutePath
+    private fun safeName(key: String) = key.replace(Regex("[^A-Za-z0-9._-]"), "_")
 
-    fun isPublicStorage(context: Context): Boolean =
-        context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
-            .getBoolean("chat_storage_public", false)
-
-    private fun peerFile(context: Context, peerKey: String) = File(root(context), safeName(peerKey) + ".json")
-    /** 文件名安全化（username 只含字母数字下划线，这里兜底） */
-    private fun safeName(key: String): String =
-        key.replace(Regex("[^A-Za-z0-9._-]"), "_")
-
-    private fun indexFile(context: Context) = File(root(context), "index.json")
-
-    // ==================== 消息读写 ====================
-
-    fun loadMessages(context: Context, peerKey: String): MutableList<Message> {
-        val f = peerFile(context, peerKey)
-        if (!f.isFile) return mutableListOf()
-        return try {
-            val arr = JSONArray(f.readText(Charsets.UTF_8))
-            val list = mutableListOf<Message>()
-            for (i in 0 until arr.length()) {
-                val o = arr.getJSONObject(i)
-                list.add(
-                    Message(
-                        o.optString("id"),
-                        o.optString("from"),
-                        o.optString("to"),
-                        o.optString("text"),
-                        o.optLong("time"),
-                        o.optString("dir") == "out",
-                        o.optString("state", "delivered")
-                    )
-                )
+    @Synchronized private fun root(context: Context, owner: ChatIdentity.Snapshot): File {
+        require(owner.scope.matches(Regex("[a-f0-9]{64}")))
+        val legacy = base(context)
+        val dir = File(legacy, "accounts/${owner.scope}").apply { mkdirs() }
+        val marker = File(dir, ".legacy-imported")
+        if (!marker.exists()) {
+            val imported = mutableListOf<Peer>()
+            val oldIndex = runCatching { readIndex(File(legacy, "index.json")) }.getOrDefault(mutableListOf())
+            legacy.listFiles().orEmpty().filter {
+                it.isFile && it.extension == "json" && it.name != "index.json" && !it.name.endsWith(".keys.json")
+            }.forEach { file ->
+                val peer = file.nameWithoutExtension
+                val messages = runCatching { readMessages(file) }.getOrNull() ?: return@forEach
+                val owned = messages.isNotEmpty() && messages.all { m ->
+                    if (m.outgoing) m.from == owner.username && m.to == peer
+                    else m.to == owner.username && m.from == peer
+                }
+                if (owned) {
+                    val dest = File(dir, safeName(peer) + ".json")
+                    if (!dest.exists()) FileSafety.writeAtomic(dest, file.readText(Charsets.UTF_8))
+                    val last = messages.maxByOrNull { it.time }!!
+                    imported.add(oldIndex.firstOrNull { it.peerKey == peer }
+                        ?: Peer(peer, peer, last.text, last.time, 0))
+                }
             }
-            list
-        } catch (e: Exception) {
-            mutableListOf()
+            val current = readIndex(File(dir, "index.json"))
+            val merged = current + imported.filter { p -> current.none { it.peerKey == p.peerKey } }
+            if (merged.isNotEmpty()) writeIndex(File(dir, "index.json"), merged)
+            // Do not inherit the legacy global cursor; replay is idempotent and recovers skipped messages.
+            FileSafety.writeAtomic(marker, "v1")
         }
+        return dir
     }
 
-    /** 追加一条消息（去重：同 id 覆盖） */
-    fun appendMessage(context: Context, peerKey: String, msg: Message) {
-        val list = loadMessages(context, peerKey)
-        val idx = list.indexOfFirst { it.id == msg.id }
-        if (idx >= 0) list[idx] = msg else list.add(msg)
-        list.sortBy { it.time }
-        saveMessages(context, peerKey, list)
-        updateIndex(context, peerKey, msg)
+    private fun readMessages(file: File): MutableList<Message> {
+        if (!file.exists()) return mutableListOf()
+        val arr = JSONArray(file.readText(Charsets.UTF_8))
+        return (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            Message(o.getString("id"), o.getString("from"), o.getString("to"), o.optString("text"),
+                o.optLong("time"), o.optString("dir") == "out", o.optString("state", "delivered"))
+        }.toMutableList()
     }
 
-    fun updateMessageState(context: Context, peerKey: String, msgId: String, state: String) {
-        val list = loadMessages(context, peerKey)
-        val m = list.firstOrNull { it.id == msgId } ?: return
-        m.state = state
-        saveMessages(context, peerKey, list)
-    }
-
-    private fun saveMessages(context: Context, peerKey: String, list: List<Message>) {
+    private fun writeMessages(file: File, messages: List<Message>) {
         val arr = JSONArray()
-        list.forEach { m ->
-            arr.put(
-                JSONObject()
-                    .put("id", m.id)
-                    .put("from", m.from)
-                    .put("to", m.to)
-                    .put("text", m.text)
-                    .put("time", m.time)
-                    .put("dir", if (m.outgoing) "out" else "in")
-                    .put("state", m.state)
-            )
-        }
-        try {
-            peerFile(context, peerKey).writeText(arr.toString(), Charsets.UTF_8)
-        } catch (e: Exception) {
-            LogManager.e("[CHAT] 保存失败: ${e.message}")
-        }
+        messages.forEach { m -> arr.put(JSONObject().put("id", m.id).put("from", m.from).put("to", m.to)
+            .put("text", m.text).put("time", m.time).put("dir", if (m.outgoing) "out" else "in").put("state", m.state)) }
+        FileSafety.writeAtomic(file, arr.toString())
     }
 
-    // ==================== 会话索引 ====================
+    private fun readIndex(file: File): MutableList<Peer> {
+        if (!file.exists()) return mutableListOf()
+        val arr = JSONArray(file.readText(Charsets.UTF_8))
+        return (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            Peer(o.getString("peerKey"), o.optString("nickname"), o.optString("lastText"), o.optLong("lastTime"), o.optInt("unread"))
+        }.sortedByDescending { it.lastTime }.toMutableList()
+    }
 
-    fun loadIndex(context: Context): MutableList<Peer> {
-        val f = indexFile(context)
-        if (!f.isFile) return mutableListOf()
+    private fun writeIndex(file: File, peers: List<Peer>) {
+        val arr = JSONArray()
+        peers.forEach { p -> arr.put(JSONObject().put("peerKey", p.peerKey).put("nickname", p.nickname)
+            .put("lastText", p.lastText).put("lastTime", p.lastTime).put("unread", p.unread)) }
+        FileSafety.writeAtomic(file, arr.toString())
+    }
+
+    @Synchronized fun loadMessages(context: Context, peerKey: String,
+        owner: ChatIdentity.Snapshot? = ChatIdentity.current(context)): MutableList<Message> {
+        if (owner == null) return mutableListOf()
+        return try { readMessages(File(root(context, owner), safeName(peerKey) + ".json")) }
+        catch (e: Exception) { LogManager.e("[CHAT] 记录读取失败（保留原文件）: ${e.message}"); mutableListOf() }
+    }
+
+    @Synchronized fun appendMessage(context: Context, peerKey: String, msg: Message,
+        owner: ChatIdentity.Snapshot? = ChatIdentity.current(context)): Boolean {
+        if (owner == null) return false
         return try {
-            val arr = JSONArray(f.readText(Charsets.UTF_8))
-            val list = mutableListOf<Peer>()
-            for (i in 0 until arr.length()) {
-                val o = arr.getJSONObject(i)
-                list.add(
-                    Peer(
-                        o.optString("peerKey"),
-                        o.optString("nickname"),
-                        o.optString("lastText"),
-                        o.optLong("lastTime"),
-                        o.optInt("unread", 0)
-                    )
-                )
-            }
-            list.sortedByDescending { it.lastTime }.toMutableList()
-        } catch (e: Exception) {
-            mutableListOf()
-        }
+            val dir = root(context, owner)
+            val file = File(dir, safeName(peerKey) + ".json")
+            val messages = readMessages(file) // Never overwrite an unreadable history with an empty list.
+            val idx = messages.indexOfFirst { it.id == msg.id }
+            if (idx >= 0) messages[idx] = msg else messages.add(msg)
+            messages.sortBy { it.time }
+            writeMessages(file, messages)
+            val index = readIndex(File(dir, "index.json"))
+            val previous = index.firstOrNull { it.peerKey == peerKey }
+            val last = messages.lastOrNull() ?: msg
+            val unread = if (idx >= 0) previous?.unread ?: 0 else if (msg.outgoing) 0 else (previous?.unread ?: 0) + 1
+            index.removeAll { it.peerKey == peerKey }
+            index.add(Peer(peerKey, previous?.nickname ?: peerKey, last.text, last.time, unread))
+            writeIndex(File(dir, "index.json"), index)
+            true
+        } catch (e: Exception) { LogManager.e("[CHAT] 保存失败: ${e.message}"); false }
     }
 
-    private fun updateIndex(context: Context, peerKey: String, msg: Message) {
-        val index = loadIndex(context)
-        val existing = index.firstOrNull { it.peerKey == peerKey }
-        val unread = if (msg.outgoing) 0 else (existing?.unread ?: 0) + 1
-        val updated = Peer(
-            peerKey,
-            existing?.nickname ?: "用户$peerKey",
-            msg.text,
-            msg.time,
-            unread
-        )
-        index.removeAll { it.peerKey == peerKey }
-        index.add(updated)
-        saveIndex(context, index)
+    @Synchronized fun updateMessageState(context: Context, peerKey: String, id: String, state: String,
+        owner: ChatIdentity.Snapshot? = ChatIdentity.current(context)): Boolean {
+        if (owner == null) return false
+        return try {
+            val file = File(root(context, owner), safeName(peerKey) + ".json")
+            val messages = readMessages(file)
+            val msg = messages.firstOrNull { it.id == id } ?: return false
+            msg.state = state
+            writeMessages(file, messages)
+            true
+        } catch (e: Exception) { LogManager.e("[CHAT] 状态保存失败: ${e.message}"); false }
     }
 
-    fun setPeerNickname(context: Context, peerKey: String, nickname: String) {
-        val index = loadIndex(context)
-        val idx = index.indexOfFirst { it.peerKey == peerKey }
-        if (idx >= 0) {
-            val p = index[idx]
-            index[idx] = p.copy(nickname = nickname)
-            saveIndex(context, index)
-        } else {
-            index.add(Peer(peerKey, nickname, "", System.currentTimeMillis(), 0))
-            saveIndex(context, index)
-        }
+    @Synchronized fun loadIndex(context: Context,
+        owner: ChatIdentity.Snapshot? = ChatIdentity.current(context)): MutableList<Peer> {
+        if (owner == null) return mutableListOf()
+        return try { readIndex(File(root(context, owner), "index.json")) }
+        catch (e: Exception) { LogManager.e("[CHAT] 索引读取失败: ${e.message}"); mutableListOf() }
     }
 
-    fun clearUnread(context: Context, peerKey: String) {
-        val index = loadIndex(context)
-        val idx = index.indexOfFirst { it.peerKey == peerKey }
-        if (idx >= 0) {
-            index[idx] = index[idx].copy(unread = 0)
-            saveIndex(context, index)
-        }
-    }
-
-    private fun saveIndex(context: Context, list: List<Peer>) {
-        val arr = JSONArray()
-        list.forEach { p ->
-            arr.put(
-                JSONObject()
-                    .put("peerKey", p.peerKey)
-                    .put("nickname", p.nickname)
-                    .put("lastText", p.lastText)
-                    .put("lastTime", p.lastTime)
-                    .put("unread", p.unread)
-            )
-        }
+    @Synchronized fun setPeerNickname(context: Context, peerKey: String, nickname: String,
+        owner: ChatIdentity.Snapshot? = ChatIdentity.current(context)) {
+        if (owner == null) return
         try {
-            indexFile(context).writeText(arr.toString(), Charsets.UTF_8)
-        } catch (e: Exception) {
-            LogManager.e("[CHAT] 索引保存失败: ${e.message}")
-        }
+            val f = File(root(context, owner), "index.json")
+            val index = readIndex(f)
+            val old = index.firstOrNull { it.peerKey == peerKey }
+            index.removeAll { it.peerKey == peerKey }
+            index.add(old?.copy(nickname = nickname) ?: Peer(peerKey, nickname, "", System.currentTimeMillis(), 0))
+            writeIndex(f, index)
+        } catch (e: Exception) { LogManager.e("[CHAT] 昵称保存失败: ${e.message}") }
     }
 
-    /** 生成消息 id */
-    fun newMessageId(): String = "${System.currentTimeMillis()}-${(1000..9999).random()}"
+    @Synchronized fun clearUnread(context: Context, peerKey: String,
+        owner: ChatIdentity.Snapshot? = ChatIdentity.current(context)) {
+        if (owner == null) return
+        try {
+            val f = File(root(context, owner), "index.json")
+            writeIndex(f, readIndex(f).map { if (it.peerKey == peerKey) it.copy(unread = 0) else it })
+        } catch (e: Exception) { LogManager.e("[CHAT] 未读数保存失败: ${e.message}") }
+    }
+
+    @Synchronized fun cursor(context: Context, owner: ChatIdentity.Snapshot): Long =
+        File(root(context, owner), "cursor.txt").let { if (it.isFile) it.readText().toLongOrNull() ?: 0L else 0L }
+
+    @Synchronized fun saveCursor(context: Context, owner: ChatIdentity.Snapshot, cursor: Long): Boolean = try {
+        FileSafety.writeAtomic(File(root(context, owner), "cursor.txt"), cursor.toString()); true
+    } catch (e: Exception) { LogManager.e("[CHAT] 游标保存失败: ${e.message}"); false }
+
+    @Synchronized fun pending(context: Context, owner: ChatIdentity.Snapshot): List<JSONObject> {
+        val f = File(root(context, owner), "pending-ciphertext.json")
+        if (!f.exists()) return emptyList()
+        val arr = JSONArray(f.readText(Charsets.UTF_8))
+        return (0 until arr.length()).map { arr.getJSONObject(it) }
+    }
+
+    private fun pendingId(o: JSONObject) = o.optString("from") + ":" + o.optString("msgId").ifBlank { "seq-${o.optLong("seq")}" }
+
+    @Synchronized fun defer(context: Context, owner: ChatIdentity.Snapshot, message: JSONObject): Boolean = try {
+        val all = pending(context, owner).filterNot { pendingId(it) == pendingId(message) } + message
+        val arr = JSONArray(); all.forEach { arr.put(it) }
+        FileSafety.writeAtomic(File(root(context, owner), "pending-ciphertext.json"), arr.toString()); true
+    } catch (e: Exception) { LogManager.e("[CHAT] 待解密密文保存失败: ${e.message}"); false }
+
+    @Synchronized fun removePending(context: Context, owner: ChatIdentity.Snapshot, message: JSONObject) {
+        val file = File(root(context, owner), "pending-ciphertext.json")
+        if (!file.isFile) return
+        val before = pending(context, owner)
+        val remaining = before.filterNot { pendingId(it) == pendingId(message) }
+        if (remaining.size == before.size) return
+        val arr = JSONArray(); remaining.forEach { arr.put(it) }
+        FileSafety.writeAtomic(file, arr.toString())
+    }
+
+    fun newMessageId(): String = java.util.UUID.randomUUID().toString()
 }

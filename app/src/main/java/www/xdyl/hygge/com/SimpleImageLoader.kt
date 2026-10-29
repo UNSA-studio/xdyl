@@ -31,6 +31,21 @@ import java.util.concurrent.TimeUnit
  *  旧实例在换图时 recycle，避免 native 内存泄漏。
  */
 object SimpleImageLoader {
+    private val cacheLock = Any()
+    private val cacheGeneration = java.util.concurrent.atomic.AtomicLong(0)
+
+    fun diskCacheBytes(context: Context): Long = File(context.filesDir, "imgcache").listFiles().orEmpty().sumOf { it.length() }
+
+    fun clearAll(context: Context): Long = synchronized(cacheLock) {
+        cacheGeneration.incrementAndGet()
+        cache.evictAll()
+        gifBytesCache.evictAll()
+        val dir = File(context.filesDir, "imgcache")
+        val before = diskCacheBytes(context)
+        dir.listFiles().orEmpty().forEach { it.deleteRecursively() }
+        (before - diskCacheBytes(context)).coerceAtLeast(0L)
+    }
+
 
     private val client = OkHttpClient.Builder()
         .dns(NetDns)
@@ -87,6 +102,7 @@ object SimpleImageLoader {
     /** 异步加载图片（GIF 会动） */
     fun load(context: Context, url: String, imageView: ImageView) {
         if (url.isBlank()) return
+        val generation = cacheGeneration.get()
 
         // 这个 View 已经显示同一张 GIF：保持播放，什么都不做
         if (imageView.tag == url && imageView.drawable is GifDrawable) return
@@ -167,7 +183,9 @@ object SimpleImageLoader {
                     // 直接写盘（tmp+rename 在部分机型/时机下会失败，导致缓存永不命中）
                     runCatching {
                         file.parentFile?.mkdirs()
-                        file.writeBytes(d)
+                        synchronized(cacheLock) {
+                            if (generation == cacheGeneration.get()) file.writeBytes(d)
+                        }
                     }
                 }
 
@@ -177,7 +195,9 @@ object SimpleImageLoader {
                 var drawable: Drawable? = null
                 if (isGif(url, data)) {
                     // 字节入内存缓存：下次打开直接解码（免磁盘 IO）
-                    gifBytesCache.put(url, data)
+                    synchronized(cacheLock) {
+                        if (generation == cacheGeneration.get()) gifBytesCache.put(url, data)
+                    }
                     // 每个 View 独立实例（不复用缓存，避免 setVisible 互相干扰）
                     val gif = runCatching { GifDrawable(data) }.getOrNull()
                     if (gif != null) {
@@ -189,7 +209,9 @@ object SimpleImageLoader {
                     val bmp = BitmapFactory.decodeByteArray(data, 0, data.size)
                     if (bmp != null) {
                         drawable = BitmapDrawable(context.resources, bmp)
-                        cache.put(url, drawable)
+                        synchronized(cacheLock) {
+                            if (generation == cacheGeneration.get()) cache.put(url, drawable)
+                        }
                     }
                 }
                 val result = drawable ?: return@execute

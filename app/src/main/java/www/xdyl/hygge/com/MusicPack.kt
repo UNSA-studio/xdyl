@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import android.os.Environment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.ensureActive
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -51,8 +52,12 @@ object MusicPack {
         return dir
     }
 
-    fun rootDir(): File {
+    @Synchronized fun rootDir(): File {
         val dir = File(baseDir(), "music_pack")
+        if (!dir.exists()) {
+            baseDir().listFiles().orEmpty().filter { it.isDirectory && it.name.startsWith(".music-backup-") }
+                .maxByOrNull { it.lastModified() }?.renameTo(dir)
+        }
         if (!dir.exists()) dir.mkdirs()
         return dir
     }
@@ -65,189 +70,131 @@ object MusicPack {
         return list.sortedBy { it.name.lowercase() }
     }
 
-    fun isReady(): Boolean = songs().isNotEmpty()
+    fun isReady(): Boolean {
+        val root = rootDir()
+        return if (File(root, MARKER).isFile) manifestValid(root) else adoptExisting(root)
+    }
 
     fun sidecar(song: File): File =
         File(song.parentFile, song.nameWithoutExtension + ".lrc")
 
-    /** 下载音乐包：优先 4 线程分块并发，失败回退单线程。onProgress(已下载字节, 总字节) */
-    suspend fun download(onProgress: (Long, Long) -> Unit): Boolean = withContext(Dispatchers.IO) {
-        val target = archiveFile()
-        val total = remoteSize()
-        if (target.exists() && target.length() == total) return@withContext true
-        // 分块写入要求整块偏移对齐，因此每次都从头开始
-        if (target.exists()) target.delete()
-        try {
-            LogManager.log("[SONG] 多线程下载开始 ${THREADS} 线程 / $total 字节")
-            if (multiThreadFetch(target, total, onProgress)) {
-                LogManager.log("[SONG] 多线程下载完成 $total 字节")
-                return@withContext true
-            }
-        } catch (e: Exception) {
-            LogManager.log("[SONG] 多线程下载失败: " + e.message + "，回退单线程")
-        }
-        target.delete()
-        runCatching { fetch(target, 0L, onProgress) }.getOrDefault(false)
-    }
-
-    /** 音乐包专用下载口令（仅对 music_pack.7z 生效，由 VPS 侧 music_pack.7z.pass 提供） */
     private const val PACK_PASS = "nupd-music-9f3a"
-
-    /** 分块下载线程数 */
     private const val THREADS = 8
+    private const val ARCHIVE_SHA256 = "db72f9a04755d0a1db1bcc88ebcd05e6fe9adda783933a45576575bb67d908ed"
+    private const val MARKER = ".installed.json"
+    private val installMutex = kotlinx.coroutines.sync.Mutex()
+    val isInstalling: Boolean get() = installMutex.isLocked
 
-    /** 探测服务端文件真实大小（Range 0-0 取 Content-Range 总长），失败回退常量 */
-    private fun remoteSize(): Long {
-        return try {
-            val req = Request.Builder().url(URL)
-                .header("Authorization", "Bearer $PACK_PASS")
-                .header("Range", "bytes=0-0")
-                .build()
-            http.newCall(req).execute().use { resp ->
-                val cr = resp.header("Content-Range") ?: return@use ARCHIVE_SIZE
-                val total = cr.substringAfterLast('/').trim().toLongOrNull()
-                if (total != null && total > 0) total else ARCHIVE_SIZE
-            }
-        } catch (e: Exception) {
-            ARCHIVE_SIZE
-        }
-    }
+    private fun verifiedArchive(file: File): Boolean = file.isFile && file.length() == ARCHIVE_SIZE &&
+        FileSafety.sha256(file).equals(ARCHIVE_SHA256, true)
 
-    /** 多线程分块并发下载，每块 Range 独立写入同一文件的对应偏移 */
-    private fun multiThreadFetch(target: File, total: Long, onProgress: (Long, Long) -> Unit): Boolean {
-        val chunk = (total + THREADS - 1) / THREADS
-        val progress = java.util.concurrent.atomic.AtomicLongArray(THREADS)
-        fun totalDone(): Long {
-            var s = 0L
-            for (k in 0 until THREADS) s += progress.get(k)
-            return s
-        }
-        val errors = java.util.Collections.synchronizedList(mutableListOf<java.lang.Exception>())
-        val latch = java.util.concurrent.CountDownLatch(THREADS)
-        val pool = java.util.concurrent.Executors.newFixedThreadPool(THREADS) { r ->
-            Thread(r, "song-dl").apply { isDaemon = true }
-        }
-        RandomAccessFile(target, "rw").use { it.setLength(total) }
-
-        for (i in 0 until THREADS) {
-            val start = i * chunk
-            if (start >= total) {
-                latch.countDown()
-                continue
-            }
-            val end = minOf(total - 1, start + chunk - 1)
-            pool.execute {
+    /** A single installation owns download + extraction. Force reinstall retains the live pack until success. */
+    suspend fun install(force: Boolean = false, onProgress: (Long, Long) -> Unit,
+                        onExtract: () -> Unit = {}): Boolean {
+        installMutex.lock()
+        try {
+            return withContext(Dispatchers.IO) {
+                val archive = archiveFile()
+                val part = File(baseDir(), "music_pack.7z.part")
                 try {
-                    val req = Request.Builder().url(URL)
-                        .header("Authorization", "Bearer $PACK_PASS")
-                        .header("Range", "bytes=$start-$end")
-                        .build()
-                    http.newCall(req).execute().use { resp ->
-                        if (resp.code != 206) {
-                            throw java.io.IOException("块 $i HTTP " + resp.code)
-                        }
-                        val body = resp.body ?: throw java.io.IOException("块 $i 无响应体")
-                        RandomAccessFile(target, "rw").use { w ->
-                            w.seek(start)
-                            var pos = start
-                            body.byteStream().use { input ->
-                                val buf = ByteArray(128 * 1024)
-                                while (true) {
-                                    val n = input.read(buf)
-                                    if (n <= 0) break
-                                    w.write(buf, 0, n)
-                                    pos += n
-                                    progress.set(i, pos - start)
-                                    onProgress(totalDone(), total)
-                                }
-                            }
-                            val got = pos - start
-                            if (got < end - start + 1) throw java.io.IOException("块 $i 仅 $got 字节")
-                        }
-                    }
-                } catch (e: Exception) {
-                    errors.add(e)
-                } finally {
-                    latch.countDown()
-                }
+                    if (force || !verifiedArchive(archive)) {
+                        DownloadManager(URL, ARCHIVE_SIZE, THREADS, true,
+                            mapOf("Authorization" to "Bearer $PACK_PASS"))
+                            .downloadBytes(part) { done, total -> onProgress(done, total) }
+                        kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                        check(verifiedArchive(part)) { "音乐包 SHA-256 校验失败" }
+                        FileSafety.publish(part, archive)
+                    } else onProgress(ARCHIVE_SIZE, ARCHIVE_SIZE)
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    onExtract()
+                    extractVerified(archive)
+                } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                catch (e: Exception) {
+                    LogManager.log("[SONG] 安装失败（保留现有资源）: ${e.message}")
+                    false
+                } finally { part.delete() }
             }
-        }
-        latch.await(20, TimeUnit.MINUTES)
-        pool.shutdown()
-        if (errors.isNotEmpty()) throw java.io.IOException("分块下载失败: " + errors.first().message)
-        return target.length() == total
+        } finally { installMutex.unlock() }
     }
 
-    /** 单次连接拉取。start>0 表示从 start 处续传；服务端回 200 时自动改为全量重写 */
-    private fun fetch(target: File, start: Long, onProgress: (Long, Long) -> Unit): Boolean {
-        val builder = Request.Builder()
-            .url(URL)
-            .header("Authorization", "Bearer $PACK_PASS")
-        if (start > 0) builder.header("Range", "bytes=$start-")
-        return http.newCall(builder.build()).execute().use { resp ->
-            if (!resp.isSuccessful) {
-                LogManager.log("[SONG] 音乐包下载失败 HTTP " + resp.code)
-                return false
+    private fun manifestValid(root: File): Boolean = try {
+        val marker = org.json.JSONObject(File(root, MARKER).readText())
+        if (marker.optString("archive_sha256") != ARCHIVE_SHA256) false else {
+            val files = marker.getJSONArray("files")
+            files.length() > 0 && (0 until files.length()).all { i ->
+                val f = files.getJSONObject(i)
+                val name = FileSafety.checkedName(f.getString("name"))
+                val file = File(root, name)
+                file.isFile && file.length() == f.getLong("size")
             }
-            val body = resp.body ?: return false
-            // 只有 206 才代表服务端真的按 Range 续传；200 说明要全量重写
-            val resume = resp.code == 206 && start > 0
-            val total = ARCHIVE_SIZE
-            var done = if (resume) start else 0L
-            RandomAccessFile(target, "rw").use { raf ->
-                if (resume) raf.seek(start) else raf.setLength(0)
-                body.byteStream().use { input ->
-                    val buf = ByteArray(256 * 1024)
-                    while (true) {
-                        val n = input.read(buf)
-                        if (n <= 0) break
-                        raf.write(buf, 0, n)
-                        done += n
-                        onProgress(done, total)
-                    }
-                }
-            }
-            LogManager.log("[SONG] 音乐包下载结束 " + done + " / " + total)
-            if (done < ARCHIVE_SIZE * 99 / 100) throw IllegalStateException("incomplete $done/$total")
-            true
         }
+    } catch (_: Exception) { false }
+
+    private fun writeManifest(root: File, entries: List<Pair<String, Long>>) {
+        val files = org.json.JSONArray()
+        entries.forEach { (name, size) -> files.put(org.json.JSONObject().put("name", name).put("size", size)) }
+        FileSafety.writeAtomic(File(root, MARKER), org.json.JSONObject()
+            .put("archive_sha256", ARCHIVE_SHA256).put("files", files).toString())
     }
 
-    /** 解压 7z 中的 mp3 / lrc 到公共目录。onProgress(已解压文件数) */
-    fun extract(onProgress: ((Int) -> Unit)? = null): Boolean {
+    /** Existing complete installations can be adopted without deleting or redownloading user resources. */
+    private fun adoptExisting(root: File): Boolean = try {
         val archive = archiveFile()
-        if (!archive.exists()) return false
-        val outRoot = rootDir()
-        return try {
-            val sevenZ = org.apache.commons.compress.archivers.sevenz.SevenZFile.builder()
-                .setFile(archive).get()
-            sevenZ.use { sz ->
-                var count = 0
+        if (!archive.isFile || archive.length() != ARCHIVE_SIZE) false else {
+            val entries = org.apache.commons.compress.archivers.sevenz.SevenZFile.builder().setFile(archive).get().use { sz ->
+                sz.entries.filter { !it.isDirectory && (it.name.endsWith(".mp3", true) || it.name.endsWith(".lrc", true)) }
+                    .map { FileSafety.checkedName(it.name.substringAfterLast('/')) to it.size }
+            }
+            if (entries.isEmpty() || entries.none { it.first.endsWith(".mp3", true) } ||
+                entries.any { !File(root, it.first).isFile || File(root, it.first).length() != it.second }) false
+            else { writeManifest(root, entries); true }
+        }
+    } catch (_: Exception) { false }
+
+    private suspend fun extractVerified(archive: File): Boolean {
+        val root = rootDir()
+        val staging = File(baseDir(), ".music-install-${java.util.UUID.randomUUID()}").apply { mkdirs() }
+        val backup = File(baseDir(), ".music-backup-${java.util.UUID.randomUUID()}")
+        var retainBackup = false
+        try {
+            val entries = mutableListOf<Pair<String, Long>>()
+            org.apache.commons.compress.archivers.sevenz.SevenZFile.builder().setFile(archive).get().use { sz ->
                 while (true) {
                     val entry = sz.nextEntry ?: break
                     if (entry.isDirectory) continue
-                    val name = entry.name.substringAfterLast('/')
-                    if (name.isBlank()) continue
-                    val lower = name.lowercase()
-                    if (!lower.endsWith(".mp3") && !lower.endsWith(".lrc")) continue
-                    val out = File(outRoot, name)
-                    out.outputStream().buffered().use { os ->
-                        val buf = ByteArray(128 * 1024)
+                    val name = FileSafety.checkedName(entry.name.substringAfterLast('/'))
+                    if (!name.endsWith(".mp3", true) && !name.endsWith(".lrc", true)) continue
+                    check(entries.none { it.first == name }) { "Duplicate archive entry" }
+                    val out = File(staging, name)
+                    out.outputStream().buffered().use { output ->
+                        val buffer = ByteArray(128 * 1024)
                         while (true) {
-                            val n = sz.read(buf)
-                            if (n <= 0) break
-                            os.write(buf, 0, n)
+                            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                            val n = sz.read(buffer)
+                            if (n < 0) break
+                            output.write(buffer, 0, n)
                         }
                     }
-                    count++
-                    onProgress?.invoke(count)
+                    check(out.length() == entry.size) { "Incomplete extracted file: $name" }
+                    entries.add(name to entry.size)
                 }
-                LogManager.log("[SONG] 解压完成，共 " + count + " 个文件")
             }
-            true
-        } catch (e: Exception) {
-            LogManager.log("[SONG] 解压失败: " + e.message)
-            false
+            check(entries.any { it.first.endsWith(".mp3", true) }) { "Empty music pack" }
+            writeManifest(staging, entries)
+            check(manifestValid(staging)) { "Invalid installed manifest" }
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            synchronized(this) {
+                if (root.exists()) check(root.renameTo(backup)) { "Cannot back up current music" }
+                if (!staging.renameTo(root)) {
+                    retainBackup = !backup.renameTo(root)
+                    throw java.io.IOException("Cannot publish music; backup: ${backup.absolutePath}")
+                }
+            }
+            backup.deleteRecursively()
+            return true
+        } finally {
+            staging.deleteRecursively()
+            if (!retainBackup && root.exists()) backup.deleteRecursively()
         }
     }
 

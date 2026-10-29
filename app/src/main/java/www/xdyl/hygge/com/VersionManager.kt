@@ -6,6 +6,7 @@ import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.ensureActive
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -81,46 +82,28 @@ class VersionManager(private val context: Context) {
         }
     }
 
-    suspend fun downloadNewCsv(version: String): Boolean {
-        withContext(Dispatchers.IO) {
-            var lastEx: Exception? = null
-            for (attempt in 1..5) {
-                try {
-                    LogManager.log("[CSV] 下载尝试 $attempt/5 ...")
-                    val request = Request.Builder()
-                        .url("${BASE_URL}file_list.csv")
-                        .header("X-API-Key", API_KEY)
-                        .build()
-                    val response = client.newCall(request).execute()
-                    if (response.isSuccessful) {
-                        val body = response.body ?: continue
-                        val csv = body.string()
-                        LogManager.log("[CSV] 下载成功, 大小=${csv.length} 字符, 行数=${csv.lines().size}")
-                        val lineCount = csv.lines().size
-                        if (lineCount < 80) {
-                            LogManager.log("[CSV] 警告: 下载的 CSV 仅有 $lineCount 行, 可能不完整!")
-                            lastEx = Exception("CSV 不完整: 仅 $lineCount 行")
-                            if (attempt < 5) kotlinx.coroutines.delay((1000L * attempt).coerceAtMost(5000))
-                            continue
-                        }
-                        val file = File(context.filesDir, "file_list.csv")
-                        file.writeText(csv)
-                        saveLocalVersion(version)
-                        LogManager.log("[CSV] 已保存到 ${file.absolutePath} (版本 $version)")
-                        return@withContext true
-                    } else {
-                        lastEx = Exception("HTTP ${response.code}")
-                        LogManager.log("[CSV] 下载失败 (${attempt}/5): HTTP ${response.code}")
-                    }
-                } catch (e: Exception) {
-                    lastEx = e
-                    LogManager.log("[CSV] 下载异常 (${attempt}/5): ${e.javaClass.simpleName} - ${e.message}")
+    suspend fun downloadNewCsv(version: String): Boolean = withContext(Dispatchers.IO) {
+        for (attempt in 1..5) {
+            try {
+                val request = Request.Builder().url("${BASE_URL}file_list.csv")
+                    .header("X-API-Key", API_KEY).build()
+                client.newCall(request).execute().use { response ->
+                    check(response.isSuccessful) { "HTTP ${response.code}" }
+                    val csv = response.body?.string() ?: error("Empty CSV response")
+                    ModManifest.parse(csv)
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    FileSafety.writeAtomic(File(context.filesDir, "file_list.csv"), csv)
+                    saveLocalVersion(version)
+                    LogManager.log("[CSV] 已保存验证后的清单（版本 $version）")
+                    return@withContext true
                 }
-                if (attempt < 5) kotlinx.coroutines.delay((1000L * attempt).coerceAtMost(5000))
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) {
+                LogManager.log("[CSV] 下载失败 ($attempt/5): ${e.message}")
             }
-            LogManager.log("[CSV] 下载最终失败: ${lastEx?.message}")
+            if (attempt < 5) kotlinx.coroutines.delay((1000L * attempt).coerceAtMost(5000))
         }
-        return false
+        false
     }
 
     private fun compareVersion(v1: String, v2: String): Int {

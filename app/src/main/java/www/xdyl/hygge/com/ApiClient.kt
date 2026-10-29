@@ -59,6 +59,7 @@ class ApiClient(private val session: SessionStore) {
 
     /** 401 自动续期后重放；返回 true 表示已续期成功 */
     private suspend fun tryRefresh(): Boolean = withContext(Dispatchers.IO) {
+        val owner = session.sessionId
         val refresh = session.refreshToken
         if (refresh.isBlank()) return@withContext false
         try {
@@ -74,8 +75,7 @@ class ApiClient(private val session: SessionStore) {
                 val data = root.getJSONObject("data")
                 val newAccess = data.getString("access_token")
                 val newRefresh = data.optString("refresh_token", refresh)
-                session.saveSession(newAccess, newRefresh, session.username)
-                true
+                session.applyRefreshedTokens(owner, refresh, newAccess, newRefresh)
             }
         } catch (e: Exception) {
             LogManager.log("[API] refresh失败: ${e.message}")
@@ -318,6 +318,7 @@ class ApiClient(private val session: SessionStore) {
         requiresAuth: Boolean,
         allowRefresh: Boolean
     ): JSONObject {
+        val owner = session.sessionId
         val builder = Request.Builder().url("$BASE${if (path.startsWith("/")) path else "/$path"}")
         if (requiresAuth && session.accessToken.isNotBlank()) {
             builder.header("Authorization", "Bearer ${session.accessToken}")
@@ -331,6 +332,7 @@ class ApiClient(private val session: SessionStore) {
         val resp = client.newCall(builder.build()).execute()
         resp.use { r ->
             val text = r.body?.string() ?: "{}"
+            if (requiresAuth && session.sessionId != owner) throw ApiException(409, "账户已切换，请重试")
             val root = try { JSONObject(text) } catch (e: Exception) { JSONObject().put("code", r.code) }
             // 401 → 刷新重放一次
             if (r.code == 401 && allowRefresh && requiresAuth) {

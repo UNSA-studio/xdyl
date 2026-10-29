@@ -61,7 +61,7 @@ jobs:
       env:
         GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
       run: |
-        ./gradlew assembleDebug --no-daemon --parallel --build-cache --stacktrace 2>&1 | tee build.log
+        ./gradlew :app:testDebugUnitTest assembleDebug --no-daemon --parallel --build-cache --stacktrace 2>&1 | tee build.log
         exit ${PIPESTATUS[0]}
     - name: Print compile errors (on failure)
       if: failure()
@@ -76,7 +76,16 @@ jobs:
       with:
         name: android-build-log
         path: build.log
+    - name: Upload Android regression results
+      if: always()
+      uses: actions/upload-artifact@v5
+      with:
+        name: android-regression-results
+        path: |
+          app/build/reports/tests/testDebugUnitTest/
+          app/build/test-results/testDebugUnitTest/
     - name: Upload Android APK
+
       uses: actions/upload-artifact@v5
       with:
         name: app-debug

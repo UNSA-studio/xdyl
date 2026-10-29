@@ -51,19 +51,44 @@ object AudioPlayer {
     /** 状态回调：ready / loading / playing / paused / stopped / completed / error:xxx */
     var onState: ((String) -> Unit)? = null
 
+    private data class Observer(val state: (String) -> Unit, val progress: (Int, Int) -> Unit)
+    private val observers = linkedMapOf<Any, Observer>()
+    var state: String = "stopped"
+        private set
+
+    /** Multiple screens subscribe independently; an Activity removes only its own observer. */
+    fun observe(owner: Any, onState: (String) -> Unit, onProgress: (Int, Int) -> Unit) {
+        observers[owner] = Observer(onState, onProgress)
+        onState(state)
+        onProgress(currentPositionNow(), durationMs)
+    }
+
+    fun removeObserver(owner: Any) { observers.remove(owner) }
+
+    private fun notifyState(value: String) {
+        state = value
+        onState?.invoke(value)
+        observers.values.toList().forEach { it.state(value) }
+    }
+
+    private fun notifyProgress(current: Int, total: Int) {
+        onProgress?.invoke(current, total)
+        observers.values.toList().forEach { it.progress(current, total) }
+    }
+
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
             when (state) {
                 Player.STATE_READY -> {
                     val dur = player?.duration ?: 0L
                     durationMs = if (dur > 0) dur.toInt() else 0
-                    onState?.invoke(if (player?.isPlaying == true) "playing" else "ready")
+                    notifyState(if (player?.isPlaying == true) "playing" else "ready")
                     if (player?.isPlaying == true) startProgressLoop()
                 }
-                Player.STATE_BUFFERING -> onState?.invoke("loading")
+                Player.STATE_BUFFERING -> notifyState("loading")
                 Player.STATE_ENDED -> {
                     isPlaying = false
-                    onState?.invoke("completed")
+                    notifyState("completed")
                     handler.removeCallbacks(progressTask)
                 }
                 else -> { /* STATE_IDLE：空闲 */ }
@@ -72,13 +97,13 @@ object AudioPlayer {
 
         override fun onIsPlayingChanged(playing: Boolean) {
             isPlaying = playing
-            onState?.invoke(if (playing) "playing" else "paused")
+            notifyState(if (playing) "playing" else "paused")
             if (playing) startProgressLoop() else handler.removeCallbacks(progressTask)
         }
 
         override fun onPlayerError(error: PlaybackException) {
             isPlaying = false
-            onState?.invoke("error:${error.errorCodeName}")
+            notifyState("error:${error.errorCodeName}")
             handler.removeCallbacks(progressTask)
         }
     }
@@ -105,10 +130,10 @@ object AudioPlayer {
             p.playWhenReady = true
             player = p
             isPlaying = true
-            onState?.invoke("loading")
+            notifyState("loading")
             startProgressLoop()
         } catch (e: Exception) {
-            onState?.invoke("error:${e.message}")
+            notifyState("error:${e.message}")
         }
     }
 
@@ -142,7 +167,8 @@ object AudioPlayer {
         }
         isPlaying = false
         currentPositionMs = 0
-        onState?.invoke("stopped")
+        notifyProgress(0, durationMs)
+        notifyState("stopped")
     }
 
     /** 跳转进度（毫秒） */
@@ -151,6 +177,7 @@ object AudioPlayer {
             val target = if (durationMs > 0) ms.coerceIn(0, durationMs) else ms.coerceAtLeast(0)
             it.seekTo(target.toLong())
             currentPositionMs = target
+            notifyProgress(target, durationMs)
         }
     }
 
@@ -191,7 +218,7 @@ object AudioPlayer {
             player?.let {
                 if (it.isPlaying) {
                     currentPositionMs = it.currentPosition.toInt()
-                    onProgress?.invoke(currentPositionMs, durationMs)
+                    notifyProgress(currentPositionMs, durationMs)
                     handler.postDelayed(this, 100)
                 }
             }

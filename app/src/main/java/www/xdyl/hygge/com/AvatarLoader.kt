@@ -23,11 +23,20 @@ import java.util.concurrent.TimeUnit
  * 带内存缓存 + 圆形裁剪，失败时回调 false 让上层回退到“首字母”。
  */
 object AvatarLoader {
+    private val cacheLock = Any()
+    private val cacheGeneration = java.util.concurrent.atomic.AtomicLong(0)
+
+    fun clearAll(context: android.content.Context): Long = synchronized(cacheLock) {
+        cacheGeneration.incrementAndGet()
+        cache.evictAll()
+        clearDisk(context)
+    }
+
 
     private const val BASE = "https://login.lanternwaves.fun/user/avatar/"
 
-    private val cache = object : LruCache<String, Bitmap>(64) {
-        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
+    private val cache = object : LruCache<String, Bitmap>(8 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap): Int = (value.byteCount / 1024).coerceAtLeast(1)
     }
 
     private val client = OkHttpClient.Builder()
@@ -59,8 +68,10 @@ object AvatarLoader {
     /** 加载到 ImageView；成功回调 true，失败回调 false */
     fun load(iv: ImageView, avatar: String?, onDone: ((Boolean) -> Unit)? = null) {
         val url = urlOf(avatar)
+        iv.tag = url
+        val generation = cacheGeneration.get()
         if (url == null) {
-            main.post { onDone?.invoke(false) }
+            main.post { if (iv.tag == url) onDone?.invoke(false) }
             return
         }
         val cached = cache.get(url)
@@ -77,10 +88,12 @@ object AvatarLoader {
                 if (disk.isFile) {
                     val cachedFile = BitmapFactory.decodeFile(disk.absolutePath)
                     if (cachedFile != null) {
-                        cache.put(url, cachedFile)
+                        synchronized(cacheLock) { if (generation == cacheGeneration.get()) cache.put(url, cachedFile) }
                         main.post {
-                            iv.setImageDrawable(circle(iv, cachedFile))
-                            onDone?.invoke(true)
+                            if (iv.tag == url) {
+                                iv.setImageDrawable(circle(iv, cachedFile))
+                                onDone?.invoke(true)
+                            }
                         }
                         return@execute
                     }
@@ -93,33 +106,37 @@ object AvatarLoader {
                 client.newCall(req).execute().use { resp ->
                     if (!resp.isSuccessful) {
                         LogManager.w("[AVATAR] $url -> ${resp.code}")
-                        main.post { onDone?.invoke(false) }
+                        main.post { if (iv.tag == url) onDone?.invoke(false) }
                         return@execute
                     }
                     val bytes = resp.body?.bytes()
                     if (bytes == null || bytes.isEmpty()) {
-                        main.post { onDone?.invoke(false) }
+                        main.post { if (iv.tag == url) onDone?.invoke(false) }
                         return@execute
                     }
                     val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                     if (bmp == null) {
                         LogManager.w("[AVATAR] 解码失败 $url")
-                        main.post { onDone?.invoke(false) }
+                        main.post { if (iv.tag == url) onDone?.invoke(false) }
                         return@execute
                     }
-                    cache.put(url, bmp)
+                    synchronized(cacheLock) { if (generation == cacheGeneration.get()) cache.put(url, bmp) }
                     try {
-                        diskFile(ctx, url).writeBytes(bytes)
+                        synchronized(cacheLock) {
+                            if (generation == cacheGeneration.get()) diskFile(ctx, url).writeBytes(bytes)
+                        }
                     } catch (e: Throwable) {
                     }
                     main.post {
-                        iv.setImageDrawable(circle(iv, bmp))
-                        onDone?.invoke(true)
+                        if (iv.tag == url) {
+                            iv.setImageDrawable(circle(iv, bmp))
+                            onDone?.invoke(true)
+                        }
                     }
                 }
             } catch (e: Exception) {
                 LogManager.w("[AVATAR] 下载失败 ${e.message}")
-                main.post { onDone?.invoke(false) }
+                main.post { if (iv.tag == url) onDone?.invoke(false) }
             }
         }
     }
@@ -137,8 +154,8 @@ object AvatarLoader {
         val dir = File(context.cacheDir, "avatars")
         var freed = 0L
         dir.listFiles()?.forEach { f ->
-            freed += f.length()
-            f.delete()
+            val bytes = f.length()
+            if (f.delete()) freed += bytes
         }
         return freed
     }

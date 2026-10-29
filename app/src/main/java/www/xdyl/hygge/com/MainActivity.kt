@@ -145,7 +145,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    companion object { var instance: MainActivity? = null }
+    companion object {
+        var instance: MainActivity? = null
+        private val modUpdateMutex = kotlinx.coroutines.sync.Mutex()
+    }
 
     data class ModInfo(val fileName: String, val size: Long, val md5: String, val sha256: String)
     data class Quote(val chinese: String, val english: String, val author: String, val authorEn: String, val source: String, val sourceEn: String)
@@ -250,10 +253,13 @@ class MainActivity : AppCompatActivity() {
                         .setPositiveButton("更新") { _, _ ->
                             scope.launch {
                                 LogManager.log("[CSV] User accepted, downloading...")
-                                versionManager.downloadNewCsv(diff.version)
-                                LogManager.log("[CSV] Download complete")
-                                Toast.makeText(this@MainActivity, "CSV 更新完成，重启生效", Toast.LENGTH_LONG).show()
-                                loadCsv()
+                                if (versionManager.downloadNewCsv(diff.version)) {
+                                    LogManager.log("[CSV] Download complete")
+                                    Toast.makeText(this@MainActivity, "CSV 更新完成", Toast.LENGTH_LONG).show()
+                                    loadCsv()
+                                } else {
+                                    Toast.makeText(this@MainActivity, "CSV 更新失败，保留原有清单，请重试", Toast.LENGTH_LONG).show()
+                                }
                             }
                         }
                         .setCancelable(false)
@@ -340,7 +346,7 @@ class MainActivity : AppCompatActivity() {
 
     private val lyricFrameCallback = object : android.view.Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
-            if (AudioPlayer.isPlaying) {
+            if (AudioPlayer.isPlaying && binding.viewFlipper.displayedChild == 4) {
                 val pos = AudioPlayer.currentPositionNow()
                 audioBinding.lyricView.updateTime(pos.toLong())
                 // 诊断日志：每 2 秒打一次
@@ -362,20 +368,52 @@ class MainActivity : AppCompatActivity() {
      * 再按相同时间戳生成两份 LRC 文本交给控件。
      */
     private fun loadLyrics(audio: File) {
-        val sidecar = LrcParser.findSidecar(audio)
-        if (sidecar == null) {
-            audioBinding.lyricView.loadLrc("")
-            audioBinding.lyricView.setLabel("未找到同名歌词（${audio.name.substringBeforeLast('.')}.lrc）")
-            audioBinding.lyricView.updateTime(0)
-            return
+        audioLyricsJob?.cancel()
+        audioLyricsJob = scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                runCatching { LrcParser.findSidecar(audio)?.readText(Charsets.UTF_8) }.getOrNull()
+            }
+            if (AudioPlayer.currentSourcePath() != audio.absolutePath) return@launch
+            audioBinding.lyricView.setLabel("纯音乐，请欣赏")
+            audioBinding.lyricView.loadLrc(text.orEmpty())
+            audioBinding.lyricView.updateTime(AudioPlayer.currentPositionNow().toLong())
         }
-        // 直接交给 LrcView 内部的 LrcUtils：
-        //   · 支持 [开始]正文[结束] 自定义格式（含结束时间，KTV 区间更准）
-        //   · 同时间戳的两行自动合并成「原文 + 译词」
-        // 以前这里先用旧 LrcParser 拆译文再拼回文本，会把行尾的 [00:17.46] 当成新时间戳，
-        // 导致一句话被拆成两句、并且丢掉结束时间。
-        audioBinding.lyricView.loadLrc(sidecar.readText(Charsets.UTF_8))
-        audioBinding.lyricView.updateTime(0)
+    }
+
+    private fun updatePlaybackUi(state: String) {
+        val source = AudioPlayer.currentSourcePath()
+        if (source.isNotEmpty() && source != audioLyricsSource) {
+            audioLyricsSource = source
+            audioBinding.tvAudioTitle.text = File(source).name
+            loadLyrics(File(source))
+        }
+        audioBinding.tvAudioState.text = when {
+            state == "playing" -> "播放中"
+            state == "loading" -> "缓冲中…"
+            state == "completed" -> "播放结束"
+            state == "stopped" -> "已停止"
+            state == "ready" -> "就绪"
+            state.startsWith("error") -> "播放失败"
+            else -> "已暂停"
+        }
+        audioBinding.btnAudioPlay.text = if (AudioPlayer.isPlaying) "暂停" else "播放"
+        val icon = if (source == cardSourcePath && AudioPlayer.isPlaying && state == "playing") R.drawable.ic_pause else R.drawable.ic_play
+        animatePlayIcon(binding.pageHome.ivSongPlayIcon, icon)
+        animatePlayIcon(binding.pageHome.btnSongPlayMini, icon)
+        renderPlaybackProgress(AudioPlayer.currentPositionNow(), AudioPlayer.durationMs)
+    }
+
+    private fun renderPlaybackProgress(current: Int, duration: Int) {
+        val progress = if (duration > 0) (current * 1000L / duration).toInt().coerceIn(0, 1000) else 0
+        audioBinding.sbAudioProgress.progress = progress
+        audioBinding.tvAudioTime.text = fmtTime(current) + " / " + fmtTime(duration)
+        audioBinding.lyricView.updateTime(current.toLong())
+        val same = cardSourcePath.isNotEmpty() && AudioPlayer.currentSourcePath() == cardSourcePath
+        val ph = binding.pageHome
+        ph.sbSong.progress = if (same) progress else 0
+        ph.ringSongMini.progress = if (same) progress / 1000f else 0f
+        ph.tvSongTime.text = if (same) fmtTime(current) + " / " + fmtTime(duration) else "0:00 / 0:00"
+        if (!same) ph.lvSong.updateTime(0)
     }
 
     /** 毫秒 -> [mm:ss.xx] */
@@ -389,21 +427,8 @@ class MainActivity : AppCompatActivity() {
 
     /** 音频播放器页：选择文件 + 播放控制 + 进度同步 */
     private fun setupAudioPage() {
-        AudioPlayer.onState = { st ->
-            runOnUiThread {
-                audioBinding.tvAudioState.text = when {
-                    st == "ready" -> "就绪"
-                    st == "loading" -> "缓冲中…"
-                    st == "playing" -> "播放中"
-                    st == "paused" -> "已暂停"
-                    st == "stopped" -> "已停止"
-                    st == "completed" -> "播放结束"
-                    st.startsWith("error") -> "播放失败"
-                    else -> st
-                }
-                audioBinding.btnAudioPlay.text = if (AudioPlayer.isPlaying) "暂停" else "播放"
-            }
-        }
+        AudioPlayer.observe(this, onState = { updatePlaybackUi(it) },
+            onProgress = { cur, total -> renderPlaybackProgress(cur, total) })
         // 进度条：max 与计算公式必须同量级（默认 max=100 会造成快 10 倍）
         audioBinding.sbAudioProgress.max = 1000
         audioBinding.sbAudioProgress.setOnSeekBarChangeListener(
@@ -417,14 +442,6 @@ class MainActivity : AppCompatActivity() {
                 override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {}
             }
         )
-        AudioPlayer.onProgress = { cur, total ->
-            if (total > 0) {
-                audioBinding.sbAudioProgress.progress = cur * 1000 / total
-                val curS = cur / 1000
-                val totalS = total / 1000
-                audioBinding.tvAudioTime.text = "${curS / 60}:${(curS % 60).toString().padStart(2, '0')} / ${totalS / 60}:${(totalS % 60).toString().padStart(2, '0')}"
-            }
-        }
         audioBinding.btnPickAudio.setOnClickListener {
             FileManagerDialog.show(
                 this,
@@ -452,8 +469,7 @@ class MainActivity : AppCompatActivity() {
             audioBinding.sbAudioProgress.progress = 0
             audioBinding.tvAudioTime.text = "0s / 0s"
         }
-        // 启动逐帧歌词驱动（60fps，与屏幕同步）
-        android.view.Choreographer.getInstance().postFrameCallback(lyricFrameCallback)
+        // Frame callbacks are registered in onResume and removed in onStop/onDestroy.
     }
 
     override fun onResume() {
@@ -464,6 +480,18 @@ class MainActivity : AppCompatActivity() {
             exportLogToFile()
         }
         loadDailyQuote()
+        val choreographer = android.view.Choreographer.getInstance()
+        choreographer.removeFrameCallback(lyricFrameCallback)
+        choreographer.postFrameCallback(lyricFrameCallback)
+        if (cardSourcePath.isNotEmpty()) startLyricTicker()
+        ChatPage.resumeIfVisible()
+    }
+
+    override fun onStop() {
+        android.view.Choreographer.getInstance().removeFrameCallback(lyricFrameCallback)
+        handler.removeCallbacks(lyricTicker)
+        ChatPage.stopConversationAutoRefresh()
+        super.onStop()
     }
 
     private fun requestStoragePermissions() {
@@ -545,6 +573,10 @@ class MainActivity : AppCompatActivity() {
     // ===== \u6bcf\u65e5\u6b4c\u66f2 =====
     private var songLyric: List<Pair<Int, String>> = emptyList()
     private var autoPlayedSong: String = ""
+    private var cardSourcePath: String = ""
+    private var audioLyricsSource: String = ""
+    private var audioLyricsJob: Job? = null
+    private var songCardAnimator: android.animation.ValueAnimator? = null
 
     private fun fmtTime(ms: Int): String {
         if (ms < 0) return "0:00"
@@ -557,43 +589,38 @@ class MainActivity : AppCompatActivity() {
 
     /** 每日歌曲：展开 / 收起（高度收缩动画，像 QQ音乐） */
     private fun applySongCardCollapsed(collapsed: Boolean, animate: Boolean = false) {
+        songCardAnimator?.cancel()
         val ph = binding.pageHome
-        val c = ph.songContainer
         val full = ph.songContentFull
         val mini = ph.songContentMini
         val target = dp(if (collapsed) 66 else 184)
-
-        if (!animate) {
-            c.layoutParams = c.layoutParams.also { it.height = target }
+        fun finishState() {
             full.alpha = if (collapsed) 0f else 1f
             mini.alpha = if (collapsed) 1f else 0f
-            c.requestLayout()
+            full.visibility = if (collapsed) View.GONE else View.VISIBLE
+            mini.visibility = if (collapsed) View.VISIBLE else View.GONE
+        }
+        if (!animate || ph.songContainer.height == target) {
+            ph.songContainer.layoutParams = ph.songContainer.layoutParams.also { it.height = target }
+            finishState()
             return
         }
-
-        val startH = c.layoutParams.height
-        if (startH == target) {
-            full.alpha = if (collapsed) 0f else 1f
-            mini.alpha = if (collapsed) 1f else 0f
-            return
-        }
-
-        val va = android.animation.ValueAnimator.ofInt(startH, target)
-        va.duration = 240L
-        va.interpolator = android.view.animation.DecelerateInterpolator()
-        va.addUpdateListener { a ->
-            val t = a.animatedFraction
-            c.layoutParams = c.layoutParams.also { it.height = (startH + (target - startH) * t).toInt() }
-            c.requestLayout()
-            if (collapsed) {
-                full.alpha = 1f - t
-                mini.alpha = t
-            } else {
-                full.alpha = t
-                mini.alpha = 1f - t
+        full.visibility = View.VISIBLE
+        mini.visibility = View.VISIBLE
+        val start = ph.songContainer.height
+        songCardAnimator = android.animation.ValueAnimator.ofInt(start, target).apply {
+            duration = 240
+            addUpdateListener { value ->
+                ph.songContainer.layoutParams = ph.songContainer.layoutParams.also { it.height = value.animatedValue as Int }
+                val f = value.animatedFraction
+                full.alpha = if (collapsed) 1f - f else f
+                mini.alpha = 1f - full.alpha
             }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) { finishState() }
+            })
+            start()
         }
-        va.start()
     }
 
     /** 播放/暂停图标切换：只缩放淡入淡出图标层（其外层描边圈是独立的 View，不受影响） */
@@ -615,7 +642,8 @@ class MainActivity : AppCompatActivity() {
     private val lyricTicker = object : Runnable {
         override fun run() {
             val ph = binding.pageHome
-            if (ph.songContainer.visibility == View.VISIBLE) {
+            if (ph.songContainer.isShown && !prefs.getBoolean("song_card_collapsed", false) &&
+                AudioPlayer.currentSourcePath() == cardSourcePath) {
                 ph.lvSong.updateTime(AudioPlayer.currentPositionNow().toLong())
             }
             handler.postDelayed(this, 100)
@@ -637,6 +665,7 @@ class MainActivity : AppCompatActivity() {
             ph.cardQuote.visibility = View.VISIBLE
             return
         }
+        cardSourcePath = song.absolutePath
         ph.cardQuote.visibility = View.GONE
         ph.songContainer.visibility = View.VISIBLE
         applySongCardCollapsed(prefs.getBoolean("song_card_collapsed", false), false)
@@ -711,8 +740,8 @@ class MainActivity : AppCompatActivity() {
             override fun onProgressChanged(sb: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
                 if (!fromUser) return
                 val dur = AudioPlayer.durationMs
-                if (dur > 0) {
-                    val target = dur * progress / 1000
+                if (dur > 0 && AudioPlayer.currentSourcePath() == cardSourcePath) {
+                    val target = (dur * progress.toLong() / 1000).toInt()
                     AudioPlayer.seekTo(target)
                     ph.tvSongTime.text = fmtTime(target) + " / " + fmtTime(dur)
                 }
@@ -721,28 +750,14 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {}
         })
 
-        AudioPlayer.onProgress = { cur, total ->
-            val p = if (total > 0) (cur * 1000L / total).toInt() else 0
-            ph.sbSong.progress = p
-            ph.ringSongMini.progress = p / 1000f
-            ph.tvSongTime.text = fmtTime(cur) + " / " + fmtTime(total)
-            if (songLyric.isNotEmpty()) {
-                // 由 lyricTicker 逐帧驱动 LrcView，这里不再手动刷新
-            }
-        }
-
-        AudioPlayer.onState = { st ->
-            val icon = if (st.startsWith("playing")) R.drawable.ic_pause else R.drawable.ic_play
-            animatePlayIcon(ph.ivSongPlayIcon, icon)
-            animatePlayIcon(ph.btnSongPlayMini, icon)
-        }
-
         // 自动播放（同一首不重头播）
         if (autoPlayedSong != song.absolutePath) {
             autoPlayedSong = song.absolutePath
-            AudioPlayer.play(this, song.absolutePath)
+            // Recreating an Activity must not toggle an already-playing source or steal another track.
+            if (AudioPlayer.currentSourcePath().isEmpty()) AudioPlayer.play(this, song.absolutePath)
         }
 
+        updatePlaybackUi(AudioPlayer.state)
         LogManager.log("[SONG] 首页歌曲: " + song.name + "，歌词 " + songLyric.size + " 行")
     }
 
@@ -753,11 +768,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadDailyQuote() {
         // 每日歌曲开启且曲库就绪 → 用歌曲卡片替换名言
-        if (prefs.getBoolean("daily_song_enabled", false) and MusicPack.isReady()) {
+        if (prefs.getBoolean("daily_song_enabled", false) && MusicPack.isReady()) {
             showSongCard()
             return
         }
 
+        binding.pageHome.songContainer.visibility = View.GONE
+        binding.pageHome.cardQuote.visibility = View.VISIBLE
+        cardSourcePath = ""
         if (quoteLoading) return
         val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
         // 内存缓存命中，直接显示
@@ -994,113 +1012,141 @@ class MainActivity : AppCompatActivity() {
         return loadCsvContent(this)
     }
 
-    private suspend fun downloadWithRetry(url: String, size: Long, destFile: File, maxRetries: Int = 5) {
+    private suspend fun downloadWithRetry(url: String, mod: ModInfo, destFile: File, maxRetries: Int = 5) {
         var lastEx: Exception? = null
-        // 分块规则：≤1MB 固定 2 块，>1MB 每多 0.5MB 加 1 块（最少 2 块）
-        val chunks = if (size > 0) maxOf(2, (size / 524288).toInt()) else 2
-        val useChunked = chunks > 1
+        val chunks = maxOf(2, (mod.size / 524288).toInt()).coerceAtMost(8)
         for (attempt in 1..maxRetries) {
+            currentCoroutineContext().ensureActive()
             try {
-                DownloadManager(url, size, chunks, useChunked).download(destFile) { }
-                appendLog("[OK] ${destFile.name}"); return
-            } catch (e: Exception) { lastEx = e; appendLog("[RETRY $attempt] ${destFile.name}"); delay((1000L * attempt).coerceAtMost(5000)) }
+                DownloadManager(url, mod.size, chunks, true).download(destFile) { }
+                check(destFile.length() == mod.size && FileVerifier().verifyFile(destFile, mod.md5, mod.sha256)) { "校验失败" }
+                appendLog("[OK] ${mod.fileName}")
+                return
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                lastEx = e
+                destFile.delete()
+                appendLog("[RETRY $attempt] ${mod.fileName}: ${e.message}")
+                if (attempt < maxRetries) delay((1000L * attempt).coerceAtMost(5000))
+            }
         }
-        appendLog("[FAILED] ${destFile.name}"); throw lastEx!!
+        throw lastEx ?: java.io.IOException("Download failed")
     }
 
     private fun startUpdateProcess() {
         if (isProcessing) return
         if (targetModsDir == null) {
-            LogManager.log("startUpdateProcess: targetModsDir 为 null，尝试恢复...")
-            val lastPath = prefs.getString("launcher_root", null)
-            LogManager.log("保存的启动器路径: $lastPath")
-            if (lastPath != null) {
-                val dir = File(lastPath)
-                if (dir.exists() && dir.isDirectory) {
-                    targetModsDir = findMinecraftModsDir(dir)
-                    if (targetModsDir != null) {
-                        LogManager.log("恢复成功: ${targetModsDir!!.absolutePath}")
-                        binding.pageHome.btnStartDownload.isEnabled = true
-                    } else {
-                        LogManager.log("恢复失败: 在 $lastPath 下未找到 mods 目录")
-                    }
-                } else {
-                    LogManager.log("恢复失败: 路径无效 $lastPath")
-                }
-            }
-            if (targetModsDir == null) {
-                showError(Constants.ERROR01)
-                return
-            }
+            val saved = prefs.getString("launcher_root", null)
+            targetModsDir = saved?.let { findMinecraftModsDir(File(it)) }
         }
-
-        val modsDir = targetModsDir!!
-        isProcessing = true; binding.pageHome.btnStartDownload.isEnabled = false
-        binding.pageHome.progressBar.visibility = View.VISIBLE; binding.pageHome.progressBar.progress = 0
-        binding.pageHome.tvLog.text = "Checking mods..."; LogManager.log("开始更新，目标目录: ${modsDir.absolutePath}")
-
+        val modsDir = targetModsDir ?: run { showError(Constants.ERROR01); return }
+        isProcessing = true
+        binding.pageHome.btnStartDownload.isEnabled = false
+        binding.pageHome.progressBar.visibility = View.VISIBLE
+        binding.pageHome.progressBar.progress = 0
+        binding.pageHome.tvLog.text = "Checking mods..."
         val threadCount = prefs.getInt("thread_limit", prefs.getInt("thread_count", 256)).coerceIn(1, 1024)
-        LogManager.log("实际并发下载数: $threadCount")
         scope.launch {
             try {
-                val serverFiles = fetchServerFileList()
-                if (serverFiles.isEmpty()) {
-                    LogManager.log("服务器文件列表为空，无法继续")
-                    showError(Constants.ERROR01)
-                    return@launch
-                }
-                val csvMods = getCsvContent().lines().drop(1).filter { it.isNotBlank() }.map {
-                    val p = it.split(","); ModInfo(p[0].trim('"').removePrefix("./"), p[2].toLong(), p[3].trim('"'), p[4].trim('"'))
-                }
-                val csvSet = csvMods.map { it.fileName }.toSet(); val allServerMods = serverFiles.filter { csvSet.contains(it) }
-                val toDownload = filterOutUnchangedMods(modsDir, csvMods.filter { it.fileName in allServerMods })
-                if (toDownload.isEmpty()) { appendLog("All mods are up-to-date!"); binding.pageHome.progressBar.visibility = View.GONE; isProcessing = false; binding.pageHome.btnStartDownload.isEnabled = true; return@launch }
-
-                binding.pageHome.tvLog.text = "Downloading ${toDownload.size} mods..."
-                val sem = Semaphore(threadCount); val failed = AtomicInteger(0); var completed = 0; val total = toDownload.size
-                withContext(Dispatchers.IO) {
-                    toDownload.map { mod -> launch { sem.acquire()
-                        try {
-                            val file = File(modsDir, mod.fileName)
-                            val encodedName = URLEncoder.encode(mod.fileName, "UTF-8").replace("+", "%20")
-                            downloadWithRetry(Constants.BASE_URL + encodedName, mod.size, file)
-                            if (!FileVerifier().verifyFile(file, mod.md5, mod.sha256)) throw RuntimeException("校验失败")
-                            completed++; withContext(Dispatchers.Main) { binding.pageHome.progressBar.progress = (completed * 100) / total; binding.pageHome.tvStatus.text = "$completed/$total" }
-                        } catch (e: Exception) { LogManager.log("下载失败 ${mod.fileName}: ${e.message}"); failed.incrementAndGet() } finally { sem.release() }
-                    } }.joinAll()
-                }
-
-                if (prefs.getBoolean("clean_orphan_files", true)) {
-                    withContext(Dispatchers.IO) {
-                        val whiteList = prefs.getStringSet("mod_whitelist", emptySet()) ?: emptySet()
-                        val modFiles = modsDir.listFiles()?.filter { it.extension == "jar" } ?: emptyList(); var deleted = 0
-                        for (f in modFiles) if (f.name !in csvSet && f.name !in whiteList) { if (f.delete()) { deleted++; LogManager.log("已删除孤儿文件: ${f.name}") } }
-                        if (deleted > 0) appendLog("Cleaned $deleted files")
+                modUpdateMutex.lock()
+                try {
+                    withContext(Dispatchers.IO + NonCancellable) { ModUpdateTransaction.recoverInterrupted(modsDir) }
+                    val serverFiles = fetchServerFileList().toSet()
+                    check(serverFiles.isNotEmpty()) { "无法读取服务器模组列表，未修改本地文件" }
+                    val csvMods = withContext(Dispatchers.IO) {
+                        ModManifest.parse(getCsvContent()).filter { it.name.endsWith(".jar", true) }
+                            .map { ModInfo(it.name, it.size, it.md5, it.sha256) }
                     }
-                }
-
-                if (failed.get() > 0) showError(Constants.ERROR05)
-                else {
-                    appendLog("Update completed!")
-                    val targetVersion = prefs.getString("version_folder", Constants.TARGET_VERSION_DIR) ?: Constants.TARGET_VERSION_DIR
-                    val resourcePackFile = File(modsDir, "../$targetVersion/resourcepacks/generated.zip")
-                    if (!resourcePackFile.exists()) {
-                        withContext(Dispatchers.Main) {
-                            MaterialAlertDialogBuilder(this@MainActivity, R.style.DialogAnimation)
-                                .setTitle("安装服务器材质包")
-                                .setMessage("是否要安装 Server 材质包？\n注意！这是必要，如不装，进服将下载材质包，在这里安装可以加快速度。")
-                                .setPositiveButton("好的") { _, _ -> scope.launch { installResourcePack() } }
-                                .setNegativeButton("取消", null)
-                                .show()
+                    check(csvMods.isNotEmpty()) { "模组清单为空，未修改本地文件" }
+                    val csvSet = csvMods.map { it.fileName }.toSet()
+                    val toDownload = filterOutUnchangedMods(modsDir, csvMods)
+                    val missing = toDownload.filter { it.fileName !in serverFiles }
+                    check(missing.isEmpty()) { "服务器缺少清单中的文件：${missing.joinToString { it.fileName }}" }
+                    val removals = withContext(Dispatchers.IO) {
+                        if (prefs.getBoolean("clean_orphan_files", true)) {
+                            val keep = prefs.getStringSet("mod_whitelist", emptySet()).orEmpty()
+                            modsDir.listFiles().orEmpty().filter {
+                                it.isFile && it.extension.equals("jar", true) && it.name !in csvSet && it.name !in keep
+                            }.map { it.name }
+                        } else emptyList()
+                    }
+                    val completed = AtomicInteger(0)
+                    withContext(Dispatchers.IO) {
+                        ModUpdateTransaction(modsDir).use { transaction ->
+                            val sem = kotlinx.coroutines.sync.Semaphore(threadCount)
+                            coroutineScope {
+                                toDownload.map { mod -> async {
+                                    sem.acquire()
+                                    try {
+                                        val encoded = URLEncoder.encode(mod.fileName, "UTF-8").replace("+", "%20")
+                                        downloadWithRetry(Constants.BASE_URL + encoded, mod, transaction.staged(mod.fileName))
+                                        val done = completed.incrementAndGet()
+                                        withContext(Dispatchers.Main) {
+                                            binding.pageHome.progressBar.progress = done * 100 / toDownload.size.coerceAtLeast(1)
+                                            binding.pageHome.tvStatus.text = "$done/${toDownload.size}"
+                                        }
+                                    } finally { sem.release() }
+                                } }.awaitAll()
+                            }
+                            currentCoroutineContext().ensureActive()
+                            // A cancellation cannot interrupt the short backup/commit/rollback critical section.
+                            withContext(NonCancellable) {
+                                transaction.commit(toDownload.map { it.fileName }, removals)
+                            }
                         }
                     }
-                }
-            } catch (e: Exception) { LogManager.log("更新异常: ${e.message}"); showError(Constants.ERROR03) }
-            finally { isProcessing = false; binding.pageHome.btnStartDownload.isEnabled = true }
+                    appendLog(if (toDownload.isEmpty() && removals.isEmpty()) "All mods are up-to-date!"
+                        else "Update completed: ${toDownload.size} installed, ${removals.size} obsolete files removed")
+                    binding.pageHome.tvStatus.text = "更新完成"
+                    offerResourcePack()
+                } finally { modUpdateMutex.unlock() }
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                LogManager.log("更新失败（保留/恢复旧文件）: ${e.message}")
+                appendLog("[FAILED] ${e.message}")
+                showError(Constants.ERROR05)
+            } finally {
+                isProcessing = false
+                binding.pageHome.btnStartDownload.isEnabled = true
+                binding.pageHome.progressBar.visibility = View.GONE
+            }
         }
     }
 
-    private suspend fun installResourcePack() { /* 你的原函数内容，此处省略（实际命令中会完整保留） */ }
+    private fun resourcePackFile(): File? = targetModsDir?.parentFile?.let { File(it, "resourcepacks/generated.zip") }
+
+    private fun offerResourcePack() {
+        val dest = resourcePackFile() ?: return
+        if (!dest.isFile) MaterialAlertDialogBuilder(this, R.style.DialogAnimation)
+            .setTitle("安装服务器材质包")
+            .setMessage("是否安装内置的服务器材质包？将写入当前游戏版本的 resourcepacks 目录。")
+            .setPositiveButton("安装") { _, _ -> scope.launch { installResourcePack() } }
+            .setNegativeButton("取消", null).show()
+    }
+
+    private suspend fun installResourcePack() {
+        val dest = resourcePackFile() ?: return
+        try {
+            withContext(Dispatchers.IO) {
+                dest.parentFile?.mkdirs()
+                val part = File(dest.parentFile, ".generated-${UUID.randomUUID()}.zip")
+                try {
+                    resources.openRawResource(R.raw.generated).use { input -> part.outputStream().use { input.copyTo(it) } }
+                    java.util.zip.ZipFile(part).use { zip ->
+                        check(zip.getEntry("pack.mcmeta") != null) { "材质包缺少 pack.mcmeta" }
+                    }
+                    currentCoroutineContext().ensureActive()
+                    FileSafety.publish(part, dest)
+                } finally { part.delete() }
+            }
+            appendLog("材质包已安装: ${dest.absolutePath}")
+            Toast.makeText(this, "材质包安装完成", Toast.LENGTH_SHORT).show()
+        } catch (e: CancellationException) { throw e }
+        catch (e: Exception) {
+            appendLog("材质包安装失败: ${e.message}")
+            Toast.makeText(this, "材质包安装失败: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
 
     private suspend fun filterOutUnchangedMods(modsDir: File, csvMods: List<ModInfo>) = withContext(Dispatchers.IO) {
         csvMods.filterNot { mod -> val local = File(modsDir, mod.fileName); local.exists() && local.length() == mod.size && calculateMD5(local) == mod.md5 }
@@ -1137,7 +1183,16 @@ class MainActivity : AppCompatActivity() {
         LogManager.log("CSV loaded, length: ${csv.length}")
     }
 
-    override fun onDestroy() { handler.removeCallbacks(lyricTicker); instance = null; job.cancel(); super.onDestroy() }
+    override fun onDestroy() {
+        android.view.Choreographer.getInstance().removeFrameCallback(lyricFrameCallback)
+        handler.removeCallbacks(lyricTicker)
+        AudioPlayer.removeObserver(this)
+        songCardAnimator?.cancel()
+        ChatPage.detach(this)
+        if (instance === this) instance = null
+        job.cancel()
+        super.onDestroy()
+    }
 
     // ==================== 以下为内嵌页面逻辑（社区/商城/我的） ====================
     private fun ensureCommunityLoaded() {
@@ -1439,6 +1494,7 @@ class MainActivity : AppCompatActivity() {
     /** 刷新主页整合包状态卡 */
     private fun refreshProfileUI() {
         if (session.isLoggedIn) {
+            val profileOwner = session.sessionId
             profileBinding.tvNickname.text = session.username
             profileBinding.tvBio.text = "已登录"
             // 已登录：保留 QQ 入口用于"绑定 / 更换 QQ"（一键绑定，无需账号密码）
@@ -1449,6 +1505,7 @@ class MainActivity : AppCompatActivity() {
             scope.launch {
                 try {
                     val root = api.get("/user/profile")
+                    if (!session.isLoggedIn || session.sessionId != profileOwner) return@launch
                     val data = root.optJSONObject("data")
                     // 头像：avatar 是文件名，解析为 /user/avatar/{filename}
                     data?.optString("avatar", "")?.takeIf { it.isNotBlank() }?.let { av ->
@@ -1476,9 +1533,7 @@ class MainActivity : AppCompatActivity() {
                         if (uid > 0) prefs.edit().putInt("my_user_id", uid).apply()
                     }
                     // 私聊身份用 username（/player/info 的键）
-                    val uname = data?.optString("username", "")?.ifBlank {
-                        data.optString("nickname", "")
-                    } ?: ""
+                    val uname = data?.optString("username", "").orEmpty()
                     if (!uname.isNullOrBlank()) {
                         prefs.edit().putString("my_player_name", uname).apply()
                     }

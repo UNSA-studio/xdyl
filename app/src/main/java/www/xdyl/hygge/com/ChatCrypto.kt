@@ -32,7 +32,8 @@ object ChatCrypto {
     private var localPrivate: PrivateKey? = null
     private var localPublic: PublicKey? = null
 
-    fun init(context: android.content.Context) {
+    @Synchronized fun init(context: android.content.Context) {
+        activeScope = ChatIdentity.current(context)?.scope.orEmpty()
         if (localPrivate != null) return
         val prefs = context.getSharedPreferences("nu_chat_keys", android.content.Context.MODE_PRIVATE)
         val privB64 = prefs.getString("priv", null)
@@ -133,14 +134,14 @@ object ChatCrypto {
         }
     }
 
-    /** 会话密钥缓存（按对端 id） */
-    private val keyCache = mutableMapOf<String, ByteArray>()
+    /** Keep the existing device key pair for compatibility; isolate ephemeral peer keys by account/server. */
+    @Volatile private var activeScope = ""
+    private val keyCache = java.util.concurrent.ConcurrentHashMap<String, ByteArray>()
 
-    fun cacheKey(peerKey: String, key: ByteArray) {
-        keyCache[peerKey] = key
-    }
-
-    fun getCachedKey(peerKey: String): ByteArray? = keyCache[peerKey]
+    fun cacheKey(peerKey: String, key: ByteArray, scope: String = activeScope) { keyCache[scope + ":" + peerKey] = key }
+    fun getCachedKey(peerKey: String, scope: String = activeScope): ByteArray? = keyCache[scope + ":" + peerKey]
+    fun invalidateSessionKey(peerKey: String, scope: String = activeScope) { keyCache.remove(scope + ":" + peerKey) }
+    fun clearSessionKeys() { keyCache.clear(); activeScope = "" }
 
     /** 指纹（便于双方核对，防中间人） */
     fun fingerprint(sessionKey: ByteArray): String =
