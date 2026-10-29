@@ -32,7 +32,7 @@ import kotlin.random.Random
 object MusicPack {
 
     const val URL = "http://160.202.237.166:8090/music_pack.7z"
-    const val ARCHIVE_SIZE = 234171117L
+    const val ARCHIVE_SIZE = 234163017L
 
     /** 稀有曲目关键字（概率 0.01%） */
     private const val RARE_KEYWORD = "Daybreak"
@@ -80,7 +80,7 @@ object MusicPack {
 
     private const val PACK_PASS = "nupd-music-9f3a"
     private const val THREADS = 8
-    private const val ARCHIVE_SHA256 = "db72f9a04755d0a1db1bcc88ebcd05e6fe9adda783933a45576575bb67d908ed"
+    private const val ARCHIVE_SHA256 = "e5491bbb408161f88e9423014d3b30ba5864428f96be264d732f93e96c88a451"
     private const val MARKER = ".installed.json"
     private val installMutex = kotlinx.coroutines.sync.Mutex()
     val isInstalling: Boolean get() = installMutex.isLocked
