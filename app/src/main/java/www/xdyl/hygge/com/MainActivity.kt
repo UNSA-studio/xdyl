@@ -411,7 +411,6 @@ class MainActivity : AppCompatActivity() {
         val same = cardSourcePath.isNotEmpty() && AudioPlayer.currentSourcePath() == cardSourcePath
         val ph = binding.pageHome
         ph.sbSong.progress = if (same) progress else 0
-        ph.ringSongMini.progress = if (same) progress / 1000f else 0f
         ph.ringSongOverlay.progress = if (same) progress / 1000f else 0f
         ph.tvSongTime.text = if (same) fmtTime(current) + " / " + fmtTime(duration) else "0:00 / 0:00"
         if (!same) {
@@ -603,8 +602,8 @@ class MainActivity : AppCompatActivity() {
             mini.alpha = if (collapsed) 1f else 0f
             full.visibility = if (collapsed) View.GONE else View.VISIBLE
             mini.visibility = if (collapsed) View.VISIBLE else View.GONE
-            ph.miniCoverOverlay.alpha = mini.alpha
-            ph.miniCoverOverlay.visibility = if (collapsed) View.VISIBLE else View.GONE
+            ph.miniOverlay.alpha = mini.alpha
+            ph.miniOverlay.visibility = if (collapsed) View.VISIBLE else View.GONE
         }
         if (!animate || ph.songContainer.height == target) {
             ph.songContainer.layoutParams = ph.songContainer.layoutParams.also { it.height = target }
@@ -613,7 +612,7 @@ class MainActivity : AppCompatActivity() {
         }
         full.visibility = View.VISIBLE
         mini.visibility = View.VISIBLE
-        ph.miniCoverOverlay.visibility = View.VISIBLE
+        ph.miniOverlay.visibility = View.VISIBLE
         val start = ph.songContainer.height
         songCardAnimator = android.animation.ValueAnimator.ofInt(start, target).apply {
             duration = 240
@@ -622,7 +621,7 @@ class MainActivity : AppCompatActivity() {
                 val f = value.animatedFraction
                 full.alpha = if (collapsed) 1f - f else f
                 mini.alpha = 1f - full.alpha
-                ph.miniCoverOverlay.alpha = mini.alpha
+                ph.miniOverlay.alpha = mini.alpha
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) { finishState() }
@@ -723,7 +722,6 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 if (bmp != null) {
                     ph.ivSongCover.setImageBitmap(bmp)
-                    ph.ivSongCoverMini.setImageBitmap(bmp)
                     ph.ivSongCoverOverlay.setImageBitmap(bmp)
                 }
                 if (bg != null) ph.ivSongBg.setImageBitmap(bg)
