@@ -448,6 +448,8 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
                     android:alpha="0"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
                     android:paddingStart="12dp"
                     android:paddingEnd="8dp">
 
@@ -455,7 +457,7 @@
                     <FrameLayout
                         android:layout_width="56dp"
                         android:layout_height="56dp"
-                        android:layout_marginTop="-12dp">
+                        android:layout_marginTop="-16dp">
 
                         <www.xdyl.hygge.com.RingProgressView
                             android:id="@+id/ringSongMini"
