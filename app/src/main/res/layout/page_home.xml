@@ -389,7 +389,7 @@
                         <www.xdyl.hygge.com.lrc.LrcView
                             android:id="@+id/lvSong"
                             android:layout_width="0dp"
-                            android:layout_height="46dp"
+                            android:layout_height="52dp"
                             android:layout_weight="1"
                             android:layout_marginStart="3dp"
                             android:layout_marginTop="6dp"
@@ -493,13 +493,14 @@
                         android:layout_width="66dp"
                         android:layout_height="66dp"
                         android:layout_gravity="start|top"
-                        android:layout_marginStart="12dp">
+                        android:layout_marginStart="12dp"
+                        android:elevation="3dp">
 
                         <com.google.android.material.card.MaterialCardView
                             android:layout_width="66dp"
                             android:layout_height="66dp"
                             app:cardCornerRadius="33dp"
-                            app:cardElevation="3dp"
+                            app:cardElevation="0dp"
                             app:strokeWidth="0dp"
                             app:cardBackgroundColor="#00000000">
 
@@ -549,7 +550,7 @@
                         <www.xdyl.hygge.com.lrc.LrcView
                             android:id="@+id/lvSongMini"
                             android:layout_width="match_parent"
-                            android:layout_height="15dp"
+                            android:layout_height="26dp"
                             android:layout_marginTop="1dp"
                             app:lrcTextSize="11sp"
                             app:lrcNormalTextSize="10sp"
