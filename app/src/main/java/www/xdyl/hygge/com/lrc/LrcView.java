@@ -627,15 +627,16 @@ public class LrcView extends View {
         long lead = 350L;
         long tail = 450L;
         long moving = Math.max(span - lead - tail, 400L);
-        float t = (mCurrentTime - start - lead) / (float) moving;
-        if (t <= 0f) {
+        float elapsedSec = (mCurrentTime - start - lead) / 1000f;
+        if (elapsedSec <= 0f) {
             return 0f;
         }
-        if (t >= 1f) {
-            return maxScroll;
-        }
-        float eased = t < 0.5f ? 2f * t * t : 1f - 2f * (1f - t) * (1f - t);
-        return maxScroll * eased;
+        float density = getResources().getDisplayMetrics().density;
+        // 匀速滚动：至少 60dp/s，保证一句之内能滚到句尾（不会中途跳行）
+        float needSpeed = maxScroll / (moving / 1000f);
+        float speed = Math.max(60f * density, needSpeed);
+        float scrolled = elapsedSec * speed;
+        return Math.min(maxScroll, scrolled);
     }
 
     /**

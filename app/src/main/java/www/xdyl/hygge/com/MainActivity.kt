@@ -596,7 +596,7 @@ class MainActivity : AppCompatActivity() {
         val ph = binding.pageHome
         val full = ph.songContentFull
         val mini = ph.songContentMini
-        val target = dp(if (collapsed) 66 else 184)
+        val target = dp(if (collapsed) 84 else 184)
         fun finishState() {
             full.alpha = if (collapsed) 0f else 1f
             mini.alpha = if (collapsed) 1f else 0f

@@ -341,13 +341,12 @@
                         android:layout_marginTop="6dp">
 
                         <com.google.android.material.card.MaterialCardView
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
-                            app:cardCornerRadius="9dp"
-                            app:cardElevation="6dp"
-                            app:strokeWidth="1dp"
-                            app:strokeColor="#40FFFFFF"
-                            app:cardBackgroundColor="#33FFFFFF">
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            app:cardCornerRadius="10dp"
+                            app:cardElevation="4dp"
+                            app:strokeWidth="0dp"
+                            app:cardBackgroundColor="#00000000">
 
                             <ImageView
                                 android:id="@+id/ivSongCover"
@@ -453,11 +452,11 @@
                     android:paddingStart="12dp"
                     android:paddingEnd="8dp">
 
-                    <!-- 封面：放大并上探出迷你条，形成「半张超出格子」的悬浮感 -->
+                    <!-- 封面：大图从迷你条顶部探出（无边框遮挡） -->
                     <FrameLayout
-                        android:layout_width="56dp"
-                        android:layout_height="56dp"
-                        android:layout_marginTop="-16dp">
+                        android:layout_width="66dp"
+                        android:layout_height="66dp"
+                        android:layout_marginTop="-18dp">
 
                         <www.xdyl.hygge.com.RingProgressView
                             android:id="@+id/ringSongMini"
@@ -465,14 +464,13 @@
                             android:layout_height="match_parent" />
 
                         <com.google.android.material.card.MaterialCardView
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
                             android:layout_gravity="center"
-                            app:cardCornerRadius="24dp"
-                            app:cardElevation="2dp"
-                            app:strokeWidth="1dp"
-                            app:strokeColor="#40FFFFFF"
-                            app:cardBackgroundColor="#33FFFFFF">
+                            app:cardCornerRadius="28dp"
+                            app:cardElevation="0dp"
+                            app:strokeWidth="0dp"
+                            app:cardBackgroundColor="#00000000">
 
                             <ImageView
                                 android:id="@+id/ivSongCoverMini"
