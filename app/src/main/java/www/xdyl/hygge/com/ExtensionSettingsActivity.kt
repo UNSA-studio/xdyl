@@ -88,6 +88,17 @@ class ExtensionSettingsActivity : AppCompatActivity() {
                 Toast.LENGTH_LONG
             ).show()
         }
+        // 卡片滚动歌词：默认关闭
+        val swSongCardLyric = findViewById<SwitchMaterial>(R.id.swSongCardLyric)
+        swSongCardLyric.isChecked = prefs.getBoolean("song_card_lyric", false)
+        swSongCardLyric.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("song_card_lyric", isChecked).apply()
+            Toast.makeText(
+                this,
+                if (isChecked) "首页歌曲卡片已显示歌词（过长单行滚动）" else "首页歌曲卡片已隐藏歌词",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
         // 私聊服务器地址
         val etChatServer = findViewById<TextInputEditText>(R.id.etChatServer)
         val btnSaveChatServer = findViewById<MaterialButton>(R.id.btnSaveChatServer)

@@ -282,9 +282,9 @@
                     android:layout_height="match_parent"
                     android:orientation="vertical"
                     android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
+                    android:paddingEnd="10dp"
                     android:paddingTop="8dp"
-                    android:paddingBottom="6dp">
+                    android:paddingBottom="4dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -390,23 +390,30 @@
                         <www.xdyl.hygge.com.lrc.LrcView
                             android:id="@+id/lvSong"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="46dp"
                             android:layout_weight="1"
-                            android:layout_marginStart="8dp"
+                            android:layout_marginStart="3dp"
+                            android:layout_marginTop="6dp"
                             app:lrcTextSize="12sp"
                             app:lrcNormalTextSize="9sp"
                             app:lrcCurrentTextColor="#FFFFFFFF"
                             app:lrcNormalTextColor="#99FFFFFF"
+                            app:lrcScrollLongLine="true"
                             app:lrcLabel="纯音乐，请欣赏" />
                     </LinearLayout>
 
+                    <!-- 占位：把进度条压到底部，歌词区随之下移 -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginTop="8dp">
+                        android:layout_marginTop="2dp">
 
                         <SeekBar
                             android:id="@+id/sbSong"
@@ -444,9 +451,11 @@
                     android:paddingStart="12dp"
                     android:paddingEnd="8dp">
 
+                    <!-- 封面：放大并上探出迷你条，形成「半张超出格子」的悬浮感 -->
                     <FrameLayout
-                        android:layout_width="48dp"
-                        android:layout_height="48dp">
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:layout_marginTop="-12dp">
 
                         <www.xdyl.hygge.com.RingProgressView
                             android:id="@+id/ringSongMini"
@@ -454,12 +463,13 @@
                             android:layout_height="match_parent" />
 
                         <com.google.android.material.card.MaterialCardView
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
                             android:layout_gravity="center"
-                            app:cardCornerRadius="20dp"
-                            app:cardElevation="0dp"
-                            app:strokeWidth="0dp"
+                            app:cardCornerRadius="24dp"
+                            app:cardElevation="2dp"
+                            app:strokeWidth="1dp"
+                            app:strokeColor="#40FFFFFF"
                             app:cardBackgroundColor="#33FFFFFF">
 
                             <ImageView
@@ -476,7 +486,8 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:orientation="vertical"
-                        android:layout_marginStart="10dp">
+                        android:layout_marginStart="10dp"
+                        android:layout_marginTop="-4dp">
 
                         <TextView
                             android:id="@+id/tvSongNameMini"
@@ -496,6 +507,19 @@
                             android:ellipsize="end"
                             android:textColor="#B3FFFFFF"
                             android:textSize="11sp" />
+
+                        <www.xdyl.hygge.com.lrc.LrcView
+                            android:id="@+id/lvSongMini"
+                            android:layout_width="match_parent"
+                            android:layout_height="15dp"
+                            android:layout_marginTop="1dp"
+                            app:lrcTextSize="11sp"
+                            app:lrcNormalTextSize="10sp"
+                            app:lrcDividerHeight="0dp"
+                            app:lrcCurrentTextColor="#E6FFFFFF"
+                            app:lrcNormalTextColor="#80FFFFFF"
+                            app:lrcScrollLongLine="true"
+                            app:lrcLabel="" />
                     </LinearLayout>
 
                     <ImageView

@@ -20,5 +20,7 @@
             <enum name="left" value="1" />
             <enum name="right" value="2" />
         </attr>
+        <!-- 过长歌词不换行：单行从左侧开始横向滚动，避免占两行高度 -->
+        <attr name="lrcScrollLongLine" format="boolean" />
     </declare-styleable>
 </resources>

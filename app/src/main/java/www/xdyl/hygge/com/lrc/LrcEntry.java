@@ -63,6 +63,13 @@ class LrcEntry implements Comparable<LrcEntry> {
     }
 
     void init(TextPaint paint, TextPaint secondPaint, int width, int gravity) {
+        init(paint, secondPaint, width, gravity, false);
+    }
+
+    /**
+     * @param singleLine true = 文本不换行（用文本自身宽度建 layout），超宽时由 LrcView 横向滚动
+     */
+    void init(TextPaint paint, TextPaint secondPaint, int width, int gravity, boolean singleLine) {
         Layout.Alignment align;
         switch (gravity) {
             case GRAVITY_LEFT:
@@ -78,14 +85,23 @@ class LrcEntry implements Comparable<LrcEntry> {
                 align = Layout.Alignment.ALIGN_OPPOSITE;
                 break;
         }
-        staticLayout = new StaticLayout(text, paint, width, align, 1f, 0f, false);
+        staticLayout = new StaticLayout(text, paint, layoutWidth(text, paint, width, singleLine), align, 1f, 0f, false);
         if (!TextUtils.isEmpty(secondText)) {
-            secondLayout = new StaticLayout(secondText, secondPaint, width, align, 1f, 0f, false);
+            secondLayout = new StaticLayout(secondText, secondPaint, layoutWidth(secondText, secondPaint, width, singleLine), align, 1f, 0f, false);
         } else {
             secondLayout = null;
         }
 
         offset = Float.MIN_VALUE;
+    }
+
+    /** 单行模式：宽度取「可用宽度」与「文本实际宽度」的较大值，保证不折行 */
+    private static int layoutWidth(String s, TextPaint paint, int width, boolean singleLine) {
+        if (!singleLine || TextUtils.isEmpty(s)) {
+            return width;
+        }
+        int measured = (int) Math.ceil(paint.measureText(s)) + 2;
+        return Math.max(width, measured);
     }
 
     long getTime() {

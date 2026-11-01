@@ -413,7 +413,10 @@ class MainActivity : AppCompatActivity() {
         ph.sbSong.progress = if (same) progress else 0
         ph.ringSongMini.progress = if (same) progress / 1000f else 0f
         ph.tvSongTime.text = if (same) fmtTime(current) + " / " + fmtTime(duration) else "0:00 / 0:00"
-        if (!same) ph.lvSong.updateTime(0)
+        if (!same) {
+            ph.lvSong.updateTime(0)
+            ph.lvSongMini.updateTime(0)
+        }
     }
 
     /** 毫秒 -> [mm:ss.xx] */
@@ -642,9 +645,10 @@ class MainActivity : AppCompatActivity() {
     private val lyricTicker = object : Runnable {
         override fun run() {
             val ph = binding.pageHome
-            if (ph.songContainer.isShown && !prefs.getBoolean("song_card_collapsed", false) &&
-                AudioPlayer.currentSourcePath() == cardSourcePath) {
-                ph.lvSong.updateTime(AudioPlayer.currentPositionNow().toLong())
+            if (ph.songContainer.isShown && AudioPlayer.currentSourcePath() == cardSourcePath) {
+                val now = AudioPlayer.currentPositionNow().toLong()
+                ph.lvSong.updateTime(now)
+                ph.lvSongMini.updateTime(now)
             }
             handler.postDelayed(this, 100)
         }
@@ -679,12 +683,19 @@ class MainActivity : AppCompatActivity() {
         ph.sbSong.progress = 0
         val lrcFile = MusicPack.sidecar(song)
         songLyric = SongLyric.load(lrcFile)
-        // 歌词：读成文本交给 LrcView，内部 LrcUtils 会把同时间戳的两行合并成「原文 + 译词」
-        if (lrcFile.exists()) {
-            ph.lvSong.loadLrc(lrcFile.readText(Charsets.UTF_8))
+        // 歌词受「卡片滚动歌词」开关控制（扩展页，默认关闭）
+        val lyricOn = prefs.getBoolean("song_card_lyric", false)
+        ph.lvSong.visibility = if (lyricOn) View.VISIBLE else View.GONE
+        ph.lvSongMini.visibility = if (lyricOn) View.VISIBLE else View.GONE
+        val lrcText = if (lrcFile.exists()) lrcFile.readText(Charsets.UTF_8) else ""
+        if (lyricOn && lrcText.isNotEmpty()) {
+            // 读成文本交给 LrcView，内部 LrcUtils 会把同时间戳的两行合并成「原文 + 译词」
+            ph.lvSong.loadLrc(lrcText)
+            ph.lvSongMini.loadLrc(lrcText)
         } else {
             ph.lvSong.setLabel("纯音乐，请欣赏")
             ph.lvSong.loadLrc("")
+            ph.lvSongMini.loadLrc("")
         }
         startLyricTicker()
 

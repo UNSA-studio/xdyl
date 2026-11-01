@@ -93,6 +93,8 @@ public class LrcView extends View {
      * 歌词显示位置，靠左/居中/靠右
      */
     private int mTextGravity;
+    /** 过长歌词单行横向滚动（不折行、不占两行高度） */
+    private boolean mScrollLongLines;
 
     /**
      * 播放按钮点击监听器，点击后应该跳转到指定播放位置
@@ -161,6 +163,7 @@ public class LrcView extends View {
         mTimeTextColor = ta.getColor(R.styleable.LrcView_lrcTimeTextColor, getResources().getColor(R.color.lrc_time_text_color));
         float timeTextSize = ta.getDimension(R.styleable.LrcView_lrcTimeTextSize, getResources().getDimension(R.dimen.lrc_time_text_size));
         mTextGravity = ta.getInteger(R.styleable.LrcView_lrcTextGravity, LrcEntry.GRAVITY_CENTER);
+        mScrollLongLines = ta.getBoolean(R.styleable.LrcView_lrcScrollLongLine, false);
 
         ta.recycle();
 
@@ -540,11 +543,13 @@ public class LrcView extends View {
                 mLrcPaint.setTextSize(mCurrentTextSize);
                 // 未唱部分：当前行颜色的暗化版（保留同一色系，避免跳色）
                 mLrcPaint.setColor(mNormalTextColor);
-                drawText(canvas, entry, y);
+                // 单行模式：超宽行从左侧开始，按本行时长缓慢滚到右侧
+                float scrollX = isShowTimeline ? 0f : getHorizontalScroll(entry, i);
+                drawText(canvas, entry, y, scrollX);
                 // 已唱部分：按像素宽度裁剪逐字填充
                 if (mLineProgress > 0f) {
                     int secondH = entry.getSecondLayout() != null ? entry.getSecondLayout().getHeight() : 0;
-                    drawTextKtv(canvas, entry.getStaticLayout(), y - secondH / 2f, mLineProgress, entry, mSungTextColor);
+                    drawTextKtv(canvas, entry.getStaticLayout(), y - secondH / 2f, mLineProgress, entry, mSungTextColor, scrollX);
                 }
                 continue;
             } else if (isShowTimeline && i == centerLine) {
@@ -563,22 +568,74 @@ public class LrcView extends View {
      * @param y 歌词中心 Y 坐标
      */
     private void drawText(Canvas canvas, LrcEntry entry, float y) {
+        drawText(canvas, entry, y, 0f);
+    }
+
+    /**
+     * 画一行歌词
+     *
+     * @param y       歌词中心 Y 坐标
+     * @param scrollX 单行滚动时向左推移的像素（0 = 从最左侧开始）
+     */
+    private void drawText(Canvas canvas, LrcEntry entry, float y, float scrollX) {
         StaticLayout main = entry.getStaticLayout();
         StaticLayout second = entry.getSecondLayout();
         int mainH = main != null ? main.getHeight() : 0;
         int secondH = second != null ? second.getHeight() : 0;
         if (main != null) {
             canvas.save();
-            canvas.translate(mLrcPadding, (y - secondH / 2f) - mainH / 2f);
+            canvas.translate(mLrcPadding - scrollX, (y - secondH / 2f) - mainH / 2f);
             main.draw(canvas);
             canvas.restore();
         }
         if (second != null) {
             canvas.save();
-            canvas.translate(mLrcPadding, (y + mainH / 2f) - secondH / 2f);
+            canvas.translate(mLrcPadding - scrollX, (y + mainH / 2f) - secondH / 2f);
             second.draw(canvas);
             canvas.restore();
         }
+    }
+
+    /**
+     * 过长歌词的横向滚动量：句首短暂停留 → 缓动滚到句尾 → 残留一会儿。
+     * 非单行模式 / 文本没超宽时返回 0。
+     */
+    private float getHorizontalScroll(LrcEntry entry, int index) {
+        if (!mScrollLongLines || entry == null) {
+            return 0f;
+        }
+        StaticLayout layout = entry.getStaticLayout();
+        if (layout == null || layout.getLineCount() <= 0) {
+            return 0f;
+        }
+        float textWidth = layout.getLineWidth(0);
+        float maxScroll = textWidth - getLrcWidth();
+        if (maxScroll <= 0.5f) {
+            return 0f;
+        }
+        long start = entry.getTime();
+        long declaredEnd = entry.getEndTime();
+        long end;
+        if (declaredEnd > start) {
+            end = declaredEnd;
+        } else if (index + 1 < mLrcEntryList.size()) {
+            end = mLrcEntryList.get(index + 1).getTime();
+        } else {
+            end = start + 4000L;
+        }
+        long span = Math.max(end - start, 300L);
+        long lead = 350L;
+        long tail = 450L;
+        long moving = Math.max(span - lead - tail, 400L);
+        float t = (mCurrentTime - start - lead) / (float) moving;
+        if (t <= 0f) {
+            return 0f;
+        }
+        if (t >= 1f) {
+            return maxScroll;
+        }
+        float eased = t < 0.5f ? 2f * t * t : 1f - 2f * (1f - t) * (1f - t);
+        return maxScroll * eased;
     }
 
     /**
@@ -587,9 +644,13 @@ public class LrcView extends View {
      * @param progress 本行演唱进度 0..1
      */
     private void drawTextKtv(Canvas canvas, StaticLayout staticLayout, float y, float progress, LrcEntry entry, int color) {
+        drawTextKtv(canvas, staticLayout, y, progress, entry, color, 0f);
+    }
+
+    private void drawTextKtv(Canvas canvas, StaticLayout staticLayout, float y, float progress, LrcEntry entry, int color, float scrollX) {
         mLrcPaint.setColor(color);
         canvas.save();
-        canvas.translate(mLrcPadding, y - (staticLayout.getHeight() >> 1));
+        canvas.translate(mLrcPadding - scrollX, y - (staticLayout.getHeight() >> 1));
 
         long[] wordTimes = entry == null ? null : entry.getWordTimes();
         int[] wordIndices = entry == null ? null : entry.getWordIndices();
@@ -809,7 +870,7 @@ public class LrcView extends View {
         }
 
         for (LrcEntry lrcEntry : mLrcEntryList) {
-            lrcEntry.init(mLrcPaint, mSecondPaint, (int) getLrcWidth(), mTextGravity);
+            lrcEntry.init(mLrcPaint, mSecondPaint, (int) getLrcWidth(), mTextGravity, mScrollLongLines);
         }
 
         mOffset = getHeight() / 2;
