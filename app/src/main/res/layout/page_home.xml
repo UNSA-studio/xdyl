@@ -452,11 +452,12 @@
                     android:paddingStart="12dp"
                     android:paddingEnd="8dp">
 
-                    <!-- 封面：大图从迷你条顶部探出（无边框遮挡） -->
+                    <!-- 占位：真正的封面绘制在上层 miniCoverOverlay 里 -->
                     <FrameLayout
                         android:layout_width="66dp"
                         android:layout_height="66dp"
-                        android:layout_marginTop="-18dp">
+                        android:layout_marginTop="-18dp"
+                        android:visibility="invisible">
 
                         <www.xdyl.hygge.com.RingProgressView
                             android:id="@+id/ringSongMini"
@@ -544,6 +545,38 @@
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="展开" />
                 </LinearLayout>
+
+                <!-- 迷你条封面：置顶层，绘制在卡片之上，不会被卡片轮廓裁掉 -->
+                <FrameLayout
+                    android:id="@+id/miniCoverOverlay"
+                    android:layout_width="66dp"
+                    android:layout_height="66dp"
+                    android:layout_gravity="start|top"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginTop="0dp"
+                    android:visibility="gone">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="66dp"
+                        android:layout_height="66dp"
+                        app:cardCornerRadius="33dp"
+                        app:cardElevation="3dp"
+                        app:strokeWidth="0dp"
+                        app:cardBackgroundColor="#00000000">
+
+                        <ImageView
+                            android:id="@+id/ivSongCoverOverlay"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:contentDescription="封面" />
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <www.xdyl.hygge.com.RingProgressView
+                        android:id="@+id/ringSongOverlay"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+                </FrameLayout>
 
             </FrameLayout>
         </com.google.android.material.card.MaterialCardView>
