@@ -246,6 +246,8 @@
         android:id="@+id/songContainer"
         android:layout_width="0dp"
         android:layout_height="184dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -337,41 +339,22 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
 
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/coverCard"
-                    android:layout_width="50dp"
-                    android:layout_height="50dp"
-                    android:layout_marginStart="14dp"
-                    android:layout_marginTop="6dp"
-                    app:cardBackgroundColor="#1AFFFFFF"
-                    app:cardCornerRadius="10dp"
-                    app:cardElevation="4dp"
-                    app:strokeWidth="0dp"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@id/tvSongTitle">
-
-                    <ImageView
-                        android:id="@+id/ivSongCover"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:contentDescription="封面"
-                        android:scaleType="centerCrop" />
-                </com.google.android.material.card.MaterialCardView>
 
                 <TextView
                     android:id="@+id/tvSongName"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginEnd="10dp"
+                    android:layout_marginStart="82dp"
+                    android:layout_marginTop="44dp"
+                    android:layout_marginEnd="12dp"
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:textColor="@android:color/white"
-                    android:textSize="17sp"
+                    android:textSize="19sp"
                     android:textStyle="bold"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@id/coverCard"
-                    app:layout_constraintTop_toTopOf="@id/coverCard" />
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <TextView
                     android:id="@+id/tvSongArtist"
@@ -381,7 +364,7 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     android:textColor="#B3FFFFFF"
-                    android:textSize="12sp"
+                    android:textSize="12.5sp"
                     app:layout_constraintEnd_toEndOf="@id/tvSongName"
                     app:layout_constraintStart_toStartOf="@id/tvSongName"
                     app:layout_constraintTop_toBottomOf="@id/tvSongName" />
@@ -397,7 +380,7 @@
                     app:layout_constraintBottom_toTopOf="@id/sbSong"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@id/coverCard"
+                    app:layout_constraintTop_toBottomOf="@id/tvSongArtist"
                     app:lrcCurrentTextColor="#FFFFFFFF"
                     app:lrcLabel="纯音乐，请欣赏"
                     app:lrcNormalTextColor="#99FFFFFF"
@@ -436,6 +419,38 @@
                     app:layout_constraintEnd_toEndOf="parent" />
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
+        <!-- 封面浮层：放在卡片之外，1/3 露在卡片上沿外侧，不会被卡片轮廓裁掉 -->
+        <FrameLayout
+            android:id="@+id/coverHost"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_gravity="start|top"
+            android:layout_marginStart="14dp">
+
+            <www.xdyl.hygge.com.RingProgressView
+                android:id="@+id/ringSong"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_gravity="center"
+                app:cardBackgroundColor="#26FFFFFF"
+                app:cardCornerRadius="28dp"
+                app:cardElevation="6dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="#33FFFFFF">
+
+                <ImageView
+                    android:id="@+id/ivSongCover"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="封面"
+                    android:scaleType="centerCrop" />
+            </com.google.android.material.card.MaterialCardView>
+        </FrameLayout>
+
     </FrameLayout>
 
     <!-- 绿色覆盖层 -->

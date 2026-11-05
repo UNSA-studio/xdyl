@@ -416,6 +416,7 @@ class MainActivity : AppCompatActivity() {
         val same = cardSourcePath.isNotEmpty() && AudioPlayer.currentSourcePath() == cardSourcePath
         val ph = binding.pageHome
         ph.sbSong.progress = if (same) progress else 0
+        ph.ringSong.progress = if (same) progress / 1000f else 0f
         ph.tvSongTime.text = if (same) fmtTime(current) + " / " + fmtTime(duration) else "0:00 / 0:00"
         if (!same) ph.lvSong.updateTime(0)
     }
@@ -609,28 +610,25 @@ class MainActivity : AppCompatActivity() {
             it.height = dp(if (collapsed) 84 else 184)
         }
 
-        val cover = ph.coverCard
-        // 封面：两态同一尺寸，靠约束上下移动
-        cover.updateLayoutParams<ConstraintLayout.LayoutParams> {
-            width = dp(50)
-            height = dp(50)
+        // 封面浮层：挂在卡片外层，收起时 1/3 露到卡片上沿之外
+        val hostLp = ph.coverHost.layoutParams as android.widget.FrameLayout.LayoutParams
+        hostLp.gravity = android.view.Gravity.START or android.view.Gravity.TOP
+        hostLp.marginStart = dp(if (collapsed) 12 else 14)
+        hostLp.topMargin = dp(if (collapsed) -19 else 44)
+        ph.coverHost.layoutParams = hostLp
+
+        ph.tvSongName.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, if (collapsed) 14f else 19f)
+        ph.tvSongArtist.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, if (collapsed) 11f else 12.5f)
+        ph.tvSongName.updateLayoutParams<ConstraintLayout.LayoutParams> {
             topToTop = R.id.songCardRoot
             topToBottom = -1
-            topMargin = dp(if (collapsed) 2 else 62)
+            topMargin = dp(if (collapsed) 2 else 44)
             startToStart = R.id.songCardRoot
-            marginStart = dp(if (collapsed) 12 else 14)
-        }
-
-        ph.tvSongName.updateLayoutParams<ConstraintLayout.LayoutParams> {
-            topToTop = R.id.coverCard
-            topToBottom = -1
-            topMargin = 0
-            startToEnd = R.id.coverCard
-            startToStart = -1
-            marginStart = dp(if (collapsed) 10 else 12)
+            startToEnd = -1
+            marginStart = dp(if (collapsed) 80 else 82)
             endToEnd = -1
             endToStart = if (collapsed) R.id.btnSongPlay else -1
-            marginEnd = dp(10)
+            marginEnd = dp(if (collapsed) 8 else 12)
         }
         ph.tvSongArtist.updateLayoutParams<ConstraintLayout.LayoutParams> {
             topToTop = -1
