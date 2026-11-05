@@ -3,6 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:background="@color/background_dark"
     android:padding="16dp">
 
@@ -243,6 +245,8 @@
         android:id="@+id/songContainer"
         android:layout_width="0dp"
         android:layout_height="184dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -253,6 +257,9 @@
             android:id="@+id/cardSong"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:clipChildren="false"
+            android:clipToOutline="false"
+            android:clipToPadding="false"
             app:cardBackgroundColor="#1C2330"
             app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
@@ -260,7 +267,9 @@
 
             <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
+                android:layout_height="match_parent"
+                android:clipChildren="false"
+                android:clipToPadding="false">
 
                 <ImageView
                     android:id="@+id/ivSongBg"
@@ -485,16 +494,17 @@
 
                     <FrameLayout
                         android:id="@+id/miniCoverOverlay"
-                        android:layout_width="66dp"
-                        android:layout_height="66dp"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
                         android:layout_gravity="start|top"
                         android:layout_marginStart="12dp"
+                        android:layout_marginTop="-8dp"
                         android:elevation="3dp">
 
                         <com.google.android.material.card.MaterialCardView
-                            android:layout_width="66dp"
-                            android:layout_height="66dp"
-                            app:cardCornerRadius="33dp"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
+                            app:cardCornerRadius="28dp"
                             app:cardElevation="0dp"
                             app:strokeWidth="0dp"
                             app:cardBackgroundColor="#00000000">
@@ -520,7 +530,7 @@
                         android:layout_gravity="start|top"
                         android:layout_marginTop="6dp"
                         android:orientation="vertical"
-                        android:paddingStart="88dp"
+                        android:paddingStart="78dp"
                         android:paddingEnd="88dp">
 
                         <TextView

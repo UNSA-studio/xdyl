@@ -604,6 +604,23 @@ class MainActivity : AppCompatActivity() {
             mini.visibility = if (collapsed) View.VISIBLE else View.GONE
             ph.miniOverlay.alpha = mini.alpha
             ph.miniOverlay.visibility = if (collapsed) View.VISIBLE else View.GONE
+            full.translationY = 0f
+            mini.translationY = 0f
+            ph.miniOverlay.translationY = 0f
+        }
+
+        // 内容跟着卡片一起「滑」到新位置，而不是瞬间闪现
+        val shift = dp(12).toFloat()
+        fun applyShift(f: Float) {
+            if (collapsed) {
+                full.translationY = -f * shift
+                mini.translationY = (1f - f) * shift
+                ph.miniOverlay.translationY = (1f - f) * shift
+            } else {
+                full.translationY = (1f - f) * shift
+                mini.translationY = -f * shift
+                ph.miniOverlay.translationY = -f * shift
+            }
         }
         if (!animate || ph.songContainer.height == target) {
             ph.songContainer.layoutParams = ph.songContainer.layoutParams.also { it.height = target }
@@ -622,10 +639,12 @@ class MainActivity : AppCompatActivity() {
                 full.alpha = if (collapsed) 1f - f else f
                 mini.alpha = 1f - full.alpha
                 ph.miniOverlay.alpha = mini.alpha
+                applyShift(f)
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) { finishState() }
             })
+            applyShift(0f)
             start()
         }
     }
