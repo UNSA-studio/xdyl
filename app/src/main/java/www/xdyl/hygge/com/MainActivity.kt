@@ -617,8 +617,16 @@ class MainActivity : AppCompatActivity() {
         hostLp.topMargin = dp(if (collapsed) -19 else 44)
         ph.coverHost.layoutParams = hostLp
 
-        ph.tvSongName.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, if (collapsed) 14f else 19f)
-        ph.tvSongArtist.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, if (collapsed) 11f else 12.5f)
+        val animMs = if (animate) 260L else 0L
+        animateTextSize(ph.tvSongName, if (collapsed) 14f else 19f, animMs)
+        animateTextSize(ph.tvSongArtist, if (collapsed) 11f else 12.5f, animMs)
+        // 环形进度只在收起态（小卡片）显示，展开后交给底部进度条
+        if (animate) {
+            ph.ringSong.animate().alpha(if (collapsed) 1f else 0f).setDuration(animMs).start()
+        } else {
+            ph.ringSong.animate().cancel()
+            ph.ringSong.alpha = if (collapsed) 1f else 0f
+        }
         ph.tvSongName.updateLayoutParams<ConstraintLayout.LayoutParams> {
             topToTop = R.id.songCardRoot
             topToBottom = -1
@@ -689,6 +697,21 @@ class MainActivity : AppCompatActivity() {
             marginEnd = dp(8)
         }
         ph.btnSongToggle.rotation = if (collapsed) 90f else 270f
+    }
+
+    /** 字号补间：让歌名/歌手在展开收起时平滑缩放，而不是瞬变 */
+    private fun animateTextSize(tv: android.widget.TextView, targetSp: Float, duration: Long) {
+        val current = tv.textSize / resources.displayMetrics.scaledDensity
+        if (duration <= 0L || kotlin.math.abs(current - targetSp) < 0.05f) {
+            tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, targetSp)
+            return
+        }
+        val anim = android.animation.ValueAnimator.ofFloat(current, targetSp)
+        anim.duration = duration
+        anim.addUpdateListener {
+            tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, it.animatedValue as Float)
+        }
+        anim.start()
     }
 
     /** 播放/暂停图标切换：只缩放淡入淡出图标层（其外层描边圈是独立的 View，不受影响） */
