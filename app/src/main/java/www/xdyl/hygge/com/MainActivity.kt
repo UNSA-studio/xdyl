@@ -20,6 +20,12 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.view.updateLayoutParams
+import androidx.transition.ChangeBounds
+import androidx.transition.Fade
+import androidx.transition.TransitionManager
+import androidx.transition.TransitionSet
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -399,7 +405,6 @@ class MainActivity : AppCompatActivity() {
         audioBinding.btnAudioPlay.text = if (AudioPlayer.isPlaying) "暂停" else "播放"
         val icon = if (source == cardSourcePath && AudioPlayer.isPlaying && state == "playing") R.drawable.ic_pause else R.drawable.ic_play
         animatePlayIcon(binding.pageHome.ivSongPlayIcon, icon)
-        animatePlayIcon(binding.pageHome.btnSongPlayMini, icon)
         renderPlaybackProgress(AudioPlayer.currentPositionNow(), AudioPlayer.durationMs)
     }
 
@@ -411,12 +416,8 @@ class MainActivity : AppCompatActivity() {
         val same = cardSourcePath.isNotEmpty() && AudioPlayer.currentSourcePath() == cardSourcePath
         val ph = binding.pageHome
         ph.sbSong.progress = if (same) progress else 0
-        ph.ringSongOverlay.progress = if (same) progress / 1000f else 0f
         ph.tvSongTime.text = if (same) fmtTime(current) + " / " + fmtTime(duration) else "0:00 / 0:00"
-        if (!same) {
-            ph.lvSong.updateTime(0)
-            ph.lvSongMini.updateTime(0)
-        }
+        if (!same) ph.lvSong.updateTime(0)
     }
 
     /** 毫秒 -> [mm:ss.xx] */
@@ -590,63 +591,106 @@ class MainActivity : AppCompatActivity() {
     /** 每日歌曲卡片：展开 / 收起切换 */
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
-    /** 每日歌曲：展开 / 收起（高度收缩动画，像 QQ音乐） */
+    /**
+     * 每日歌曲：展开 / 收起。
+     * 卡片里只有一套视图，展开态与收起态是不同的 ConstraintLayout 约束，
+     * 用 TransitionManager 的 ChangeBounds 让它们自己「滑」到新位置，而不是两套内容闪现替换。
+     */
     private fun applySongCardCollapsed(collapsed: Boolean, animate: Boolean = false) {
-        songCardAnimator?.cancel()
         val ph = binding.pageHome
-        val full = ph.songContentFull
-        val mini = ph.songContentMini
-        val target = dp(if (collapsed) 84 else 184)
-        fun finishState() {
-            full.alpha = if (collapsed) 0f else 1f
-            mini.alpha = if (collapsed) 1f else 0f
-            full.visibility = if (collapsed) View.GONE else View.VISIBLE
-            mini.visibility = if (collapsed) View.VISIBLE else View.GONE
-            ph.miniOverlay.alpha = mini.alpha
-            ph.miniOverlay.visibility = if (collapsed) View.VISIBLE else View.GONE
-            full.translationY = 0f
-            mini.translationY = 0f
-            ph.miniOverlay.translationY = 0f
+        if (animate) {
+            val set = TransitionSet()
+                .addTransition(ChangeBounds())
+                .addTransition(Fade())
+            set.duration = 260
+            TransitionManager.beginDelayedTransition(ph.songContainer, set)
+        }
+        ph.songContainer.layoutParams = ph.songContainer.layoutParams.also {
+            it.height = dp(if (collapsed) 84 else 184)
         }
 
-        // 内容跟着卡片一起「滑」到新位置，而不是瞬间闪现
-        val shift = dp(12).toFloat()
-        fun applyShift(f: Float) {
+        val cover = ph.coverCard
+        // 封面：两态同一尺寸，靠约束上下移动
+        cover.updateLayoutParams<ConstraintLayout.LayoutParams> {
+            width = dp(50)
+            height = dp(50)
+            topToTop = R.id.songCardRoot
+            topToBottom = -1
+            topMargin = dp(if (collapsed) 2 else 62)
+            startToStart = R.id.songCardRoot
+            startMargin = dp(if (collapsed) 12 else 14)
+        }
+
+        ph.tvSongName.updateLayoutParams<ConstraintLayout.LayoutParams> {
+            topToTop = R.id.coverCard
+            topToBottom = -1
+            topMargin = 0
+            startToEnd = R.id.coverCard
+            startToStart = -1
+            startMargin = dp(if (collapsed) 10 else 12)
+            endToEnd = -1
+            endToStart = if (collapsed) R.id.btnSongPlay else -1
+            endMargin = dp(10)
+        }
+        ph.tvSongArtist.updateLayoutParams<ConstraintLayout.LayoutParams> {
+            topToTop = -1
+            topToBottom = R.id.tvSongName
+            topMargin = dp(2)
+            startToStart = R.id.tvSongName
+            endToEnd = R.id.tvSongName
+        }
+
+        // 歌词：展开填满中部；收起固定在歌手下方 26dp，右边给按钮让位
+        ph.lvSong.updateLayoutParams<ConstraintLayout.LayoutParams> {
+            startToStart = R.id.songCardRoot
+            endToEnd = R.id.songCardRoot
+            startMargin = dp(if (collapsed) 10 else 14)
+            endMargin = dp(if (collapsed) 78 else 10)
+            topToTop = -1
+            topToBottom = R.id.tvSongArtist
+            topMargin = dp(1)
             if (collapsed) {
-                full.translationY = -f * shift
-                mini.translationY = (1f - f) * shift
-                ph.miniOverlay.translationY = (1f - f) * shift
+                height = dp(26)
+                bottomToTop = -1
+                bottomToBottom = -1
             } else {
-                full.translationY = (1f - f) * shift
-                mini.translationY = -f * shift
-                ph.miniOverlay.translationY = -f * shift
+                height = 0
+                bottomToTop = R.id.sbSong
+                bottomMargin = dp(2)
             }
         }
-        if (!animate || ph.songContainer.height == target) {
-            ph.songContainer.layoutParams = ph.songContainer.layoutParams.also { it.height = target }
-            finishState()
-            return
+
+        // 进度条：展开贴底并显示时间；收起时只剩贴底细条
+        ph.sbSong.updateLayoutParams<ConstraintLayout.LayoutParams> {
+            bottomToBottom = R.id.songCardRoot
+            bottomMargin = dp(if (collapsed) 1 else 8)
+            startToStart = R.id.songCardRoot
+            startMargin = dp(if (collapsed) 10 else 14)
+            endToEnd = -1
+            endToStart = if (collapsed) R.id.songCardRoot else R.id.tvSongTime
+            endMargin = dp(if (collapsed) 10 else 8)
         }
-        full.visibility = View.VISIBLE
-        mini.visibility = View.VISIBLE
-        ph.miniOverlay.visibility = View.VISIBLE
-        val start = ph.songContainer.height
-        songCardAnimator = android.animation.ValueAnimator.ofInt(start, target).apply {
-            duration = 240
-            addUpdateListener { value ->
-                ph.songContainer.layoutParams = ph.songContainer.layoutParams.also { it.height = value.animatedValue as Int }
-                val f = value.animatedFraction
-                full.alpha = if (collapsed) 1f - f else f
-                mini.alpha = 1f - full.alpha
-                ph.miniOverlay.alpha = mini.alpha
-                applyShift(f)
-            }
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) { finishState() }
-            })
-            applyShift(0f)
-            start()
+        ph.tvSongTime.visibility = if (collapsed) View.GONE else View.VISIBLE
+
+        // 标题只在展开态出现；播放按钮从右上滑到右下
+        ph.tvSongTitle.visibility = if (collapsed) View.GONE else View.VISIBLE
+        ph.btnSongPlay.updateLayoutParams<ConstraintLayout.LayoutParams> {
+            topToTop = if (collapsed) -1 else R.id.songCardRoot
+            topMargin = dp(if (collapsed) 0 else 4)
+            bottomToBottom = if (collapsed) R.id.songCardRoot else -1
+            bottomMargin = dp(if (collapsed) 6 else 0)
+            endToStart = R.id.btnSongToggle
+            endMargin = dp(2)
         }
+        ph.btnSongToggle.updateLayoutParams<ConstraintLayout.LayoutParams> {
+            topToTop = if (collapsed) -1 else R.id.songCardRoot
+            topMargin = dp(if (collapsed) 0 else 8)
+            bottomToBottom = if (collapsed) R.id.songCardRoot else -1
+            bottomMargin = dp(if (collapsed) 10 else 0)
+            endToEnd = R.id.songCardRoot
+            endMargin = dp(8)
+        }
+        ph.btnSongToggle.rotation = if (collapsed) 90f else 270f
     }
 
     /** 播放/暂停图标切换：只缩放淡入淡出图标层（其外层描边圈是独立的 View，不受影响） */
@@ -671,7 +715,6 @@ class MainActivity : AppCompatActivity() {
             if (ph.songContainer.isShown && AudioPlayer.currentSourcePath() == cardSourcePath) {
                 val now = AudioPlayer.currentPositionNow().toLong()
                 ph.lvSong.updateTime(now)
-                ph.lvSongMini.updateTime(now)
             }
             handler.postDelayed(this, 100)
         }
@@ -698,7 +741,6 @@ class MainActivity : AppCompatActivity() {
         applySongCardCollapsed(prefs.getBoolean("song_card_collapsed", false), false)
         ph.tvSongTitle.text = "今日歌曲"
         ph.tvSongName.text = song.nameWithoutExtension
-        ph.tvSongNameMini.text = song.nameWithoutExtension
         ph.tvSongArtist.text = ""
         ph.tvSongArtist.visibility = View.INVISIBLE
         ph.tvSongTime.text = "0:00 / 0:00"
@@ -709,16 +751,13 @@ class MainActivity : AppCompatActivity() {
         // 歌词受「卡片滚动歌词」开关控制（扩展页，默认关闭）
         val lyricOn = prefs.getBoolean("song_card_lyric", false)
         ph.lvSong.visibility = if (lyricOn) View.VISIBLE else View.GONE
-        ph.lvSongMini.visibility = if (lyricOn) View.VISIBLE else View.GONE
         val lrcText = if (lrcFile.exists()) lrcFile.readText(Charsets.UTF_8) else ""
         if (lyricOn && lrcText.isNotEmpty()) {
             // 读成文本交给 LrcView，内部 LrcUtils 会把同时间戳的两行合并成「原文 + 译词」
             ph.lvSong.loadLrc(lrcText)
-            ph.lvSongMini.loadLrc(lrcText)
         } else {
             ph.lvSong.setLabel("纯音乐，请欣赏")
             ph.lvSong.loadLrc("")
-            ph.lvSongMini.loadLrc("")
         }
         startLyricTicker()
 
@@ -741,11 +780,9 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 if (bmp != null) {
                     ph.ivSongCover.setImageBitmap(bmp)
-                    ph.ivSongCoverOverlay.setImageBitmap(bmp)
                 }
                 if (bg != null) ph.ivSongBg.setImageBitmap(bg)
                 ph.tvSongArtist.text = artist
-                ph.tvSongArtistMini.text = artist
                 ph.tvSongArtist.visibility = if (artist.isBlank()) View.INVISIBLE else View.VISIBLE
             }
             LogManager.log("[SONG] ID3 title=" + meta.title + " artist=" + artist + " coverBytes=" + (meta.cover?.size ?: 0))
@@ -755,19 +792,10 @@ class MainActivity : AppCompatActivity() {
             AudioPlayer.play(this, song.absolutePath)
         }
 
-        ph.btnSongPlayMini.setOnClickListener {
-            AudioPlayer.play(this, song.absolutePath)
-        }
-
-
-        ph.btnSongCollapse.setOnClickListener {
-            prefs.edit().putBoolean("song_card_collapsed", true).apply()
-            applySongCardCollapsed(true, true)
-        }
-
-        ph.btnSongExpand.setOnClickListener {
-            prefs.edit().putBoolean("song_card_collapsed", false).apply()
-            applySongCardCollapsed(false, true)
+        ph.btnSongToggle.setOnClickListener {
+            val next = !prefs.getBoolean("song_card_collapsed", false)
+            prefs.edit().putBoolean("song_card_collapsed", next).apply()
+            applySongCardCollapsed(next, true)
         }
 
         ph.sbSong.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {

@@ -241,333 +241,200 @@
     </LinearLayout>
 
     <!-- 每日歌曲面板（封面模糊打底） -->
+    <!-- 每日歌曲面板：展开/收起共用同一套视图，靠约束切换 + ChangeBounds 补间移动 -->
     <FrameLayout
         android:id="@+id/songContainer"
         android:layout_width="0dp"
         android:layout_height="184dp"
-        android:clipChildren="false"
-        android:clipToPadding="false"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <!-- 单张卡片：背景始终不动，两层内容交叉淡入淡出 -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardSong"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:clipChildren="false"
-            android:clipToOutline="false"
-            android:clipToPadding="false"
             app:cardBackgroundColor="#1C2330"
             app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
             app:strokeWidth="0dp">
 
-            <FrameLayout
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/songCardRoot"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:clipChildren="false"
-                android:clipToPadding="false">
+                android:layout_height="match_parent">
 
                 <ImageView
                     android:id="@+id/ivSongBg"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:scaleType="centerCrop"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
                     android:alpha="1.0"
-                    android:contentDescription="背景" />
+                    android:contentDescription="背景"
+                    android:scaleType="centerCrop"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <View
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/song_bg_scrim" />
+                    android:id="@+id/songScrim"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:background="@drawable/song_bg_scrim"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
 
-                <!-- 展开态内容 -->
-                <LinearLayout
-                    android:id="@+id/songContentFull"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:orientation="vertical"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="10dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="4dp">
+                <TextView
+                    android:id="@+id/tvSongTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_marginTop="10dp"
+                    android:letterSpacing="0.12"
+                    android:text="今日歌曲"
+                    android:textColor="#E6FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    app:layout_constraintEnd_toStartOf="@id/btnSongPlay"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <TextView
-                            android:id="@+id/tvSongTitle"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="今日歌曲"
-                            android:textColor="#E6FFFFFF"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:letterSpacing="0.12" />
-
-                        <FrameLayout
-                            android:id="@+id/btnSongPlay"
-                            android:layout_width="40dp"
-                            android:layout_height="40dp"
-                            android:background="@drawable/bg_circle_outline"
-                            android:contentDescription="播放">
-
-                            <ImageView
-                                android:id="@+id/ivSongPlayIcon"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:padding="13dp"
-                                android:src="@drawable/ic_play"
-                                android:tint="#FFFFFFFF"
-                                android:contentDescription="播放图标" />
-                        </FrameLayout>
-
-                        <ImageView
-                            android:id="@+id/btnSongCollapse"
-                            android:layout_width="30dp"
-                            android:layout_height="30dp"
-                            android:layout_marginStart="4dp"
-                            android:padding="5dp"
-                            android:src="@drawable/ic_arrow_back"
-                            android:rotation="270"
-                            android:tint="#E6FFFFFF"
-                            android:background="?attr/selectableItemBackgroundBorderless"
-                            android:contentDescription="收起" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="top"
-                        android:layout_marginTop="6dp">
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="52dp"
-                            android:layout_height="52dp"
-                            app:cardCornerRadius="10dp"
-                            app:cardElevation="4dp"
-                            app:strokeWidth="0dp"
-                            app:cardBackgroundColor="#00000000">
-
-                            <ImageView
-                                android:id="@+id/ivSongCover"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:scaleType="centerCrop"
-                                android:contentDescription="封面" />
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:layout_marginStart="12dp">
-
-                            <TextView
-                                android:id="@+id/tvSongName"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:maxLines="1"
-                                android:ellipsize="end"
-                                android:textColor="@android:color/white"
-                                android:textSize="17sp"
-                                android:textStyle="bold"
-                                android:fontFamily="sans-serif" />
-
-                            <TextView
-                                android:id="@+id/tvSongArtist"
-                                android:layout_width="match_parent"
-                                android:layout_height="16dp"
-                                android:layout_marginTop="3dp"
-                                android:maxLines="1"
-                                android:ellipsize="end"
-                                android:textColor="#B3FFFFFF"
-                                android:textSize="12sp"
-                                android:fontFamily="sans-serif" />
-
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <!-- 歌词塞进歌名与进度条之间的空档，整行宽度 -->
-                    <www.xdyl.hygge.com.lrc.LrcView
-                        android:id="@+id/lvSong"
-                        android:layout_width="match_parent"
-                        android:layout_height="0dp"
-                        android:layout_weight="1"
-                        android:layout_marginTop="4dp"
-                        app:lrcTextSize="12sp"
-                        app:lrcNormalTextSize="9sp"
-                        app:lrcCurrentTextColor="#FFFFFFFF"
-                        app:lrcNormalTextColor="#99FFFFFF"
-                        app:lrcScrollLongLine="true"
-                        app:lrcLabel="纯音乐，请欣赏" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginTop="2dp">
-
-                        <SeekBar
-                            android:id="@+id/sbSong"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:maxHeight="3dp"
-                            android:minHeight="3dp"
-                            android:splitTrack="false"
-                            android:progressDrawable="@drawable/seekbar_song"
-                            android:thumb="@drawable/seekbar_thumb"
-                            android:paddingTop="0dp"
-                            android:paddingBottom="0dp" />
-
-                        <TextView
-                            android:id="@+id/tvSongTime"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="0:00 / 0:00"
-                            android:textColor="#99FFFFFF"
-                            android:textSize="10sp"
-                            android:layout_marginStart="8dp" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <!-- 收起态内容（只有按钮，文字与封面都在上层 overlay 里绘制） -->
-                <LinearLayout
-                    android:id="@+id/songContentMini"
-                    android:layout_width="match_parent"
-                    android:layout_height="66dp"
-                    android:layout_gravity="bottom"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:alpha="0"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="8dp">
-
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1" />
-
-                    <ImageView
-                        android:id="@+id/btnSongPlayMini"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:padding="9dp"
-                        android:src="@drawable/ic_play"
-                        android:tint="#FFFFFFFF"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="播放" />
-
-                    <ImageView
-                        android:id="@+id/btnSongExpand"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:layout_marginStart="4dp"
-                        android:padding="6dp"
-                        android:src="@drawable/ic_arrow_back"
-                        android:rotation="90"
-                        android:tint="#E6FFFFFF"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="展开" />
-                </LinearLayout>
-
-                <!-- 收起态置顶层：封面 + 歌名歌手歌词，绘制在卡片内容之上，不受条带裁剪 -->
                 <FrameLayout
-                    android:id="@+id/miniOverlay"
-                    android:layout_width="match_parent"
-                    android:layout_height="84dp"
-                    android:layout_gravity="start|top"
-                    android:clipChildren="false"
-                    android:clipToPadding="false"
-                    android:visibility="gone">
+                    android:id="@+id/btnSongPlay"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_circle_outline"
+                    android:contentDescription="播放"
+                    app:layout_constraintEnd_toStartOf="@id/btnSongToggle"
+                    app:layout_constraintTop_toTopOf="parent">
 
-                    <FrameLayout
-                        android:id="@+id/miniCoverOverlay"
-                        android:layout_width="56dp"
-                        android:layout_height="56dp"
-                        android:layout_gravity="start|top"
-                        android:layout_marginStart="12dp"
-                        android:layout_marginTop="-8dp"
-                        android:elevation="3dp">
-
-                        <com.google.android.material.card.MaterialCardView
-                            android:layout_width="56dp"
-                            android:layout_height="56dp"
-                            app:cardCornerRadius="28dp"
-                            app:cardElevation="0dp"
-                            app:strokeWidth="0dp"
-                            app:cardBackgroundColor="#00000000">
-
-                            <ImageView
-                                android:id="@+id/ivSongCoverOverlay"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:scaleType="centerCrop"
-                                android:contentDescription="封面" />
-                        </com.google.android.material.card.MaterialCardView>
-
-                        <www.xdyl.hygge.com.RingProgressView
-                            android:id="@+id/ringSongOverlay"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent" />
-                    </FrameLayout>
-
-                    <LinearLayout
-                        android:id="@+id/miniTextColumn"
+                    <ImageView
+                        android:id="@+id/ivSongPlayIcon"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="start|top"
-                        android:layout_marginTop="6dp"
-                        android:orientation="vertical"
-                        android:paddingStart="78dp"
-                        android:paddingEnd="88dp">
-
-                        <TextView
-                            android:id="@+id/tvSongNameMini"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:maxLines="1"
-                            android:ellipsize="end"
-                            android:textColor="@android:color/white"
-                            android:textSize="14sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvSongArtistMini"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:maxLines="1"
-                            android:ellipsize="end"
-                            android:textColor="#B3FFFFFF"
-                            android:textSize="11sp" />
-
-                        <www.xdyl.hygge.com.lrc.LrcView
-                            android:id="@+id/lvSongMini"
-                            android:layout_width="match_parent"
-                            android:layout_height="26dp"
-                            android:layout_marginTop="1dp"
-                            app:lrcTextSize="11sp"
-                            app:lrcNormalTextSize="10sp"
-                            app:lrcDividerHeight="0dp"
-                            app:lrcCurrentTextColor="#E6FFFFFF"
-                            app:lrcNormalTextColor="#80FFFFFF"
-                            app:lrcScrollLongLine="true"
-                            app:lrcLabel="" />
-                    </LinearLayout>
+                        android:layout_height="match_parent"
+                        android:contentDescription="播放图标"
+                        android:padding="13dp"
+                        android:src="@drawable/ic_play"
+                        android:tint="#FFFFFFFF" />
                 </FrameLayout>
 
-            </FrameLayout>
+                <ImageView
+                    android:id="@+id/btnSongToggle"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="展开或收起"
+                    android:padding="5dp"
+                    android:rotation="270"
+                    android:src="@drawable/ic_arrow_back"
+                    android:tint="#E6FFFFFF"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/coverCard"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_marginStart="14dp"
+                    android:layout_marginTop="6dp"
+                    app:cardBackgroundColor="#1AFFFFFF"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="4dp"
+                    app:strokeWidth="0dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/tvSongTitle">
+
+                    <ImageView
+                        android:id="@+id/ivSongCover"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:contentDescription="封面"
+                        android:scaleType="centerCrop" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:id="@+id/tvSongName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="10dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@android:color/white"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/coverCard"
+                    app:layout_constraintTop_toTopOf="@id/coverCard" />
+
+                <TextView
+                    android:id="@+id/tvSongArtist"
+                    android:layout_width="0dp"
+                    android:layout_height="16dp"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="#B3FFFFFF"
+                    android:textSize="12sp"
+                    app:layout_constraintEnd_toEndOf="@id/tvSongName"
+                    app:layout_constraintStart_toStartOf="@id/tvSongName"
+                    app:layout_constraintTop_toBottomOf="@id/tvSongName" />
+
+                <www.xdyl.hygge.com.lrc.LrcView
+                    android:id="@+id/lvSong"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_marginStart="14dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginEnd="10dp"
+                    android:layout_marginBottom="2dp"
+                    app:layout_constraintBottom_toTopOf="@id/sbSong"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/coverCard"
+                    app:lrcCurrentTextColor="#FFFFFFFF"
+                    app:lrcLabel="纯音乐，请欣赏"
+                    app:lrcNormalTextColor="#99FFFFFF"
+                    app:lrcNormalTextSize="9sp"
+                    app:lrcScrollLongLine="true"
+                    app:lrcTextSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/sbSong"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:maxHeight="3dp"
+                    android:minHeight="3dp"
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:progressDrawable="@drawable/seekbar_song"
+                    android:splitTrack="false"
+                    android:thumb="@drawable/seekbar_thumb"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/tvSongTime"
+                    app:layout_constraintStart_toStartOf="parent" />
+
+                <TextView
+                    android:id="@+id/tvSongTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="10dp"
+                    android:layout_marginBottom="8dp"
+                    android:text="0:00 / 0:00"
+                    android:textColor="#99FFFFFF"
+                    android:textSize="10sp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
     </FrameLayout>
 
