@@ -618,7 +618,7 @@ class MainActivity : AppCompatActivity() {
             topToBottom = -1
             topMargin = dp(if (collapsed) 2 else 62)
             startToStart = R.id.songCardRoot
-            startMargin = dp(if (collapsed) 12 else 14)
+            marginStart = dp(if (collapsed) 12 else 14)
         }
 
         ph.tvSongName.updateLayoutParams<ConstraintLayout.LayoutParams> {
@@ -627,10 +627,10 @@ class MainActivity : AppCompatActivity() {
             topMargin = 0
             startToEnd = R.id.coverCard
             startToStart = -1
-            startMargin = dp(if (collapsed) 10 else 12)
+            marginStart = dp(if (collapsed) 10 else 12)
             endToEnd = -1
             endToStart = if (collapsed) R.id.btnSongPlay else -1
-            endMargin = dp(10)
+            marginEnd = dp(10)
         }
         ph.tvSongArtist.updateLayoutParams<ConstraintLayout.LayoutParams> {
             topToTop = -1
@@ -644,8 +644,8 @@ class MainActivity : AppCompatActivity() {
         ph.lvSong.updateLayoutParams<ConstraintLayout.LayoutParams> {
             startToStart = R.id.songCardRoot
             endToEnd = R.id.songCardRoot
-            startMargin = dp(if (collapsed) 10 else 14)
-            endMargin = dp(if (collapsed) 78 else 10)
+            marginStart = dp(if (collapsed) 10 else 14)
+            marginEnd = dp(if (collapsed) 78 else 10)
             topToTop = -1
             topToBottom = R.id.tvSongArtist
             topMargin = dp(1)
@@ -665,10 +665,10 @@ class MainActivity : AppCompatActivity() {
             bottomToBottom = R.id.songCardRoot
             bottomMargin = dp(if (collapsed) 1 else 8)
             startToStart = R.id.songCardRoot
-            startMargin = dp(if (collapsed) 10 else 14)
+            marginStart = dp(if (collapsed) 10 else 14)
             endToEnd = -1
             endToStart = if (collapsed) R.id.songCardRoot else R.id.tvSongTime
-            endMargin = dp(if (collapsed) 10 else 8)
+            marginEnd = dp(if (collapsed) 10 else 8)
         }
         ph.tvSongTime.visibility = if (collapsed) View.GONE else View.VISIBLE
 
@@ -680,7 +680,7 @@ class MainActivity : AppCompatActivity() {
             bottomToBottom = if (collapsed) R.id.songCardRoot else -1
             bottomMargin = dp(if (collapsed) 6 else 0)
             endToStart = R.id.btnSongToggle
-            endMargin = dp(2)
+            marginEnd = dp(2)
         }
         ph.btnSongToggle.updateLayoutParams<ConstraintLayout.LayoutParams> {
             topToTop = if (collapsed) -1 else R.id.songCardRoot
@@ -688,7 +688,7 @@ class MainActivity : AppCompatActivity() {
             bottomToBottom = if (collapsed) R.id.songCardRoot else -1
             bottomMargin = dp(if (collapsed) 10 else 0)
             endToEnd = R.id.songCardRoot
-            endMargin = dp(8)
+            marginEnd = dp(8)
         }
         ph.btnSongToggle.rotation = if (collapsed) 90f else 270f
     }
