@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "xdyl"
 include(":app")
-include(":desktop")
+// Windows 客户端已迁移到 windows/ （C# + WinUI 3 + Rust 核心），不再使用 JVM 模块

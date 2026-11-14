@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Application
+    x:Class="NebulaUpdater.App.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:NebulaUpdater.App.Converters">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <converters:InverseBooleanConverter x:Key="InvertBool" />
+            <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
+            <converters:StringToVisibilityConverter x:Key="StrToVis" />
+
+            <!-- 统一间距与圆角，保持和 Android 端一致的观感 -->
+            <Thickness x:Key="CardPadding">20,16</Thickness>
+            <CornerRadius x:Key="CardRadius">12</CornerRadius>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

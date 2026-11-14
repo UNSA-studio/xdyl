@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>NebulaUpdater.Core</RootNamespace>
+    <AssemblyName>NebulaUpdater.Core</AssemblyName>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 模组清单随程序打包，用户可在 %USERPROFILE%\.xdyl\file_list.csv 覆盖 -->
+    <EmbeddedResource Include="Resources\file_list.csv" />
+  </ItemGroup>
+
+
+  <!--
+    构建前自动编译 Rust 原生核心，并把 dll 拷到输出目录。
+    Rust 工具链缺失时只警告不中断 —— NativeCore 会自动降级到托管实现。
+  -->
+  <Target Name="BuildNativeCore" BeforeTargets="Build"
+          Condition="'$(SkipNativeBuild)' != 'true'">
+    <PropertyGroup>
+      <NativeDir>$(MSBuildThisFileDirectory)..\..\native\nebula_core</NativeDir>
+      <NativeOutDir>$(NativeDir)\target\release</NativeOutDir>
+    </PropertyGroup>
+
+    <Exec Command="cargo build --release --manifest-path &quot;$(NativeDir)\Cargo.toml&quot;"
+          ContinueOnError="true"
+          StandardOutputImportance="low"
+          StandardErrorImportance="high" />
+
+    <ItemGroup>
+      <NativeDll Include="$(NativeOutDir)\nebula_core.dll"
+                 Condition="Exists('$(NativeOutDir)\nebula_core.dll')" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(NativeDll)"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true"
+          Condition="'@(NativeDll)' != ''" />
+
+    <Warning Text="nebula_core.dll 未生成，将使用托管降级实现"
+             Condition="'@(NativeDll)' == ''" />
+  </Target>
+
+</Project>

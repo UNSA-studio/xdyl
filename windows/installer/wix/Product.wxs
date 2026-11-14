@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSI 安装包定义（WiX v5）。
+
+  设计取舍：
+    - 按用户安装（perUser），不需要管理员权限，装到 %LOCALAPPDATA%\Programs；
+    - 不做 machine-wide，避免学校机房这类受限环境装不上；
+    - 卸载时保留 %USERPROFILE%\.xdyl（配置与日志），除非用户手动删。
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <Package
+      Name="星云更新器"
+      Manufacturer="UNSA Studio"
+      Version="$(var.ProductVersion)"
+      UpgradeCode="8F3C2A41-7B5D-4E19-9C6A-2D48B1F0E7A3"
+      Scope="perUser"
+      Compressed="yes">
+
+    <MajorUpgrade
+        DowngradeErrorMessage="已安装更新版本，请先卸载后再装旧版。"
+        AllowSameVersionUpgrades="yes" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- 安装目录：%LOCALAPPDATA%\Programs\NebulaUpdater -->
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="NebulaUpdater" />
+      </Directory>
+    </StandardDirectory>
+
+    <!-- 开始菜单快捷方式 -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppProgramMenuDir" Name="星云更新器" />
+    </StandardDirectory>
+
+    <Feature Id="MainFeature" Title="星云更新器" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+
+  </Package>
+
+  <Fragment>
+    <!-- 自动收集 publish 目录下的所有文件 -->
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**" />
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <Component Id="StartMenuShortcut" Directory="AppProgramMenuDir" Guid="3A5E9C77-1F2B-4D68-B7E4-9C0A1D83F562">
+      <Shortcut Id="AppShortcut"
+                Name="星云更新器"
+                Description="Minecraft 模组更新器"
+                Target="[INSTALLFOLDER]NebulaUpdater.exe"
+                WorkingDirectory="INSTALLFOLDER" />
+      <RemoveFolder Id="RemoveAppProgramMenuDir" On="uninstall" />
+      <RegistryValue Root="HKCU" Key="Software\UNSAStudio\NebulaUpdater"
+                     Name="installed" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+  </Fragment>
+
+  <!-- 卸载时不删用户配置：这些不是安装目录里的东西 -->
+  <Fragment>
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Icon Id="AppIcon" SourceFile="$(var.PublishDir)\NebulaUpdater.exe" />
+  </Fragment>
+
+</Wix>

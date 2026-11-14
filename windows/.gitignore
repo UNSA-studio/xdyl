@@ -1,0 +1,15 @@
+# Rust
+target/
+
+# .NET
+bin/
+obj/
+publish-x64/
+publish-x86/
+
+# Installer output
+installer/out/
+
+# IDE
+.vs/
+*.user

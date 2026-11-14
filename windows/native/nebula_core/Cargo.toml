@@ -1,0 +1,24 @@
+[package]
+name = "nebula_core"
+version = "1.0.0"
+edition = "2021"
+description = "Nebula Updater native core: chunked downloader + hashing"
+license = "MIT"
+
+[lib]
+name = "nebula_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+# HTTP：blocking + rustls，服务端目前是 http，但保留 https 能力
+ureq = { version = "2.10", default-features = false, features = ["tls", "gzip"] }
+sha2 = "0.10"
+md-5 = "0.10"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+# 不用 panic=abort：FFI 边界要能 catch_unwind，宁可返回错误码也不让宿主进程死掉
+panic = "unwind"
