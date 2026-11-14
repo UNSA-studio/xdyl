@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Formats.Tar;
+using System.IO.Compression;
 using System.Text;
 
 namespace NebulaUpdater.Core.Services;
@@ -7,16 +8,26 @@ namespace NebulaUpdater.Core.Services;
 /// <summary>
 /// Windows 端扩展包管理器（与 Android 端 terminal 自动安装流程对齐）。
 ///
-/// 扩展包 = 官方嵌入式 Python + pip + mcstatus（python_windows.zip）。
+/// 扩展包 = 官方嵌入式 Python + pip（python_windows.tar.gz，约 14.7MB）。
 /// 安装位置：%USERPROFILE%\.xdyl\python_root\
 ///
-/// 说明：这是从旧 Kotlin 版 PyExtManager 原样移植过来的，
-/// 行为、路径、脚本内容都保持一致，不做"优化"。
+/// 包结构：顶层目录 python_windows/，内含 python.exe、Lib/site-packages/pip 等。
+/// 解压时需要剥掉这一层，让 python.exe 直接落在 python_root 下。
+///
+/// 注意：包里不含 mcstatus，首次查询时会用 pip 现场安装。
 /// </summary>
 public static class PyExtManager
 {
-    /// <summary>扩展包直链（网盘重构后的新地址）。内容是 python_windows.tar.gz，不是 zip。</summary>
+    /// <summary>
+    /// 扩展包下载地址。
+    ///
+    /// 网盘重构后地址已变更（旧地址 unsa-fdws.cc.cd 已废弃），
+    /// 现由 pan.ezv.cc 直链提供，格式也从 zip 改成了 tar.gz。
+    /// </summary>
     public const string DefaultUrl = "https://pan.ezv.cc/v/2d8747f5c6bf4a34d138e1eafd30a78f";
+
+    /// <summary>tar.gz 内的顶层目录名，解压时剥掉</summary>
+    private const string TopLevelDir = "python_windows/";
 
     /// <summary>扩展包安装根目录</summary>
     public static string PythonRoot =>
@@ -33,17 +44,16 @@ public static class PyExtManager
     public static bool IsReady() => PythonExe() != null;
 
     /// <summary>
-    /// 下载并解压扩展包。返回 null 表示成功，否则为错误信息。
+    /// 下载并解压扩展包（tar.gz）。返回 null 表示成功，否则为错误信息。
     /// </summary>
     public static async Task<string?> InstallAsync(Action<string> onProgress, CancellationToken ct = default)
     {
+        var tmp = Path.Combine(Path.GetTempPath(), $"python_windows_{Guid.NewGuid():N}.tar.gz");
         try
         {
             onProgress("开始下载扩展程序包...");
 
-            var tmp = Path.GetTempFileName();
-            using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-
+            using (var http = new HttpClient { Timeout = TimeSpan.FromMinutes(15) })
             using (var resp = await http.GetAsync(DefaultUrl, HttpCompletionOption.ResponseHeadersRead, ct)
                        .ConfigureAwait(false))
             {
@@ -64,49 +74,21 @@ public static class PyExtManager
                     if (total > 0)
                     {
                         var pct = (int)(done * 100 / total);
-                        // 每 2% 报一次，避免回调过于频繁
+                        // 每 2% 报一次，避免回调过密
                         if (pct > lastPct && pct % 2 == 0)
                         {
                             lastPct = pct;
-                            onProgress($"下载中 {pct}% ({done / 1048576}MB)");
+                            onProgress($"下载中 {pct}% ({done / 1048576}MB / {total / 1048576}MB)");
                         }
                     }
                 }
             }
 
             onProgress("正在解压...");
-            var root = PythonRoot;
-            Directory.CreateDirectory(root);
+            var written = await Task.Run(() => ExtractTarGz(tmp, PythonRoot, onProgress, ct), ct)
+                .ConfigureAwait(false);
+            onProgress($"解压完成（{written} 个文件）");
 
-            // 扩展包是 .tar.gz（不是 zip）。
-            // System.Formats.Tar 从 .NET 7 起内置，不需要额外 NuGet 依赖。
-            // 顶层目录 python_windows/ 要剥掉，解到 python_root 下才是 python.exe。
-            using (var gz = new System.IO.Compression.GZipStream(
-                       File.OpenRead(tmp), System.IO.Compression.CompressionMode.Decompress))
-            using (var reader = new TarReader(gz))
-            {
-                TarEntry? entry;
-                while ((entry = reader.GetNextEntry()) != null)
-                {
-                    // 只处理普通文件；目录/符号链接跳过（Windows 上符号链接多数用不到）
-                    if (entry.EntryType != TarEntryType.RegularFile) continue;
-                    if (entry.DataStream == null) continue;
-
-                    var name = StripTopLevel(entry.Name.Replace('\\', '/'));
-                    if (string.IsNullOrEmpty(name)) continue;
-
-                    var dest = Path.Combine(root, name.Replace('/', Path.DirectorySeparatorChar));
-                    Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
-                    using var fs = File.Create(dest);
-                    entry.DataStream.CopyTo(fs);
-
-                    // 保留可执行属性对 Windows 无意义，跳过
-                }
-            }
-
-            try { File.Delete(tmp); } catch { /* 清理失败不影响结果 */ }
-
-            onProgress("扩展包安装完成");
             return PythonExe() != null ? null : "解压后未找到 python.exe";
         }
         catch (OperationCanceledException)
@@ -117,6 +99,76 @@ public static class PyExtManager
         {
             return ex.Message;
         }
+        finally
+        {
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* 清理失败不影响结果 */ }
+        }
+    }
+
+    /// <summary>
+    /// 解压 tar.gz 到目标目录，剥掉顶层 python_windows/。
+    ///
+    /// 用 System.Formats.Tar（.NET 7+ 内置），不需要外部 tar.exe ——
+    /// Windows 10 1803 之前没有 bsdtar，依赖外部命令会挂。
+    /// </summary>
+    private static int ExtractTarGz(string archivePath, string destRoot, Action<string> onProgress, CancellationToken ct)
+    {
+        Directory.CreateDirectory(destRoot);
+        var written = 0;
+
+        using var file = File.OpenRead(archivePath);
+        using var gz = new GZipStream(file, CompressionMode.Decompress);
+        using var reader = new TarReader(gz, leaveOpen: false);
+
+        while (reader.GetNextEntry() is { } entry)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var name = entry.Name.Replace('\\', '/');
+            // 剥掉顶层目录
+            if (name.StartsWith(TopLevelDir, StringComparison.Ordinal))
+            {
+                name = name[TopLevelDir.Length..];
+            }
+            if (string.IsNullOrEmpty(name)) continue;
+
+            // 防目录穿越：拒绝 .. 与绝对路径
+            if (name.Contains("..", StringComparison.Ordinal) || Path.IsPathRooted(name)) continue;
+
+            var dest = Path.GetFullPath(Path.Combine(destRoot, name));
+            if (!dest.StartsWith(Path.GetFullPath(destRoot), StringComparison.OrdinalIgnoreCase)) continue;
+
+            if (entry.EntryType is TarEntryType.Directory)
+            {
+                Directory.CreateDirectory(dest);
+                continue;
+            }
+
+            var dir = Path.GetDirectoryName(dest);
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+
+            if (entry.DataStream != null)
+            {
+                using var outFs = File.Create(dest);
+                entry.DataStream.CopyTo(outFs);
+            }
+            else
+            {
+                // 符号链接/设备文件等在 Windows 上没意义，跳过
+                continue;
+            }
+
+            // 保留可执行位（Windows 上无实际作用，但避免某些 .exe 被标记只读）
+            if (entry.Mode.HasFlag(UnixFileMode.UserExecute))
+            {
+                try { File.SetAttributes(dest, FileAttributes.Normal); } catch { }
+            }
+
+            written++;
+            if (written % 200 == 0) onProgress($"解压中... 已写入 {written} 个文件");
+        }
+
+        return written;
     }
 
     /// <summary>
@@ -147,7 +199,7 @@ public static class PyExtManager
             var stdout = p.StandardOutput.ReadToEnd();
             var stderr = p.StandardError.ReadToEnd();
 
-            if (!p.WaitForExit(120_000))
+            if (!p.WaitForExit(180_000))
             {
                 try { p.Kill(true); } catch { }
                 return "pip 安装超时";
@@ -163,14 +215,6 @@ public static class PyExtManager
         {
             return ex.Message;
         }
-    }
-
-    /// <summary>兼容 zip 内带顶层目录或不带两种打包方式</summary>
-    private static string StripTopLevel(string name)
-    {
-        var n = name.Replace('\\', '/');
-        var idx = n.IndexOf('/');
-        return idx > 0 ? n[(idx + 1)..] : n;
     }
 
     /// <summary>
@@ -200,12 +244,12 @@ except Exception as e:
     /// <summary>用扩展包 Python 执行 mcstatus 查询</summary>
     public static string QueryPing()
     {
+        var script = Path.Combine(Path.GetTempPath(), $"xdyl_mc_ping_{Guid.NewGuid():N}.py");
         try
         {
             var exe = PythonExe();
             if (exe == null) return "错误: Python 未安装";
 
-            var script = Path.Combine(Path.GetTempPath(), "xdyl_mc_ping.py");
             File.WriteAllText(script, PingScript(), new UTF8Encoding(false));
 
             var psi = new ProcessStartInfo(exe, $"\"{script}\"")
@@ -232,8 +276,6 @@ except Exception as e:
                 return "查询失败: 超时";
             }
 
-            try { File.Delete(script); } catch { }
-
             return !string.IsNullOrWhiteSpace(stdout)
                 ? stdout.TrimEnd()
                 : $"查询失败: {(string.IsNullOrWhiteSpace(stderr) ? "未知错误" : stderr.TrimEnd())}";
@@ -241,6 +283,10 @@ except Exception as e:
         catch (Exception ex)
         {
             return $"查询异常: {ex.Message}";
+        }
+        finally
+        {
+            try { if (File.Exists(script)) File.Delete(script); } catch { }
         }
     }
 }

@@ -63,7 +63,8 @@ public sealed partial class ServerPage : Page
         {
             var ok = await ShowConfirmAsync(
                 "需要扩展程序包",
-                "此功能需要下载扩展程序包（Python 运行包 + mcstatus，约 20MB）。\n\n" +
+                "此功能需要下载扩展程序包（嵌入式 Python 运行包，约 15MB；" +
+                "mcstatus 会在稍后自动安装）。\n\n" +
                 "确认后将自动下载安装到 %USERPROFILE%\\.xdyl\\python_root，期间请耐心等待。");
             if (!ok)
             {
