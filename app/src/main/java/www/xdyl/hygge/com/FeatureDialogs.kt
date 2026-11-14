@@ -73,6 +73,14 @@ object FeatureDialogs {
                 indicatorSize = dp(a, 24)
                 setIndicatorColor(0xFFA0C4FF.toInt())
                 show()
+                // 24dp 仍属小尺寸：小幅度缩放淡入，避免"啪"地出现
+                scaleX = 0.35f
+                scaleY = 0.35f
+                alpha = 0f
+                animate().scaleX(1f).scaleY(1f).alpha(1f)
+                    .setDuration(200L)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator(1.5f))
+                    .start()
             }
             addView(ind)
             addView(TextView(a).apply {

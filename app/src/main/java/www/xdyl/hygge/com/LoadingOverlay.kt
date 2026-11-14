@@ -156,15 +156,10 @@ object LoadingOverlay {
             ViewGroup.LayoutParams.MATCH_PARENT
         ))
 
-        // 出现：轻微放大 + 淡入（0.7 → 1.0）。直接 0→1 在视觉上会"砰"地弹出
+        // 48dp 属于大尺寸，比例本身已经让出现/消失看起来自然，
+        // 不需要再加缩放（加了反而像"弹出来"）。这里只用淡入。
         box.alpha = 0f
-        box.scaleX = 0.7f
-        box.scaleY = 0.7f
-        box.animate()
-            .alpha(1f).scaleX(1f).scaleY(1f)
-            .setDuration(180L)
-            .setInterpolator(android.view.animation.DecelerateInterpolator(1.4f))
-            .start()
+        box.animate().alpha(1f).setDuration(140L).start()
 
         overlay = box
         indicator = ind
@@ -180,16 +175,9 @@ object LoadingOverlay {
         synchronized(this) { pendingHide = null }
         if (box == null) return
         val parent = box.parent as? ViewGroup
-        // 消失：缩小 + 淡出。用 Accelerate 让末段收得更快，
-        // 视觉上是"缩回去消失"而不是忽然不见
-        box.animate()
-            .alpha(0f).scaleX(0.55f).scaleY(0.55f)
-            .setDuration(170L)
-            .setInterpolator(android.view.animation.AccelerateInterpolator(1.6f))
-            .withEndAction {
-                ind?.hide()
-                parent?.removeView(box)
-            }
-            .start()
+        box.animate().alpha(0f).setDuration(120L).withEndAction {
+            ind?.hide()
+            parent?.removeView(box)
+        }.start()
     }
 }

@@ -71,10 +71,9 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         binding.btnExportLog.setOnClickListener {
-            prefs.edit().putBoolean("request_export_log", true).apply()
-            finish()
-            @Suppress("DEPRECATION")
-            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
+            // 之前是"打标记 + finish()"，借用主界面 onResume 导出，
+            // 结果点一下就被弹回主界面。改成在本页直接导出，页面保持不动。
+            exportLogHere()
         }
 
         binding.btnPingServer.setOnClickListener {
@@ -369,6 +368,45 @@ class SettingsActivity : AppCompatActivity() {
         updateThreadHint()
     }
 
+    /** 就地导出日志：留在设置页，完成后 Toast 提示路径 */
+    private fun exportLogHere() {
+        androidx.lifecycle.lifecycleScope.launch(
+            kotlinx.coroutines.Dispatchers.IO
+        ) {
+            try {
+                val log = LogManager.getFullLog()
+                val dir = java.io.File(
+                    android.os.Environment.getExternalStorageDirectory(), "NebulaUpdater"
+                )
+                if (!dir.exists()) dir.mkdirs()
+                val name = "nebula_log_" + java.text.SimpleDateFormat(
+                    "yyyyMMdd_HHmmss", java.util.Locale.getDefault()
+                ).format(java.util.Date()) + ".txt"
+                val f = java.io.File(dir, name)
+                java.io.FileOutputStream(f).use { it.write(log.toByteArray()) }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (!isFinishing) {
+                        Toast.makeText(
+                            this@SettingsActivity,
+                            "日志已导出：" + f.absolutePath,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            } catch (e: Exception) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (!isFinishing) {
+                        Toast.makeText(
+                            this@SettingsActivity,
+                            "导出失败：" + e.message,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+        }
+    }
+
     private fun startPing(
         address: String,
         textView: TextView,
@@ -379,19 +417,19 @@ class SettingsActivity : AppCompatActivity() {
         textView.layoutParams.height = 0
         textView.visibility = View.VISIBLE
         textView.text = "Pinging..."
-        expandView(textView)
-        // 等这一帧布局落地（框已有高度）再显示 indicator，
-        // 否则会被 height=0 的动画压扁，看起来像个小方块
-        textView.post {
+        expandView(textView) {
             val d = resources.displayMetrics.density
             // 容器 20dp，图形本体 12dp：形变时最大帧也不会超出 View 边界被裁掉
             indicator.indicatorSize = (12 * d).toInt()
             indicator.visibility = View.VISIBLE
-            indicator.scaleX = 0.6f
-            indicator.scaleY = 0.6f
+            // 小尺寸（12dp）在视觉上变化不明显，缩放幅度要大一些才看得出"长出来"
+            indicator.scaleX = 0.2f
+            indicator.scaleY = 0.2f
             indicator.alpha = 0f
             indicator.animate().scaleX(1f).scaleY(1f).alpha(1f)
-                .setDuration(180L).start()
+                .setDuration(220L)
+                .setInterpolator(android.view.animation.DecelerateInterpolator(1.6f))
+                .start()
             // M3：必须 show() 才启动形变+旋转
             indicator.show()
         }
@@ -402,8 +440,10 @@ class SettingsActivity : AppCompatActivity() {
                 // 结果内容更长，再次展开到新高度
                 expandView(textView)
             } finally {
-                indicator.animate().scaleX(0.6f).scaleY(0.6f).alpha(0f)
-                    .setDuration(160L)
+                // 退出同样放大缩小幅度，避免"小点突然消失"
+                indicator.animate().scaleX(0.2f).scaleY(0.2f).alpha(0f)
+                    .setDuration(200L)
+                    .setInterpolator(android.view.animation.AccelerateInterpolator(1.8f))
                     .withEndAction {
                         indicator.hide()
                         indicator.visibility = View.GONE
@@ -417,7 +457,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     // 结果区域自身展开动画（1.2秒）
-    private fun expandView(v: View) {
+    private fun expandView(v: View, onFinished: (() -> Unit)? = null) {
         v.post {
             v.measure(
                 View.MeasureSpec.makeMeasureSpec(v.width, View.MeasureSpec.EXACTLY),
@@ -431,6 +471,12 @@ class SettingsActivity : AppCompatActivity() {
                 v.layoutParams.height = it.animatedValue as Int
                 v.requestLayout()
             }
+            // 展开动画走完再通知：spinner 提前出现会在框还没撑开时"穿壳"
+            animator.addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    onFinished?.invoke()
+                }
+            })
             animator.start()
         }
     }
@@ -441,16 +487,17 @@ class SettingsActivity : AppCompatActivity() {
         tv.layoutParams.height = 0
         tv.visibility = View.VISIBLE
         tv.text = "查询中..."
-        expandView(tv)
-        binding.ldPingMc.post {
+        expandView(tv) {
             val d = resources.displayMetrics.density
             binding.ldPingMc.indicatorSize = (12 * d).toInt()
             binding.ldPingMc.visibility = View.VISIBLE
-            binding.ldPingMc.scaleX = 0.6f
-            binding.ldPingMc.scaleY = 0.6f
+            binding.ldPingMc.scaleX = 0.2f
+            binding.ldPingMc.scaleY = 0.2f
             binding.ldPingMc.alpha = 0f
             binding.ldPingMc.animate().scaleX(1f).scaleY(1f).alpha(1f)
-                .setDuration(180L).start()
+                .setDuration(220L)
+                .setInterpolator(android.view.animation.DecelerateInterpolator(1.6f))
+                .start()
             binding.ldPingMc.show()
         }
         scope.launch {
@@ -459,8 +506,9 @@ class SettingsActivity : AppCompatActivity() {
                 tv.text = result
                 expandView(tv)
             } finally {
-                binding.ldPingMc.animate().scaleX(0.6f).scaleY(0.6f).alpha(0f)
-                    .setDuration(160L)
+                binding.ldPingMc.animate().scaleX(0.2f).scaleY(0.2f).alpha(0f)
+                    .setDuration(200L)
+                    .setInterpolator(android.view.animation.AccelerateInterpolator(1.8f))
                     .withEndAction {
                         binding.ldPingMc.hide()
                         binding.ldPingMc.visibility = View.GONE

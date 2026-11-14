@@ -557,6 +557,8 @@ object ChatPage {
             setContentView(root)
             window?.setBackgroundDrawableResource(android.R.color.transparent)
             window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            // MD 页面转场：进场从下往上滑入，退场滑回下方
+            window?.setWindowAnimations(R.style.DialogAnimation)
         }
         btnBack.setOnClickListener { dialog.dismiss() }
 
@@ -783,6 +785,14 @@ object ChatPage {
                 indicatorSize = size
                 setIndicatorColor(0xFFA0C4FF.toInt())
                 show()   // 必须 show() 才启动形变+旋转
+                // 14dp 属于小尺寸，缩放幅度要大才看得出"长出来"
+                scaleX = 0.2f
+                scaleY = 0.2f
+                alpha = 0f
+                animate().scaleX(1f).scaleY(1f).alpha(1f)
+                    .setDuration(220L)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator(1.6f))
+                    .start()
             }
             row.addView(ind, LinearLayout.LayoutParams(size, size).apply {
                 gravity = Gravity.CENTER_VERTICAL
