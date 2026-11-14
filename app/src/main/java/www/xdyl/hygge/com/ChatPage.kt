@@ -617,9 +617,6 @@ object ChatPage {
             render()
 
             Thread {
-                // 发送链路要跑 ECH 握手 + 取对方公钥 + 加密 + 上传，耗时明显，
-                // 用 M3 居中的 LoadingIndicator 给等待反馈
-                LoadingOverlay.begin()
                 try {
                 if (!ChatIdentity.isCurrent(activity, owner)) return@Thread
                 val key = runCatching { ensureSessionKey(activity, peerKey, myName) }.getOrNull()
@@ -648,7 +645,7 @@ object ChatPage {
                     activity.runOnUiThread { AppDialogs.tip(activity, "消息未发出", tip) }
                 }
                 } finally {
-                    LoadingOverlay.end()
+                    // 状态回写后 render() 会重建气泡，spinner 随之消失
                 }
             }.start()
         }
@@ -778,6 +775,20 @@ object ChatPage {
             ).apply { topMargin = dp(activity, 2) }
         })
 
+        // 发送中的消息：在气泡左侧显示一个小 loading（M3 LoadingIndicator）
+        if (out && m.state == "pending") {
+            val dens = activity.resources.displayMetrics.density
+            val size = (14 * dens).toInt()
+            val ind = com.google.android.material.loadingindicator.LoadingIndicator(activity).apply {
+                indicatorSize = size
+                setIndicatorColor(0xFFA0C4FF.toInt())
+                show()   // 必须 show() 才启动形变+旋转
+            }
+            row.addView(ind, LinearLayout.LayoutParams(size, size).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                marginEnd = (8 * dens).toInt()
+            })
+        }
         row.addView(box)
         return row
     }
