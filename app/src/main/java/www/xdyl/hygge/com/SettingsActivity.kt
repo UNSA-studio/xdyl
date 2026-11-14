@@ -1,5 +1,7 @@
 package www.xdyl.hygge.com
 
+import com.google.android.material.loadingindicator.LoadingIndicator
+
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
@@ -76,10 +78,10 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         binding.btnPingServer.setOnClickListener {
-            startPing("82.157.155.86", binding.tvPingServerResult, true)
+            startPing("82.157.155.86", binding.tvPingServerResult, true, binding.ldPingServer)
         }
         binding.btnPingWifi.setOnClickListener {
-            startPing("8.8.8.8", binding.tvPingWifiResult, false)
+            startPing("8.8.8.8", binding.tvPingWifiResult, false, binding.ldPingWifi)
         }
 
         // MC 服务器 Ping：需要 Python + mcstatus 扩展包
@@ -370,15 +372,17 @@ class SettingsActivity : AppCompatActivity() {
     private fun startPing(
         address: String,
         textView: TextView,
-        hideIp: Boolean
+        hideIp: Boolean,
+        indicator: LoadingIndicator
     ) {
         // 收起状态准备展开
         textView.layoutParams.height = 0
         textView.visibility = View.VISIBLE
         textView.text = "Pinging..."
         expandView(textView)
-        // 等这一帧布局落地（高度不再是 0）再挂 spinner，否则会被压扁看不见
-        textView.post { if (textView.isAttachedToWindow) Spinner.showOnTextEnd(textView, 15) }
+        // M3：indicator 必须 show() 才会形变+旋转，仅 visible 会停在静止方块
+        indicator.visibility = View.VISIBLE
+        indicator.show()
         scope.launch {
             try {
                 val result = withContext(Dispatchers.IO) { executePing(address, hideIp) }
@@ -386,7 +390,8 @@ class SettingsActivity : AppCompatActivity() {
                 // 结果内容更长，再次展开到新高度
                 expandView(textView)
             } finally {
-                Spinner.hideOnText(textView)
+                indicator.hide()
+                indicator.visibility = View.GONE
             }
         }
     }
@@ -417,14 +422,16 @@ class SettingsActivity : AppCompatActivity() {
         tv.visibility = View.VISIBLE
         tv.text = "查询中..."
         expandView(tv)
-        tv.post { if (tv.isAttachedToWindow) Spinner.showOnTextEnd(tv, 15) }
+        binding.ldPingMc.visibility = View.VISIBLE
+        binding.ldPingMc.show()
         scope.launch {
             try {
                 val result = withContext(Dispatchers.IO) { executeMcPing() }
                 tv.text = result
                 expandView(tv)
             } finally {
-                Spinner.hideOnText(tv)
+                binding.ldPingMc.hide()
+                binding.ldPingMc.visibility = View.GONE
             }
         }
     }

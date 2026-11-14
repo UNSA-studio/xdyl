@@ -1612,7 +1612,7 @@ class MainActivity : AppCompatActivity() {
             // 检测 QQ 绑定状态与余额（字段名兼容：qq_nickname / qq / qqNickname / bound_qq…）
             scope.launch {
                 try {
-                    val root = api.get("/user/profile")
+                    val root = LoadingOverlay.quiet { api.get("/user/profile") }
                     if (!session.isLoggedIn || session.sessionId != profileOwner) return@launch
                     val data = root.optJSONObject("data")
                     // 头像：avatar 是文件名，解析为 /user/avatar/{filename}
@@ -1758,7 +1758,7 @@ class MainActivity : AppCompatActivity() {
         }
         scope.launch {
             try {
-                val root = api.get("/user/profile")
+                val root = LoadingOverlay.quiet { api.get("/user/profile") }
                 val data = root.optJSONObject("data") ?: root
                 val sb = StringBuilder()
                 val keys = data.keys()
@@ -1886,7 +1886,7 @@ class MainActivity : AppCompatActivity() {
         }
         scope.launch {
             try {
-                val root = api.get("/notifications")
+                val root = LoadingOverlay.quiet { api.get("/notifications") }
                 val items = api.extractList(root)
                 val sb = StringBuilder()
                 for (i in 0 until items.length()) {

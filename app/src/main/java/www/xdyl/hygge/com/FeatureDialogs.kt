@@ -63,7 +63,7 @@ object FeatureDialogs {
             setPadding(0, dp(a, 10), 0, dp(a, 10))
             // 必须调用 show() 才会启动形变动画；只 setVisibility 会停在静止形状（看起来是个方块）
             val ind = LoadingIndicator(a).apply {
-                indicatorSize = dp(a, 22)
+                indicatorSize = dp(a, 24)   // 规范下限 24dp
                 setIndicatorColor(0xFFA0C4FF.toInt())
                 show()
             }

@@ -3,32 +3,35 @@ package www.xdyl.hygge.com
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
+import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import com.google.android.material.loadingindicator.LoadingIndicator
 
 /**
- * 全局加载指示器（M3 Expressive LoadingIndicator：会形变的几何图形）。
+ * 全局加载指示器 —— 严格按 M3 Expressive 规范实现。
  *
- * 它不是"所有请求都亮"，而是按语义区分：
+ * 规范要点（m3.material.io/components/loading-indicator）：
+ *   1. 默认尺寸 48dp；可调范围 24–240dp
+ *   2. 加载"页面或容器"时，必须**居中于该元素**（不是右上角）
+ *   3. 有 content 叠在别的内容上时，用 container 提供对比
+ *   4. 200ms 以下的等待不显示（Instant → No indicator）
+ *   5. 200ms–5s 用 LoadingIndicator；超过 5s 应改用进度条
+ *   6. 绝不用在"没有实际加载"的地方（账户资料这类不算）
  *
- *   需要显示（页面级等待，用户没有别的反馈渠道）
- *     - 进入页面拉列表 / 详情
- *     - 弹窗首次加载内容
- *
- *   不需要显示（有别的反馈，或用户根本没在等）
- *     - 点赞、已读回执、发帖、领取、佩戴这类点击型 POST → 有 Toast / 局部刷新
- *     - 后台轮询、心跳、资料静默更新
- *     - 页面里已经有行内 spinner 的（否则会出现两个转圈）→ 用 quiet{} 包起来
- *     - 完成得太快的（< MIN_SHOW_MS）→ 不显示，避免闪一下更难看
+ * 因此本类只在页面需要整页等待时使用；点击型操作、页面自带局部 spinner 的，
+ * 一律用 quiet{} 跳过。
  */
 object LoadingOverlay {
 
-    /** 短于这个时长完成的请求不显示，避免"闪一下" */
-    private const val MIN_SHOW_MS = 240L
+    /** 规范：默认 48dp */
+    private const val SIZE_DP = 48
 
-    private var silentDepth = 0      // quiet{} 嵌套深度
-    private var visibleCount = 0     // 可见请求计数
+    /** 规范：Instant（<200ms）不显示；留一点余量避免闪 */
+    private const val MIN_SHOW_MS = 200L
+
+    private var silentDepth = 0
+    private var visibleCount = 0
 
     private var host: Activity? = null
     private var overlay: FrameLayout? = null
@@ -41,44 +44,41 @@ object LoadingOverlay {
 
     fun install(app: Application) {
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
-            override fun onActivityResumed(activity: Activity) {
-                host = activity
-                if (visibleCount > 0) attach(activity)
+            override fun onActivityResumed(a: Activity) {
+                host = a
+                if (visibleCount > 0) attach(a)
             }
 
-            override fun onActivityPaused(activity: Activity) {
-                if (host === activity) {
+            override fun onActivityPaused(a: Activity) {
+                if (host === a) {
                     detachNow()
                     host = null
                 }
             }
 
-            override fun onActivityDestroyed(activity: Activity) {
-                if (host === activity) {
+            override fun onActivityDestroyed(a: Activity) {
+                if (host === a) {
                     detachNow()
                     host = null
                 }
             }
 
-            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
-            override fun onActivityStarted(activity: Activity) {}
-            override fun onActivityStopped(activity: Activity) {}
-            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+            override fun onActivityCreated(a: Activity, s: Bundle?) {}
+            override fun onActivityStarted(a: Activity) {}
+            override fun onActivityStopped(a: Activity) {}
+            override fun onActivitySaveInstanceState(a: Activity, o: Bundle) {}
         })
     }
 
-    /** 开始一次"需要显示"的等待 */
     fun begin() {
-        val show = synchronized(this) {
+        synchronized(this) {
             if (silentDepth > 0) return
             visibleCount++
             pendingHide?.let {
                 host?.window?.decorView?.removeCallbacks(it)
                 pendingHide = null
             }
-            true
         }
-        if (!show) return
         val a = host ?: return
         a.runOnUiThread { if (visibleCount > 0) attach(a) }
     }
@@ -106,10 +106,7 @@ object LoadingOverlay {
         }
     }
 
-    /**
-     * 在这段代码内的请求不显示全局指示器（页面里已有自己的行内 spinner，
-     * 或者这是后台静默请求）。
-     */
+    /** 这段代码里的请求不显示全局指示器 */
     inline fun <T> quiet(block: () -> T): T {
         enterQuiet()
         return try {
@@ -134,30 +131,30 @@ object LoadingOverlay {
         val root = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
 
         val d = activity.resources.displayMetrics.density
-        val size = (22 * d).toInt()
-        val margin = (10 * d).toInt()
+        val size = (SIZE_DP * d).toInt()
 
+        // 规范：放在内容之上时用 container 提高对比度 → 圆形底
         val ind = LoadingIndicator(activity).apply {
             indicatorSize = size
             setIndicatorColor(0xFFA0C4FF.toInt())
-            // 必须 show() 才启动形变+旋转；只设 visible 会停在静止方块
+            setContainerColor(0xCC141414.toInt())
+            // 必须 show() 才启动形变+旋转
             show()
         }
 
+        // 规范：加载页面时居中于该页面
         val box = FrameLayout(activity).apply {
-            isClickable = false
-            isFocusable = false
+            isClickable = true      // 等待期间挡住误触
+            isFocusable = true
             addView(ind, FrameLayout.LayoutParams(size, size).apply {
-                gravity = android.view.Gravity.TOP or android.view.Gravity.END
-                topMargin = margin
-                marginEnd = margin
+                gravity = Gravity.CENTER
             })
         }
 
-        root.addView(
-            box,
-            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, size + margin * 2)
-        )
+        root.addView(box, ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ))
 
         box.alpha = 0f
         box.animate().alpha(1f).setDuration(120L).start()

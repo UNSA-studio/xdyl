@@ -121,7 +121,7 @@ object ForumPostDialog {
                 col.addView(loading)
                 try {
                     val root = withContext(Dispatchers.IO) {
-                        api.get("/forum/post/$postId", requiresAuth = false)
+                        LoadingOverlay.quiet { api.get("/forum/post/$postId", requiresAuth = false) }
                     }
                     val data = root.optJSONObject("data")
                     val post = data?.optJSONObject("post")
