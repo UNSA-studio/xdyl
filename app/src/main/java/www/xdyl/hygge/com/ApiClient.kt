@@ -264,13 +264,23 @@ class ApiClient(private val session: SessionStore) {
     /** GET 并返回 envelope 根对象（调用方自行取 data） */
     suspend fun get(path: String, requiresAuth: Boolean = true): JSONObject =
         withContext(Dispatchers.IO) {
-            execute("GET", path, null, requiresAuth, allowRefresh = true)
+            LoadingOverlay.begin()
+            try {
+                execute("GET", path, null, requiresAuth, allowRefresh = true)
+            } finally {
+                LoadingOverlay.end()
+            }
         }
 
     /** POST JSON 并返回 envelope 根对象 */
     suspend fun post(path: String, body: JSONObject = JSONObject(), requiresAuth: Boolean = true): JSONObject =
         withContext(Dispatchers.IO) {
-            execute("POST", path, body, requiresAuth, allowRefresh = true)
+            LoadingOverlay.begin()
+            try {
+                execute("POST", path, body, requiresAuth, allowRefresh = true)
+            } finally {
+                LoadingOverlay.end()
+            }
         }
 
     /** 宽松列表提取：在 data 下的常见数组 key（posts/tasks/items/notifications...）中找到第一个非空数组；
@@ -360,7 +370,12 @@ class ApiClient(private val session: SessionStore) {
         requiresAuth: Boolean = true
     ): JSONObject = withContext(Dispatchers.IO) {
         // allowRefresh = true：access_token 过期时自动用 refresh_token 续期并重放请求
-        execute(method, path, body ?: JSONObject(), requiresAuth, allowRefresh = true)
+        LoadingOverlay.begin()
+        try {
+            execute(method, path, body ?: JSONObject(), requiresAuth, allowRefresh = true)
+        } finally {
+            LoadingOverlay.end()
+        }
     }
 
     /** 上传图片（multipart/form-data，字段名 file） */

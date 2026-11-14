@@ -75,8 +75,12 @@ class SettingsActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right)
         }
 
-        binding.btnPingServer.setOnClickListener { startPing("82.157.155.86", binding.tvPingServerResult, true) }
-        binding.btnPingWifi.setOnClickListener { startPing("8.8.8.8", binding.tvPingWifiResult, false) }
+        binding.btnPingServer.setOnClickListener {
+            startPing("82.157.155.86", binding.tvPingServerResult, true, binding.ldPingServer)
+        }
+        binding.btnPingWifi.setOnClickListener {
+            startPing("8.8.8.8", binding.tvPingWifiResult, false, binding.ldPingWifi)
+        }
 
         // MC 服务器 Ping：需要 Python + mcstatus 扩展包
         binding.btnPingMcServer.setOnClickListener {
@@ -363,17 +367,27 @@ class SettingsActivity : AppCompatActivity() {
         updateThreadHint()
     }
 
-    private fun startPing(address: String, textView: TextView, hideIp: Boolean) {
+    private fun startPing(
+        address: String,
+        textView: TextView,
+        hideIp: Boolean,
+        indicator: android.view.View? = null
+    ) {
         // 收起状态准备展开
         textView.layoutParams.height = 0
         textView.visibility = View.VISIBLE
         textView.text = "Pinging..."
         expandView(textView)
+        indicator?.visibility = android.view.View.VISIBLE
         scope.launch {
-            val result = withContext(Dispatchers.IO) { executePing(address, hideIp) }
-            textView.text = result
-            // 结果内容更长，再次展开到新高度
-            expandView(textView)
+            try {
+                val result = withContext(Dispatchers.IO) { executePing(address, hideIp) }
+                textView.text = result
+                // 结果内容更长，再次展开到新高度
+                expandView(textView)
+            } finally {
+                indicator?.visibility = android.view.View.GONE
+            }
         }
     }
 
@@ -403,10 +417,15 @@ class SettingsActivity : AppCompatActivity() {
         tv.visibility = View.VISIBLE
         tv.text = "查询中..."
         expandView(tv)
+        binding.ldPingMc.visibility = android.view.View.VISIBLE
         scope.launch {
-            val result = withContext(Dispatchers.IO) { executeMcPing() }
-            tv.text = result
-            expandView(tv)
+            try {
+                val result = withContext(Dispatchers.IO) { executeMcPing() }
+                tv.text = result
+                expandView(tv)
+            } finally {
+                binding.ldPingMc.visibility = android.view.View.GONE
+            }
         }
     }
 
