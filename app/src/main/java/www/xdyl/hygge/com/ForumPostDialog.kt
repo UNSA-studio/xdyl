@@ -180,7 +180,7 @@ object ForumPostDialog {
                             activity.lifecycleScope.launch {
                                 try {
                                     val resp = withContext(Dispatchers.IO) {
-                                        api.post("/forum/post/$postId/like", JSONObject())
+                                        LoadingOverlay.quiet { api.post("/forum/post/$postId/like", JSONObject()) }
                                     }
                                     // 判断本次操作是「点赞」还是「取消」
                                     val d = resp.optJSONObject("data")
@@ -263,7 +263,7 @@ object ForumPostDialog {
             activity.lifecycleScope.launch {
                 try {
                     withContext(Dispatchers.IO) {
-                        api.post("/forum/post/$postId/reply", JSONObject().put("content", text))
+                        LoadingOverlay.quiet { api.post("/forum/post/$postId/reply", JSONObject().put("content", text)) }
                     }
                     input.setText("")
                     Toast.makeText(activity, "回复成功", Toast.LENGTH_SHORT).show()

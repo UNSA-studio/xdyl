@@ -1533,7 +1533,7 @@ class MainActivity : AppCompatActivity() {
     private fun loadRedeemRate() {
         scope.launch {
             try {
-                val root = api.get("/redeem/rate", requiresAuth = false)
+                val root = LoadingOverlay.quiet { api.get("/redeem/rate", requiresAuth = false) }
                 val rate = root.getJSONObject("data").optInt("rate", 10)
                 shopBinding.tvRedeemRate.text = "兑换比例 1:$rate"
             } catch (e: Exception) {
@@ -1554,7 +1554,7 @@ class MainActivity : AppCompatActivity() {
         shopBinding.shopEmpty.visibility = View.GONE
         scope.launch {
             try {
-                val root = api.get("/shop/items")
+                val root = LoadingOverlay.quiet { api.get("/shop/items") }  // 商店页自带进度条
                 val items = api.extractList(root)
                 val list: List<JSONObject> = (0 until items.length()).map { idx -> items.getJSONObject(idx) }
                 val rendered: List<InlineItem> = list.map { obj ->
@@ -1667,7 +1667,7 @@ class MainActivity : AppCompatActivity() {
                     var wornName = data?.optString("title", "") ?: ""
                     if (wornName.isBlank()) {
                         try {
-                            val tRoot = api.get("/titles/mine")
+                            val tRoot = LoadingOverlay.quiet { api.get("/titles/mine") }
                             val tData = tRoot.opt("data")
                             val arr = when (tData) {
                                 is org.json.JSONArray -> tData
@@ -1898,7 +1898,7 @@ class MainActivity : AppCompatActivity() {
                     .setTitle("我的通知")
                     .setMessage(if (sb.isBlank()) "暂无通知" else sb.toString())
                     .setPositiveButton("标记已读") { _, _ ->
-                        scope.launch { runCatching { api.post("/notifications/read") } }
+                        scope.launch { runCatching { LoadingOverlay.quiet { api.post("/notifications/read") } } }
                     }
                     .setNegativeButton("关闭", null)
                     .show()

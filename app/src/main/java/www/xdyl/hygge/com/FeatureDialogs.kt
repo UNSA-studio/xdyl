@@ -289,7 +289,7 @@ object FeatureDialogs {
             listCol.addView(loadingRow(activity))
             activity.lifecycleScope.launch {
                 try {
-                    val root = withContext(Dispatchers.IO) { api.get(path) }
+                    val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get(path) } }
                     LogManager.log("[PAGE] $path => " + root.toString().take(500))
                     val arr = toArray(root)
                     listCol.removeAllViews()
@@ -356,7 +356,7 @@ object FeatureDialogs {
             listCol.addView(loadingRow(activity))
             activity.lifecycleScope.launch {
                 try {
-                    val root = withContext(Dispatchers.IO) { api.get("/tasks") }
+                    val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get("/tasks") } }
                     val arr = toArray(root)
                     listCol.removeAllViews()
                     if (arr == null || arr.length() == 0) {
@@ -502,7 +502,7 @@ object FeatureDialogs {
             listCol.addView(loadingRow(activity))
             activity.lifecycleScope.launch {
                 try {
-                    val root = withContext(Dispatchers.IO) { api.get("/playtime/rewards") }
+                    val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get("/playtime/rewards") } }
                     LogManager.log("[PAGE] /playtime/rewards => " + root.toString().take(400))
                     val data = root.optJSONObject("data")
                     val arr = data?.optJSONArray("milestones")
@@ -643,7 +643,7 @@ object FeatureDialogs {
         listCol.addView(loadingRow(activity))
         activity.lifecycleScope.launch {
             try {
-                val root = withContext(Dispatchers.IO) { api.get("/suggestions") }
+                val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get("/suggestions") } }
                 LogManager.log("[PAGE] /suggestions => " + root.toString().take(400))
                 val arr = toArray(root)
                 listCol.removeAllViews()
@@ -673,7 +673,7 @@ object FeatureDialogs {
     ) {
         activity.lifecycleScope.launch {
             try {
-                val r = api.request("POST", path, body)
+                LoadingOverlay.quiet { val r = api.request("POST", path, body) }
                 Toast.makeText(activity, "$label：" + friendly(r, "成功"), Toast.LENGTH_LONG).show()
                 onDone?.invoke()
             } catch (e: Exception) {
@@ -711,7 +711,7 @@ object FeatureDialogs {
         listCol.addView(loadingRow(activity))
         activity.lifecycleScope.launch {
             try {
-                val root = withContext(Dispatchers.IO) { api.get(path) }
+                val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get(path) } }
                 LogManager.log("[PAGE] $path => " + root.toString().take(300))
                 val arr = toArray(root)
                 listCol.removeAllViews()
@@ -799,7 +799,7 @@ object FeatureDialogs {
         container.addView(matchBtn)
         activity.lifecycleScope.launch {
             try {
-                val root = withContext(Dispatchers.IO) { api.get("/pvp/match/status") }
+                val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get("/pvp/match/status") } }
                 LogManager.log("[PAGE] /pvp/match/status => " + root.toString().take(300))
                 val d = root.optJSONObject("data") ?: root
                 val bound = d.optBoolean("bound", false) || d.optBoolean("game_bound", false)
@@ -848,7 +848,7 @@ object FeatureDialogs {
         chalCol.addView(chalLoading)
         activity.lifecycleScope.launch {
             try {
-                val root = withContext(Dispatchers.IO) { api.get("/pvp/incoming") }
+                val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get("/pvp/incoming") } }
                 LogManager.log("[PAGE] /pvp/incoming => " + root.toString().take(300))
                 val d = root.optJSONObject("data")
                 val incoming = d?.optJSONArray("incoming")
@@ -976,7 +976,7 @@ object FeatureDialogs {
                     // 先确保有玩家名
                     var name = myName()
                     if (name.isBlank()) {
-                        val root = withContext(Dispatchers.IO) { api.get("/user/profile") }
+                        val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get("/user/profile") } }
                         val d = root.optJSONObject("data") ?: root
                         name = d.optString("nickname", d.optString("username", ""))
                         if (name.isNotBlank()) {
@@ -1146,7 +1146,7 @@ object FeatureDialogs {
         activity.lifecycleScope.launch {
             try {
                 val root = withContext(Dispatchers.IO) {
-                    api.request("POST", "/afdian/status", JSONObject())
+                    LoadingOverlay.quiet { api.request("POST", "/afdian/status", JSONObject()) }
                 }
                 LogManager.log("[PAGE] /afdian/status => " + root.toString().take(300))
                 tv.text = friendly(root, "已加载")
@@ -1254,7 +1254,7 @@ object FeatureDialogs {
         val dlg = showLoadingDialog(activity, "正在加载称号…")
         activity.lifecycleScope.launch {
             try {
-                val root = withContext(Dispatchers.IO) { api.get("/titles/mine") }
+                val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get("/titles/mine") } }
                 val arr = toArray(root)
                 val rows = mutableListOf<Triple<String, String, (() -> Unit)?>>()
                 if (arr != null) {
@@ -1293,7 +1293,7 @@ object FeatureDialogs {
         val dlg = showLoadingDialog(activity, "正在加载称号商店…")
         activity.lifecycleScope.launch {
             try {
-                val root = withContext(Dispatchers.IO) { api.get("/titles/catalog") }
+                val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get("/titles/catalog") } }
                 val arr = toArray(root)
                 val rows = mutableListOf<Triple<String, String, (() -> Unit)?>>()
                 if (arr != null) {
@@ -1330,7 +1330,7 @@ object FeatureDialogs {
     private fun claimTask(activity: AppCompatActivity, id: Int, name: String) {
         activity.lifecycleScope.launch {
             try {
-                val r = api.request("POST", "/tasks/$id/claim")
+                LoadingOverlay.quiet { val r = api.request("POST", "/tasks/$id/claim") }
                 Toast.makeText(activity, "已领取：$name（" + friendly(r, "成功") + "）", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(activity, "领取失败：" + e.message, Toast.LENGTH_LONG).show()
@@ -1342,7 +1342,7 @@ object FeatureDialogs {
         activity.lifecycleScope.launch {
             try {
                 val body = JSONObject().put("title_id", id)
-                val r = api.request("POST", "/titles/wear", body)
+                LoadingOverlay.quiet { val r = api.request("POST", "/titles/wear", body) }
                 Toast.makeText(activity, "已佩戴：$name（" + friendly(r, "成功") + "）", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(activity, "佩戴失败：" + e.message, Toast.LENGTH_LONG).show()
@@ -1354,7 +1354,7 @@ object FeatureDialogs {
         activity.lifecycleScope.launch {
             try {
                 val body = JSONObject().put("title_id", id)
-                val r = api.request("POST", "/titles/buy", body)
+                LoadingOverlay.quiet { val r = api.request("POST", "/titles/buy", body) }
                 Toast.makeText(activity, "购买：$name（" + friendly(r, "成功") + "）", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(activity, "购买失败：" + e.message, Toast.LENGTH_LONG).show()
@@ -1483,7 +1483,7 @@ object FeatureDialogs {
         // 拉取版块列表
         activity.lifecycleScope.launch {
             try {
-                val root = withContext(Dispatchers.IO) { api.get("/forum/categories") }
+                val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get("/forum/categories") } }
                 val arr = toArray(root)
                 val names = mutableListOf<String>()
                 val ids = mutableListOf<Int>()
@@ -1544,7 +1544,7 @@ object FeatureDialogs {
                     .put("section_id", selectedCategoryId)
                 activity.lifecycleScope.launch {
                     try {
-                        api.request("POST", "/forum/post", body)
+                        LoadingOverlay.quiet { api.request("POST", "/forum/post", body) }
                         Toast.makeText(activity, "发布成功", Toast.LENGTH_SHORT).show()
                         onDone()
                     } catch (e: Exception) {
@@ -1618,7 +1618,7 @@ object FeatureDialogs {
     fun postJson(activity: AppCompatActivity, path: String, body: JSONObject, label: String) {
         activity.lifecycleScope.launch {
             try {
-                val r = api.request("POST", path, body)
+                LoadingOverlay.quiet { val r = api.request("POST", path, body) }
                 Toast.makeText(activity, "$label：" + friendly(r, "成功"), Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(activity, "${label}失败：" + e.message, Toast.LENGTH_LONG).show()

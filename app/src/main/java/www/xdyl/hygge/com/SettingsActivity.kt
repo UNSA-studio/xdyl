@@ -377,11 +377,11 @@ class SettingsActivity : AppCompatActivity() {
         textView.visibility = View.VISIBLE
         textView.text = "Pinging..."
         expandView(textView)
-        Spinner.showOnTextEnd(textView, 15)
+        // 等这一帧布局落地（高度不再是 0）再挂 spinner，否则会被压扁看不见
+        textView.post { if (textView.isAttachedToWindow) Spinner.showOnTextEnd(textView, 15) }
         scope.launch {
             try {
                 val result = withContext(Dispatchers.IO) { executePing(address, hideIp) }
-                Spinner.hideOnText(textView)
                 textView.text = result
                 // 结果内容更长，再次展开到新高度
                 expandView(textView)
@@ -417,11 +417,10 @@ class SettingsActivity : AppCompatActivity() {
         tv.visibility = View.VISIBLE
         tv.text = "查询中..."
         expandView(tv)
-        Spinner.showOnTextEnd(tv, 15)
+        tv.post { if (tv.isAttachedToWindow) Spinner.showOnTextEnd(tv, 15) }
         scope.launch {
             try {
                 val result = withContext(Dispatchers.IO) { executeMcPing() }
-                Spinner.hideOnText(tv)
                 tv.text = result
                 expandView(tv)
             } finally {
