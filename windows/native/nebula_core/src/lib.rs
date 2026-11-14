@@ -9,8 +9,7 @@ use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use md5::{Digest, Md5};
 use sha2::Sha256;
@@ -272,15 +271,6 @@ pub extern "C" fn nebula_download_file(
 /// 小于这个大小的文件不分块（建连开销大于收益）
 const CHUNK_MIN: usize = 512 * 1024;
 
-/// 进度回调的跨线程包装。
-///
-/// SAFETY：内部持有 `&dyn Fn`，本身不是 Send/Sync；
-/// 之所以能标记，是因为 `download_chunked` 会在返回前 join 全部线程，
-/// 回调的生存期完整覆盖所有使用点，不存在悬垂引用。
-struct StepWrap<'a>(&'a dyn Fn(usize) -> bool);
-unsafe impl Send for StepWrap<'_> {}
-unsafe impl Sync for StepWrap<'_> {}
-
 fn download_single(
     url: &str,
     part: &str,
@@ -336,7 +326,7 @@ fn download_single(
         if file.write_all(&buf[..n]).is_err() {
             return Err(ERR_IO);
         }
-        if !(step.0)(n) {
+        if !step(n) {
             return Err(ERR_CANCELLED);
         }
     }
@@ -344,30 +334,31 @@ fn download_single(
     Ok(())
 }
 
-fn download_chunked(
+fn download_chunked<F>(
     url: &str,
     part: &str,
     expected_size: i64,
     chunks: usize,
-    step: &dyn Fn(usize) -> bool,
+    step: &F,
     cancel: Option<&CancelToken>,
-) -> Result<(), c_int> {
+) -> Result<(), c_int>
+where
+    F: Fn(usize) -> bool + Send + Sync + Copy,
+{
     let total = expected_size as usize;
     // 分块粒度受限：块太多会导致连接爆炸，块太少又发挥不出并行
     let n_chunks = ((total + CHUNK_MIN - 1) / CHUNK_MIN).clamp(1, chunks);
     let per = total / n_chunks;
 
     let mut handles = Vec::with_capacity(n_chunks);
-    // 进度回调跨线程共享：生命周期由 download_chunked 保证
-    // （它会 join 所有线程才返回，回调不会比它先死）。
-    let step_arc: Arc<StepWrap<'_>> = Arc::new(StepWrap(step));
+    // F 已约束为 Copy + Send + Sync，每个线程拿一份副本即可，无需 Arc/unsafe
 
     for i in 0..n_chunks {
         let start = i * per;
         let end = if i == n_chunks - 1 { total - 1 } else { start + per - 1 };
         let url = url.to_string();
         let chunk_file = format!("{}.{}", part, i);
-        let step = Arc::clone(&step_arc);
+        let step = *step;
         // 取消令牌用指针地址传进线程：它生命周期由 C# 保证覆盖整个调用
         let cancel_addr = cancel.map(|c| c as *const CancelToken as usize);
 
@@ -417,18 +408,17 @@ fn download_chunked(
     Ok(())
 }
 
-// 说明：并发分块时把进度回调包装成 Arc<dyn Fn> 送进线程。
-// 早期版本用 *const () → &dyn Fn 的裸指针转换，那是未定义行为（胖指针被截断），
-// 已改为提前构造 Arc，由调用方保证回调活得比所有线程久。
-
-fn download_range(
+fn download_range<F>(
     url: &str,
     dest: &str,
     start: u64,
     end: u64,
-    step: &Arc<StepWrap<'_>>,
+    step: &F,
     cancel_addr: Option<usize>,
-) -> Result<(), c_int> {
+) -> Result<(), c_int>
+where
+    F: Fn(usize) -> bool,
+{
     let mut existing = std::fs::metadata(dest).map(|m| m.len()).unwrap_or(0);
     let need = end - start + 1;
     if existing >= need {
@@ -466,7 +456,7 @@ fn download_range(
         if file.write_all(&buf[..n]).is_err() {
             return Err(ERR_IO);
         }
-        if !(step.0)(n) {
+        if !step(n) {
             return Err(ERR_CANCELLED);
         }
     }
