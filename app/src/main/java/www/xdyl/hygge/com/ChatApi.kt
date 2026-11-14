@@ -434,6 +434,52 @@ object ChatApi {
     fun pull(context: Context, cursor: Long): List<JSONObject> =
         pullPage(context, cursor)?.items ?: emptyList()
 
+    // ==================== 私钥备份 ====================
+
+    /** 服务端返回的备份包 */
+    data class KeyBackup(
+        val pwdBlob: String,
+        val codeBlob: String,
+        val kdf: String
+    )
+
+    /**
+     * 上传备份（两份密文 + 恢复码哈希）。
+     *
+     * 注意：这里的 pwdBlob / codeBlob 都是客户端加密后的密文，
+     * 服务端拿到也解不开。
+     */
+    fun uploadKeyBackup(context: Context, pwdBlob: String, codeBlob: String,
+                        codeHash: String, kdf: String): Boolean {
+        val r = post(context, "/chat/backup", JSONObject()
+            .put("pwdBlob", pwdBlob)
+            .put("codeBlob", codeBlob)
+            .put("codeHash", codeHash)
+            .put("kdf", kdf)) ?: return false
+        return r.optBoolean("ok", false)
+    }
+
+    /** 取回自己的备份；不存在返回 null */
+    fun fetchKeyBackup(context: Context): KeyBackup? {
+        val r = get(context, "/chat/backup") ?: return null
+        val d = r.optJSONObject("data") ?: return null
+        val pwd = d.optString("pwdBlob", "")
+        val code = d.optString("codeBlob", "")
+        if (pwd.isBlank() || code.isBlank()) return null
+        return KeyBackup(pwd, code, d.optString("kdf", ""))
+    }
+
+    /** 凭恢复码哈希校验并取回备份 */
+    fun lookupKeyBackup(context: Context, codeHash: String): KeyBackup? {
+        val r = post(context, "/chat/backup/lookup", JSONObject()
+            .put("codeHash", codeHash)) ?: return null
+        val d = r.optJSONObject("data") ?: return null
+        val pwd = d.optString("pwdBlob", "")
+        val code = d.optString("codeBlob", "")
+        if (pwd.isBlank() || code.isBlank()) return null
+        return KeyBackup(pwd, code, d.optString("kdf", ""))
+    }
+
     /** 标记已读（服务端存单调水位） */
     fun markRead(context: Context, peerId: String, upto: Long) {
         post(context, "/chat/read", JSONObject()

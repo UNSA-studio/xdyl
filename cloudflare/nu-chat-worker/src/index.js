@@ -16,6 +16,9 @@
  *   POST /chat/send       Bearer              发送密文（幂等）
  *   GET  /chat/pull       Bearer?cursor=&limit=  按 seq 增量拉取（含自己发的）
  *   POST /chat/read       Bearer              记录已读水位
+ *   POST /chat/backup     Bearer              保存私钥密文备份（密码派生 + 恢复码两份）
+ *   GET  /chat/backup     Bearer              取回自己的备份（重装后恢复）
+ *   POST /chat/backup/lookup  Bearer          凭恢复码哈希取回备份（忘记密码时）
  */
 
 const AUTH_URL = 'https://login.lanternwaves.fun/user/profile';
@@ -213,6 +216,90 @@ export default {
         ).bind(me, peer, upto, Date.now()).run();
 
         return json({ ok: true });
+      }
+
+      // ---------- 私钥备份：保存 ----------
+      // 服务端只存客户端用 PBKDF2 派生密钥加密后的密文。
+      // 手里没有密码也没有恢复码，永远无法解密 —— 这是端到端的前提。
+      if (path === '/chat/backup' && req.method === 'POST') {
+        const me = await verify(req);
+        if (!me) return json({ ok: false, error: 'invalid token' }, 401);
+
+        const b = (await readJson(req)) || {};
+        const userId = String(b.userId || me).trim();
+        if (userId !== me) return json({ ok: false, error: 'username mismatch' }, 403);
+
+        const pwdBlob = String(b.pwdBlob || '').trim();
+        const codeBlob = String(b.codeBlob || '').trim();
+        const codeHash = String(b.codeHash || '').trim().toLowerCase();
+        const kdf = String(b.kdf || '').trim();
+
+        if (!pwdBlob || !codeBlob || !codeHash) {
+          return json({ ok: false, error: 'missing fields' }, 400);
+        }
+        // 恢复码哈希只接受 sha256 hex，避免被塞任意内容
+        if (!/^[0-9a-f]{64}$/.test(codeHash)) {
+          return json({ ok: false, error: 'bad codeHash' }, 400);
+        }
+        // 大小上限：私钥很小，但防止被当成通用存储滥用
+        if (pwdBlob.length > 4096 || codeBlob.length > 4096) {
+          return json({ ok: false, error: 'blob too large' }, 413);
+        }
+
+        await env.DB.prepare(
+          'INSERT INTO key_backups (username, pwd_blob, code_blob, code_hash, kdf, updated_at) ' +
+          'VALUES (?1, ?2, ?3, ?4, ?5, ?6) ' +
+          'ON CONFLICT(username) DO UPDATE SET ' +
+          'pwd_blob = excluded.pwd_blob, code_blob = excluded.code_blob, ' +
+          'code_hash = excluded.code_hash, kdf = excluded.kdf, updated_at = excluded.updated_at'
+        ).bind(me, pwdBlob, codeBlob, codeHash, kdf, Date.now()).run();
+
+        return json({ ok: true });
+      }
+
+      // ---------- 私钥备份：取回自己的 ----------
+      if (path === '/chat/backup' && req.method === 'GET') {
+        const me = await verify(req);
+        if (!me) return json({ ok: false, error: 'invalid token' }, 401);
+
+        const row = await env.DB.prepare(
+          'SELECT pwd_blob, code_blob, kdf, updated_at FROM key_backups WHERE username = ?1'
+        ).bind(me).first();
+        if (!row) return json({ ok: false, error: 'no backup' }, 404);
+
+        return json({
+          ok: true,
+          data: {
+            pwdBlob: row.pwd_blob,
+            codeBlob: row.code_blob,
+            kdf: row.kdf,
+            updatedAt: row.updated_at
+          }
+        });
+      }
+
+      // ---------- 私钥备份：凭恢复码哈希校验 ----------
+      // 用户忘记密码时用。返回两份密文，但都还需要密码/恢复码本身才能解开，
+      // 所以即使请求被截获，攻击者也拿不到私钥。
+      if (path === '/chat/backup/lookup' && req.method === 'POST') {
+        const me = await verify(req);
+        if (!me) return json({ ok: false, error: 'invalid token' }, 401);
+
+        const b = (await readJson(req)) || {};
+        const codeHash = String(b.codeHash || '').trim().toLowerCase();
+        if (!/^[0-9a-f]{64}$/.test(codeHash)) {
+          return json({ ok: false, error: 'bad codeHash' }, 400);
+        }
+
+        const row = await env.DB.prepare(
+          'SELECT pwd_blob, code_blob, kdf FROM key_backups WHERE username = ?1 AND code_hash = ?2'
+        ).bind(me, codeHash).first();
+        if (!row) return json({ ok: false, error: 'code mismatch' }, 404);
+
+        return json({
+          ok: true,
+          data: { pwdBlob: row.pwd_blob, codeBlob: row.code_blob, kdf: row.kdf }
+        });
       }
 
       return json({ ok: false, error: 'not found' }, 404);

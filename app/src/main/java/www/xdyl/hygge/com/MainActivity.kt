@@ -1841,11 +1841,24 @@ class MainActivity : AppCompatActivity() {
                 scope.launch {
                     try {
                         api.login(account, password)
+
+                        // 登录成功 → 把私钥用密码加密后备份到服务端。
+                        // 这样卸载重装后密钥能恢复，对端缓存的公钥继续有效。
+                        // 首次备份会生成恢复码，必须展示给用户抄下来。
+                        val hadCode = ChatKeyBackupService.savedCode(this@MainActivity) != null
+                        val newCode = withContext(Dispatchers.IO) {
+                            ChatKeyBackupService.backup(this@MainActivity, password)
+                        }
+
                         refreshProfileUI()
                         profileBinding.tvProfileStatus.text = "登录成功"
                         shopLoaded = false
                         dialog.dismiss()
                         Toast.makeText(this@MainActivity, "欢迎，" + session.username, Toast.LENGTH_SHORT).show()
+
+                        if (newCode != null && !hadCode) {
+                            showRecoveryCodeDialog(newCode)
+                        }
                     } catch (e: Exception) {
                         profileBinding.tvProfileStatus.text = "登录失败：" + e.message
                         Toast.makeText(this@MainActivity, "登录失败：" + e.message, Toast.LENGTH_LONG).show()
@@ -1854,6 +1867,48 @@ class MainActivity : AppCompatActivity() {
             }
         }
         dialog.show()
+    }
+
+    /**
+     * 展示一次性恢复码。
+     *
+     * 这个码只在生成时展示，之后只能去设置页再看（本地留了一份）。
+     * 用户必须抄下来 —— 它是密码之外唯一能恢复私钥的凭据。
+     */
+    private fun showRecoveryCodeDialog(code: String) {
+        val formatted = ChatKeyBackup.formatCode(code)
+        val message = buildString {
+            appendLine("聊天密钥已加密备份到服务器。")
+            appendLine()
+            appendLine("请把下面这串恢复码抄下来，离线保存：")
+            appendLine()
+            appendLine(formatted)
+            appendLine()
+            appendLine("它的作用：以后卸载重装、或忘记登录密码时，")
+            appendLine("凭这串码就能把聊天密钥恢复回来。")
+            appendLine()
+            appendLine("注意：服务器只存加密后的备份，没有这串码、")
+            appendLine("也没有密码的话，任何人都无法恢复你的私钥。")
+        }
+
+        val tv = android.widget.TextView(this).apply {
+            text = message
+            setPadding(48, 32, 48, 0)
+            textSize = 13f
+        }
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("请保存恢复码")
+            .setView(tv)
+            .setPositiveButton("我已抄好") { d, _ -> d.dismiss() }
+            .setNegativeButton("复制") { d, _ ->
+                val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                        as android.content.ClipboardManager
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("恢复码", formatted))
+                Toast.makeText(this, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                d.dismiss()
+            }
+            .show()
     }
 
     /** QQ 登录：内置 WebView 打开授权页，完成后自动返回 */

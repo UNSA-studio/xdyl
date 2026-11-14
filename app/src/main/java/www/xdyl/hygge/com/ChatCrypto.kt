@@ -71,6 +71,51 @@ object ChatCrypto {
     private val useX25519: Boolean
         get() = android.os.Build.VERSION.SDK_INT >= 33
 
+    /**
+     * 导出私钥（PKCS#8 原始字节），供备份加密使用。
+     *
+     * 只给 ChatKeyBackup 用：私钥离开这个对象前必须先被密码派生密钥加密，
+     * 任何地方都不允许把返回值直接落盘或上传。
+     */
+    @Synchronized fun exportPrivateKeyPkcs8(): ByteArray? = localPrivate?.encoded
+
+    /** 导出公钥（X.509 SPKI 原始字节），与私钥一起进备份 */
+    @Synchronized fun exportPublicKeySpki(): ByteArray? = localPublic?.encoded
+
+    /**
+     * 用备份恢复出来的私钥安装到本机，并同步更新本地缓存。
+     *
+     * 关键点：
+     *   1. 公钥必须与私钥匹配 —— 备份里同时存私钥和公钥，
+     *      所以这里两个都接受，不再尝试"从私钥反推公钥"（Android 没有这个 API，
+     *      X25519 尤其做不到，硬做会得到错误结果）。
+     *   2. 私钥换了，所有已协商的会话密钥必须作废，否则还用旧密钥解密。
+     */
+    @Synchronized fun installKeyPair(context: android.content.Context,
+                                      privateKeyPkcs8: ByteArray,
+                                      publicKeySpki: ByteArray): Boolean {
+        return try {
+            val kf = KeyFactory.getInstance(if (useX25519) "X25519" else "EC")
+            val priv = kf.generatePrivate(java.security.spec.PKCS8EncodedKeySpec(privateKeyPkcs8))
+            val pub = kf.generatePublic(java.security.spec.X509EncodedKeySpec(publicKeySpki))
+
+            localPrivate = priv
+            localPublic = pub
+
+            val prefs = context.getSharedPreferences("nu_chat_keys", android.content.Context.MODE_PRIVATE)
+            prefs.edit()
+                .putString("priv", Base64.encodeToString(privateKeyPkcs8, Base64.NO_WRAP))
+                .putString("pub", Base64.encodeToString(publicKeySpki, Base64.NO_WRAP))
+                .apply()
+
+            keyCache.clear()
+            true
+        } catch (e: Exception) {
+            LogManager.e("[CHAT] 安装密钥对失败: ${e.message}")
+            false
+        }
+    }
+
     /** 本机公钥（Base64），上传给服务器供对端取用 */
     fun publicKeyBase64(): String =
         Base64.encodeToString(localPublic!!.encoded, Base64.NO_WRAP)
