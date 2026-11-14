@@ -96,7 +96,7 @@ dependencies {
     testImplementation("org.json:json:20240303")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.14.0")   // 1.14 起提供 M3 Expressive LoadingIndicator
+    implementation("com.google.android.material:material:1.13.0")   // 1.13 起提供 M3 Expressive LoadingIndicator（1.14 需要 AGP 8.6+）
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.cardview:cardview:1.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
