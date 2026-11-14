@@ -10,7 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.progressindicator.CircularProgressIndicator
+import com.google.android.material.loadingindicator.LoadingIndicator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,11 +47,10 @@ object FeatureDialogs {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
             setPadding(0, dp(a, 10), 0, dp(a, 10))
-            addView(CircularProgressIndicator(a).apply {
-                isIndeterminate = true
-                trackThickness = dp(a, 2)
-                indicatorSize = dp(a, 16)
-                setIndicatorColor(0xFF9AA0A6.toInt())
+            addView(LoadingIndicator(a).apply {
+                // M3 Expressive：圆角多边形循环形变 + 旋转
+                indicatorSize = dp(a, 22)
+                setIndicatorColor(0xFFA0C4FF.toInt())
             })
             addView(TextView(a).apply {
                 this.text = text
