@@ -25,7 +25,7 @@ object Spinner {
      * 在 TextView 右侧放一个转圈。文字自身不变，只在加载时调用。
      */
     fun showOnTextEnd(tv: TextView, sizeDp: Int = 16, rightDp: Int = 6) {
-        val host = Host(tv, sizeDp, 0xFFA0C4FF.toInt())
+        val host = Host(tv.context, sizeDp, 0xFFA0C4FF.toInt())
         host.start()
         tv.setCompoundDrawablesRelative(null, null, host, null)
         tv.compoundDrawablePadding =
