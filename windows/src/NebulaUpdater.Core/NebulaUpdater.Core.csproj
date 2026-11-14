@@ -8,6 +8,8 @@
     <RootNamespace>NebulaUpdater.Core</RootNamespace>
     <AssemblyName>NebulaUpdater.Core</AssemblyName>
     <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <!-- LibraryImport 源生成器需要 unsafe -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

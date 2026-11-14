@@ -1,3 +1,4 @@
+using NebulaUpdater.Core.Models;
 using System.Diagnostics;
 using System.Net;
 using System.Net.NetworkInformation;
