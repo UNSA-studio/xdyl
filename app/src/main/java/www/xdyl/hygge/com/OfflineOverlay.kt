@@ -19,7 +19,7 @@ import com.google.android.material.loadingindicator.LoadingIndicator
  *    不管触发它的页面原本用的是 12dp 还是 24dp；
  *  - 下方固定三段文案：
  *       Can't Connect To The Internet!
- *       这可能是你的问题，有可能是我们的问题，但目前暂时无法知道！
+ *       这可能是你的问题，也有可能是我们的问题，但目前无法知晓!
  *       请尝试重新连接 Internet/WIFI!
  *  - 网络恢复后自动消失（下次请求成功或 NetState 轮询到在线）。
  *
@@ -114,7 +114,7 @@ object OfflineOverlay {
         // 固定三段文案，中英混排按用户给的原文
         col.addView(label(activity, "Can't Connect To The Internet!", 17f, 0xFFFFFFFF.toInt(), bold = true)
             .apply { setPadding(0, (24 * d).toInt(), 0, (6 * d).toInt()) })
-        col.addView(label(activity, "这可能是你的问题，有可能是我们的问题，但目前暂时无法知道！", 13f, 0xFFB9C0CC.toInt())
+        col.addView(label(activity, "这可能是你的问题，也有可能是我们的问题，但目前无法知晓!", 13f, 0xFFB9C0CC.toInt())
             .apply { setPadding((28 * d).toInt(), 0, (28 * d).toInt(), 0) })
         col.addView(label(activity, "请尝试重新连接 Internet/WIFI!", 13f, 0xFFB9C0CC.toInt())
             .apply { setPadding((28 * d).toInt(), (6 * d).toInt(), (28 * d).toInt(), 0) })

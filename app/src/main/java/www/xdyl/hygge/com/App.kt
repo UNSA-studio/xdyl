@@ -5,6 +5,16 @@ import android.app.Application
 class App : Application() {
 
     companion object {
+        /**
+         * 本次进程启动时刻。
+         *
+         * 用来判定"这条 pending 消息是不是上一次进程遗留的"：
+         * 发消息途中应用被杀，本地记录会永远停在 pending，
+         * 重启后需要据此把它捡起来重发，否则 spinner 会一直转。
+         */
+        var startTime: Long = System.currentTimeMillis()
+            private set
+
         /** 全局 Application 引用（供 object/工具类取 Context 用） */
         lateinit var ctx: App
             private set

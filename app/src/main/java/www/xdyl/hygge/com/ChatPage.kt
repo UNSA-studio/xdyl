@@ -562,6 +562,55 @@ object ChatPage {
         }
         btnBack.setOnClickListener { dialog.dismiss() }
 
+        /**
+         * 捡起遗留的 pending 消息重新投递。
+         *
+         * 场景：发消息途中应用被更新/重启，本地已写 pending 但没发出，
+         * 重启后气泡会一直显示"发送中"且永不结束。
+         * 打开会话时扫一遍，逐条重发（服务端按 msgId 幂等，重复不会造成双发）；
+         * 重发失败就把状态落成 failed，让用户看到"发送失败"而不是一直转。
+         */
+        fun redeliverPending() {
+            if (!ChatIdentity.isCurrent(activity, owner)) return
+            val myName = meName(activity)
+            if (myName.isBlank()) return
+            if (!ChatApi.isConfigured(activity)) return
+            val stale = ChatStore.loadMessages(activity, peerKey, owner)
+                .filter { it.outgoing && it.state == "pending" }
+            if (stale.isEmpty()) return
+            LogManager.w("[CHAT] 发现 ${stale.size} 条遗留 pending，开始重发")
+            Thread {
+                var changed = false
+                stale.forEach { m ->
+                    if (!ChatIdentity.isCurrent(activity, owner)) return@Thread
+                    val ok = try {
+                        val key = runCatching { ensureSessionKey(activity, peerKey, myName) }.getOrNull()
+                        if (key == null) {
+                            ChatStore.updateMessageState(activity, peerKey, m.id, "failed", owner)
+                            changed = true
+                            false
+                        } else {
+                            val cipher = ChatCrypto.encrypt(key, m.text)
+                            val (sent, err) = ChatApi.send(activity, myName, peerKey, m.id, cipher, m.time)
+                            ChatStore.updateMessageState(activity, peerKey, m.id, if (sent) "sent" else "failed", owner)
+                            LogManager.log("[CHAT] 重发 ${m.id.take(8)} => $sent ($err)")
+                            changed = true
+                            sent
+                        }
+                    } catch (e: Exception) {
+                        ChatStore.updateMessageState(activity, peerKey, m.id, "failed", owner)
+                        changed = true
+                        LogManager.w("[CHAT] 重发异常：${e.message}")
+                        false
+                    }
+                    if (!ok && !NetState.isOnline(activity)) return@Thread
+                }
+                if (changed) {
+                    activity.runOnUiThread { if (ChatIdentity.isCurrent(activity, owner)) render() }
+                }
+            }.start()
+        }
+
         fun render() {
             list.removeAllViews()
             val msgs = ChatStore.loadMessages(activity, peerKey, owner)
@@ -654,6 +703,7 @@ object ChatPage {
 
         btnSend.setOnClickListener { send() }
         render()
+        redeliverPending()
         dialog.show()
         activeDialog = dialog
 
