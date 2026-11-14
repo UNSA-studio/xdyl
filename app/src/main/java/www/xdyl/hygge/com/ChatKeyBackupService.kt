@@ -138,7 +138,7 @@ object ChatKeyBackupService {
 
         // 公钥没变，但保险起见重新登记一次（服务端记录可能被清过）
         runCatching {
-            val user = ChatIdentity.current(context)?.nickname.orEmpty()
+            val user = ChatIdentity.current(context)?.username.orEmpty()
             if (user.isNotBlank()) {
                 ChatApi.uploadKey(context, user, ChatCrypto.publicKeyBase64())
             }
