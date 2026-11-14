@@ -370,9 +370,7 @@ class SettingsActivity : AppCompatActivity() {
 
     /** 就地导出日志：留在设置页，完成后 Toast 提示路径 */
     private fun exportLogHere() {
-        androidx.lifecycle.lifecycleScope.launch(
-            kotlinx.coroutines.Dispatchers.IO
-        ) {
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val log = LogManager.getFullLog()
                 val dir = java.io.File(
