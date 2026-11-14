@@ -30,7 +30,7 @@ object NetState {
         var depth = 0
         while (t != null && depth < 8) {
             // 服务端明确给出错误码 → 不是网络问题，直接排除
-            if (t is ApiException) return false
+            if (t is ApiClient.ApiException) return false
             when (t) {
                 is UnknownHostException,
                 is ConnectException,
