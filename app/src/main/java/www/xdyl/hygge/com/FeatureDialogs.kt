@@ -917,7 +917,7 @@ object FeatureDialogs {
     /**
      * YSM 皮肤（页面）
      *
-     * 真实接口（api.lanternwaves.fun:8080）：
+     * 接口（地址见 YsmApi.kt 私有常量，不在 UI 暴露）：
      *   GET  /history?player={player}  → 该玩家已上传的皮肤列表
      *   POST /upload_v2 (multipart)     → code / player_name / is_public / skin_file
      *   POST /confirm_duplicate        → 重复皮肤二次授权
@@ -936,9 +936,6 @@ object FeatureDialogs {
         })
         container.addView(head)
 
-        container.addView(textView(activity, "服务：" + YsmApi.base(activity), 11f, 0xFF888888.toInt()).apply {
-            setPadding(0, 0, 0, dp(activity, 8))
-        })
 
         // 操作按钮行
         val btnRow = LinearLayout(activity).apply {
@@ -1000,7 +997,7 @@ object FeatureDialogs {
                     val skins = withContext(Dispatchers.IO) { YsmApi.history(activity, name) }
                     listCol.removeAllViews()
                     if (skins == null) {
-                        listCol.addView(textView(activity, "YSM 服务连接失败（" + YsmApi.base(activity) + "）", 13f, 0xFFE57373.toInt()))
+                        listCol.addView(textView(activity, "YSM 服务连接失败，请稍后重试", 13f, 0xFFE57373.toInt()))
                         return@launch
                     }
                     if (skins.isEmpty()) {

@@ -27,8 +27,27 @@ import java.util.concurrent.TimeUnit
  */
 object YsmApi {
 
-    const val PREF_BASE = "ysm_base"
-    const val DEFAULT_BASE = "http://api.lanternwaves.fun:8080"
+    private const val PREF_BASE = "ysm_base"
+
+    /**
+     * 服务地址不写成明文常量：
+     *  - 服主不希望对外公布站点，明文常量用 apktool/jadx 一搜就出来了
+     *  - 这里拆成 Base64 片段在运行时拼接，配合 R8 混淆，静态搜不到完整域名
+     */
+    private val _b1 = "aHR0cDovL2FwaS5sYW50"   // http://api.lant
+    private val _b2 = "ZXJud2F2ZXMuZnVuOjgwODA=" // ernwaves.fun:8080
+
+    val DEFAULT_BASE: String by lazy {
+        try {
+            val raw = String(
+                android.util.Base64.decode(_b1 + _b2, android.util.Base64.DEFAULT),
+                Charsets.UTF_8
+            )
+            raw
+        } catch (e: Exception) {
+            ""
+        }
+    }
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)

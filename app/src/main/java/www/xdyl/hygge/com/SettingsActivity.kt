@@ -383,7 +383,15 @@ class SettingsActivity : AppCompatActivity() {
         // 等这一帧布局落地（框已有高度）再显示 indicator，
         // 否则会被 height=0 的动画压扁，看起来像个小方块
         textView.post {
+            val d = resources.displayMetrics.density
+            // 容器 20dp，图形本体 12dp：形变时最大帧也不会超出 View 边界被裁掉
+            indicator.indicatorSize = (12 * d).toInt()
             indicator.visibility = View.VISIBLE
+            indicator.scaleX = 0.6f
+            indicator.scaleY = 0.6f
+            indicator.alpha = 0f
+            indicator.animate().scaleX(1f).scaleY(1f).alpha(1f)
+                .setDuration(180L).start()
             // M3：必须 show() 才启动形变+旋转
             indicator.show()
         }
@@ -394,8 +402,16 @@ class SettingsActivity : AppCompatActivity() {
                 // 结果内容更长，再次展开到新高度
                 expandView(textView)
             } finally {
-                indicator.hide()
-                indicator.visibility = View.GONE
+                indicator.animate().scaleX(0.6f).scaleY(0.6f).alpha(0f)
+                    .setDuration(160L)
+                    .withEndAction {
+                        indicator.hide()
+                        indicator.visibility = View.GONE
+                        indicator.scaleX = 1f
+                        indicator.scaleY = 1f
+                        indicator.alpha = 1f
+                    }
+                    .start()
             }
         }
     }
@@ -427,7 +443,14 @@ class SettingsActivity : AppCompatActivity() {
         tv.text = "查询中..."
         expandView(tv)
         binding.ldPingMc.post {
+            val d = resources.displayMetrics.density
+            binding.ldPingMc.indicatorSize = (12 * d).toInt()
             binding.ldPingMc.visibility = View.VISIBLE
+            binding.ldPingMc.scaleX = 0.6f
+            binding.ldPingMc.scaleY = 0.6f
+            binding.ldPingMc.alpha = 0f
+            binding.ldPingMc.animate().scaleX(1f).scaleY(1f).alpha(1f)
+                .setDuration(180L).start()
             binding.ldPingMc.show()
         }
         scope.launch {
@@ -436,8 +459,16 @@ class SettingsActivity : AppCompatActivity() {
                 tv.text = result
                 expandView(tv)
             } finally {
-                binding.ldPingMc.hide()
-                binding.ldPingMc.visibility = View.GONE
+                binding.ldPingMc.animate().scaleX(0.6f).scaleY(0.6f).alpha(0f)
+                    .setDuration(160L)
+                    .withEndAction {
+                        binding.ldPingMc.hide()
+                        binding.ldPingMc.visibility = View.GONE
+                        binding.ldPingMc.scaleX = 1f
+                        binding.ldPingMc.scaleY = 1f
+                        binding.ldPingMc.alpha = 1f
+                    }
+                    .start()
             }
         }
     }

@@ -251,9 +251,9 @@
 
                         android:id="@+id/ldPingServer"
 
-                        android:layout_width="12dp"
+                        android:layout_width="20dp"
 
-                        android:layout_height="12dp"
+                        android:layout_height="20dp"
 
                         android:layout_gravity="top|end"
 
@@ -360,9 +360,9 @@
 
                         android:id="@+id/ldPingWifi"
 
-                        android:layout_width="12dp"
+                        android:layout_width="20dp"
 
-                        android:layout_height="12dp"
+                        android:layout_height="20dp"
 
                         android:layout_gravity="top|end"
 
@@ -469,9 +469,9 @@
 
                         android:id="@+id/ldPingMc"
 
-                        android:layout_width="12dp"
+                        android:layout_width="20dp"
 
-                        android:layout_height="12dp"
+                        android:layout_height="20dp"
 
                         android:layout_gravity="top|end"
 
