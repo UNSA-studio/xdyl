@@ -94,19 +94,19 @@ dependencies {
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("org.mockito:mockito-core:4.11.0")
     testImplementation("org.json:json:20240303")
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.13.0")   // 1.13 起提供 M3 Expressive LoadingIndicator（1.14 需要 AGP 8.6+）
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("com.google.android.material:material:1.14.0")   // 1.14 最新稳定版，提供 M3 Expressive LoadingIndicator
+    implementation("androidx.constraintlayout:constraintlayout:2.2.2")
     implementation("androidx.cardview:cardview:1.0.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.documentfile:documentfile:1.0.1")
-    implementation("com.google.code.gson:gson:2.10.1")   // 新增
+    implementation("com.google.code.gson:gson:2.11.0")   // 新增
     implementation("dev.mobile:dadb:2.0.0")            // ADB 客户端库
     implementation("pl.droidsonroids.gif:android-gif-drawable:1.2.28") // GIF 动图（自带 native 解码，避开系统 AnimatedImageDrawable 崩溃）
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     // 7z 解压（纯 Java：commons-compress + xz）
-    implementation("org.apache.commons:commons-compress:1.26.2")
+    implementation("org.apache.commons:commons-compress:1.27.1")
     implementation("org.tukaani:xz:1.9")
 }

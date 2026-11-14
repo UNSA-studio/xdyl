@@ -39,6 +39,20 @@ object FeatureDialogs {
         (v * a.resources.displayMetrics.density).toInt()
 
     /**
+     * 先弹一个只有转圈的弹窗，等数据回来再 dismiss，避免"点一下什么反馈都没有"。
+     * 返回的 MaterialAlertDialog 由调用方在拿到数据后 dismiss。
+     */
+    fun showLoadingDialog(a: AppCompatActivity, text: String = "加载中…"): androidx.appcompat.app.AlertDialog {
+        val box = LinearLayout(a).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(a, 24), dp(a, 20), dp(a, 24), dp(a, 20))
+            addView(loadingRow(a, text), LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+        return MaterialAlertDialogBuilder(a).setView(box).setCancelable(false).show()
+    }
+
+    /**
      * 统一的加载占位行：MD 转圈 + "加载中…"。
      * 替代原先只有一行灰字的写法，进入加载态时能看到动画在跑。
      */
@@ -828,6 +842,8 @@ object FeatureDialogs {
         })
         val chalCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
         container.addView(chalCol)
+        val chalLoading = loadingRow(activity)
+        chalCol.addView(chalLoading)
         activity.lifecycleScope.launch {
             try {
                 val root = withContext(Dispatchers.IO) { api.get("/pvp/incoming") }
@@ -836,6 +852,7 @@ object FeatureDialogs {
                 val incoming = d?.optJSONArray("incoming")
                 val outgoing = d?.optJSONArray("outgoing")
 
+                chalCol.removeView(chalLoading)
                 fun renderList(title: String, arr: org.json.JSONArray?, canAccept: Boolean) {
                     chalCol.addView(textView(activity, title, 13f, 0xFF9AA0A6.toInt()).apply {
                         setPadding(0, dp(activity, 8), 0, dp(activity, 4))
@@ -1232,7 +1249,7 @@ object FeatureDialogs {
 
     /** 我的称号（弹窗版，供「我的」页称号胶囊点击使用） */
     fun showMyTitles(activity: AppCompatActivity) {
-        Toast.makeText(activity, "正在加载称号…", Toast.LENGTH_SHORT).show()
+        val dlg = showLoadingDialog(activity, "正在加载称号…")
         activity.lifecycleScope.launch {
             try {
                 val root = withContext(Dispatchers.IO) { api.get("/titles/mine") }
@@ -1260,8 +1277,10 @@ object FeatureDialogs {
                 } else {
                     rows.add(0, Triple("称号商店", "购买新的称号", { showTitleShop(activity) }))
                 }
+                dlg.dismiss()
                 listDialog(activity, "我的称号（点击佩戴）", rows)
             } catch (e: Exception) {
+                dlg.dismiss()
                 Toast.makeText(activity, "加载失败：" + e.message, Toast.LENGTH_LONG).show()
             }
         }
@@ -1269,7 +1288,7 @@ object FeatureDialogs {
 
     /** 称号商店（弹窗版） */
     private fun showTitleShop(activity: AppCompatActivity) {
-        Toast.makeText(activity, "正在加载称号商店…", Toast.LENGTH_SHORT).show()
+        val dlg = showLoadingDialog(activity, "正在加载称号商店…")
         activity.lifecycleScope.launch {
             try {
                 val root = withContext(Dispatchers.IO) { api.get("/titles/catalog") }
@@ -1284,8 +1303,10 @@ object FeatureDialogs {
                         )
                     }
                 }
+                dlg.dismiss()
                 listDialog(activity, "称号商店（点击购买）", rows)
             } catch (e: Exception) {
+                dlg.dismiss()
                 Toast.makeText(activity, "加载失败：" + e.message, Toast.LENGTH_LONG).show()
             }
         }
