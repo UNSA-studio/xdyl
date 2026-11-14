@@ -562,6 +562,37 @@ object ChatPage {
         }
         btnBack.setOnClickListener { dialog.dismiss() }
 
+        fun render() {
+            list.removeAllViews()
+            val msgs = ChatStore.loadMessages(activity, peerKey, owner)
+            if (msgs.isEmpty()) {
+                list.addView(TextView(activity).apply {
+                    text = "还没有消息，打个招呼吧"
+                    setTextColor(ON_SURFACE_VARIANT)
+                    textSize = 13f
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(activity, 48), 0, 0)
+                })
+            }
+            var lastDay = ""
+            msgs.forEach { m ->
+                val day = formatDay(m.time)
+                if (day != lastDay) {
+                    lastDay = day
+                    list.addView(TextView(activity).apply {
+                        text = day
+                        setTextColor(ON_SURFACE_VARIANT)
+                        textSize = 11f
+                        gravity = Gravity.CENTER
+                        setPadding(0, dp(activity, 12), 0, dp(activity, 8))
+                    })
+                }
+                list.addView(bubble(activity, m, nickname))
+            }
+            scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+        }
+
+
         /**
          * 捡起遗留的 pending 消息重新投递。
          *
@@ -609,36 +640,6 @@ object ChatPage {
                     activity.runOnUiThread { if (ChatIdentity.isCurrent(activity, owner)) render() }
                 }
             }.start()
-        }
-
-        fun render() {
-            list.removeAllViews()
-            val msgs = ChatStore.loadMessages(activity, peerKey, owner)
-            if (msgs.isEmpty()) {
-                list.addView(TextView(activity).apply {
-                    text = "还没有消息，打个招呼吧"
-                    setTextColor(ON_SURFACE_VARIANT)
-                    textSize = 13f
-                    gravity = Gravity.CENTER
-                    setPadding(0, dp(activity, 48), 0, 0)
-                })
-            }
-            var lastDay = ""
-            msgs.forEach { m ->
-                val day = formatDay(m.time)
-                if (day != lastDay) {
-                    lastDay = day
-                    list.addView(TextView(activity).apply {
-                        text = day
-                        setTextColor(ON_SURFACE_VARIANT)
-                        textSize = 11f
-                        gravity = Gravity.CENTER
-                        setPadding(0, dp(activity, 12), 0, dp(activity, 8))
-                    })
-                }
-                list.addView(bubble(activity, m, nickname))
-            }
-            scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
         }
 
         fun send() {
