@@ -435,6 +435,9 @@ object ChatApi {
         pullPage(context, cursor)?.items ?: emptyList()
 
     // ==================== 私钥备份 ====================
+    //
+    // 服务端 v2 路由：PUT/GET /chat/v2/key-backup、POST /chat/v2/key-backup/lookup
+    // 字段名用下划线风格（与服务端一致），避免两边命名对不上。
 
     /** 服务端返回的备份包 */
     data class KeyBackup(
@@ -446,36 +449,35 @@ object ChatApi {
     /**
      * 上传备份（两份密文 + 恢复码哈希）。
      *
-     * 注意：这里的 pwdBlob / codeBlob 都是客户端加密后的密文，
-     * 服务端拿到也解不开。
+     * pwdBlob / codeBlob 都是客户端加密后的密文，服务端拿到也解不开。
      */
     fun uploadKeyBackup(context: Context, pwdBlob: String, codeBlob: String,
                         codeHash: String, kdf: String): Boolean {
-        val r = post(context, "/chat/backup", JSONObject()
-            .put("pwdBlob", pwdBlob)
-            .put("codeBlob", codeBlob)
-            .put("codeHash", codeHash)
+        val r = call(context, "PUT", "/chat/v2/key-backup", JSONObject()
+            .put("pwd_blob", pwdBlob)
+            .put("code_blob", codeBlob)
+            .put("code_hash", codeHash)
             .put("kdf", kdf)) ?: return false
         return r.optBoolean("ok", false)
     }
 
     /** 取回自己的备份；不存在返回 null */
     fun fetchKeyBackup(context: Context): KeyBackup? {
-        val r = get(context, "/chat/backup") ?: return null
-        val d = r.optJSONObject("data") ?: return null
-        val pwd = d.optString("pwdBlob", "")
-        val code = d.optString("codeBlob", "")
+        val r = get(context, "/chat/v2/key-backup") ?: return null
+        val d = r.optJSONObject("data") ?: r
+        val pwd = d.optString("pwd_blob", "")
+        val code = d.optString("code_blob", "")
         if (pwd.isBlank() || code.isBlank()) return null
         return KeyBackup(pwd, code, d.optString("kdf", ""))
     }
 
     /** 凭恢复码哈希校验并取回备份 */
     fun lookupKeyBackup(context: Context, codeHash: String): KeyBackup? {
-        val r = post(context, "/chat/backup/lookup", JSONObject()
-            .put("codeHash", codeHash)) ?: return null
-        val d = r.optJSONObject("data") ?: return null
-        val pwd = d.optString("pwdBlob", "")
-        val code = d.optString("codeBlob", "")
+        val r = post(context, "/chat/v2/key-backup/lookup", JSONObject()
+            .put("code_hash", codeHash)) ?: return null
+        val d = r.optJSONObject("data") ?: r
+        val pwd = d.optString("pwd_blob", "")
+        val code = d.optString("code_blob", "")
         if (pwd.isBlank() || code.isBlank()) return null
         return KeyBackup(pwd, code, d.optString("kdf", ""))
     }
