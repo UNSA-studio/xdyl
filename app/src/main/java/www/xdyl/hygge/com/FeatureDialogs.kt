@@ -673,7 +673,7 @@ object FeatureDialogs {
     ) {
         activity.lifecycleScope.launch {
             try {
-                LoadingOverlay.quiet { val r = api.request("POST", path, body) }
+                val r = LoadingOverlay.quiet { api.request("POST", path, body) }
                 Toast.makeText(activity, "$label：" + friendly(r, "成功"), Toast.LENGTH_LONG).show()
                 onDone?.invoke()
             } catch (e: Exception) {
@@ -1330,7 +1330,7 @@ object FeatureDialogs {
     private fun claimTask(activity: AppCompatActivity, id: Int, name: String) {
         activity.lifecycleScope.launch {
             try {
-                LoadingOverlay.quiet { val r = api.request("POST", "/tasks/$id/claim") }
+                val r = LoadingOverlay.quiet { api.request("POST", "/tasks/$id/claim") }
                 Toast.makeText(activity, "已领取：$name（" + friendly(r, "成功") + "）", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(activity, "领取失败：" + e.message, Toast.LENGTH_LONG).show()
@@ -1342,7 +1342,7 @@ object FeatureDialogs {
         activity.lifecycleScope.launch {
             try {
                 val body = JSONObject().put("title_id", id)
-                LoadingOverlay.quiet { val r = api.request("POST", "/titles/wear", body) }
+                val r = LoadingOverlay.quiet { api.request("POST", "/titles/wear", body) }
                 Toast.makeText(activity, "已佩戴：$name（" + friendly(r, "成功") + "）", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(activity, "佩戴失败：" + e.message, Toast.LENGTH_LONG).show()
@@ -1354,7 +1354,7 @@ object FeatureDialogs {
         activity.lifecycleScope.launch {
             try {
                 val body = JSONObject().put("title_id", id)
-                LoadingOverlay.quiet { val r = api.request("POST", "/titles/buy", body) }
+                val r = LoadingOverlay.quiet { api.request("POST", "/titles/buy", body) }
                 Toast.makeText(activity, "购买：$name（" + friendly(r, "成功") + "）", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(activity, "购买失败：" + e.message, Toast.LENGTH_LONG).show()
@@ -1618,7 +1618,7 @@ object FeatureDialogs {
     fun postJson(activity: AppCompatActivity, path: String, body: JSONObject, label: String) {
         activity.lifecycleScope.launch {
             try {
-                LoadingOverlay.quiet { val r = api.request("POST", path, body) }
+                val r = LoadingOverlay.quiet { api.request("POST", path, body) }
                 Toast.makeText(activity, "$label：" + friendly(r, "成功"), Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(activity, "${label}失败：" + e.message, Toast.LENGTH_LONG).show()
