@@ -272,6 +272,13 @@ class ApiClient(private val session: SessionStore) {
      */
     private suspend fun <T> retryOnOffline(block: () -> T): T {
         while (true) {
+            // 系统明确报告没有网络时，不要再发请求——
+            // 否则每次都要等 connectTimeout(15s)，恢复后还要等 DNS 负缓存过期。
+            if (!NetState.isOnline()) {
+                OfflineOverlay.show()
+                delay(1000L)
+                continue
+            }
             try {
                 val r = block()
                 if (OfflineOverlay.showing) OfflineOverlay.hide()
@@ -282,7 +289,7 @@ class ApiClient(private val session: SessionStore) {
                 if (!NetState.isNetworkFailure(e)) throw e
                 LogManager.log("[NET] 连不上，等待网络恢复: ${e.javaClass.simpleName}")
                 OfflineOverlay.show()
-                delay(2000L)
+                delay(1500L)
             }
         }
     }

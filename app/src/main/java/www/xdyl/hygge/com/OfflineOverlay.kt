@@ -41,6 +41,21 @@ object OfflineOverlay {
     fun install(app: Application) {
         if (installed) return
         installed = true
+        // 网络恢复后即使没有请求在等待，也要把离线层撤掉
+        try {
+            val cm = app.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
+                    if (showing) {
+                        val a = host
+                        if (a != null) a.runOnUiThread { hide() } else hide()
+                    }
+                }
+            })
+        } catch (t: Throwable) {
+            LogManager.w("[NET] 网络回调注册失败: ${t.message}")
+        }
+
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityResumed(a: Activity) {
                 host = a
@@ -70,72 +85,75 @@ object OfflineOverlay {
 
     /** 显示离线层；可重复调用 */
     fun show() {
-        if (showing) return
-        showing = true
+        val a = host ?: return          // 没有宿主 Activity 就不置位，避免残留状态
+        synchronized(this) {
+            if (showing) return
+            showing = true
+        }
         // 常规加载遮罩让位，避免两个圈重叠
         LoadingOverlay.forceDismiss()
-        val a = host
-        if (a != null) a.runOnUiThread { attach(a) }
+        a.runOnUiThread { if (showing) attach(a) }
     }
 
     /** 网络恢复 / 请求成功 → 收起 */
     fun hide() {
-        if (!showing) return
-        showing = false
-        detach()
+        synchronized(this) { showing = false }
+        val a = host
+        if (a != null) a.runOnUiThread { detach() } else detach()
     }
 
     private fun attach(activity: Activity) {
-        if (root != null) return
-        if (activity.isFinishing || activity.isDestroyed) return
-        val content = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
-        val d = activity.resources.displayMetrics.density
+        synchronized(this) {
+            if (!showing) return        // 已经恢复，不要贴上去
+            if (root != null) return
+            if (activity.isFinishing || activity.isDestroyed) return
+            val content = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
+            val d = activity.resources.displayMetrics.density
 
-        val box = FrameLayout(activity).apply {
-            // 不透明背景：让"没有内容"这件事看起来是刻意的，而不是白屏
-            setBackgroundColor(0xFF101114.toInt())
-            isClickable = true
-            isFocusable = true
+            val box = FrameLayout(activity).apply {
+                setBackgroundColor(0xFF101114.toInt())
+                isClickable = true
+                isFocusable = true
+            }
+
+            val col = LinearLayout(activity).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+            }
+
+            val size = (SIZE_DP * d).toInt()
+            val ind = LoadingIndicator(activity).apply {
+                indicatorSize = size
+                setIndicatorColor(0xFFA0C4FF.toInt())
+                show()
+            }
+            col.addView(ind, LinearLayout.LayoutParams(size, size))
+
+            col.addView(label(activity, "Can't Connect To The Internet!", 17f, 0xFFFFFFFF.toInt(), bold = true)
+                .apply { setPadding(0, (24 * d).toInt(), 0, (6 * d).toInt()) })
+            col.addView(label(activity, "这可能是你的问题，也有可能是我们的问题，但目前无法知晓!", 13f, 0xFFB9C0CC.toInt())
+                .apply { setPadding((28 * d).toInt(), 0, (28 * d).toInt(), 0) })
+            col.addView(label(activity, "请尝试重新连接 Internet/WIFI!", 13f, 0xFFB9C0CC.toInt())
+                .apply { setPadding((28 * d).toInt(), (6 * d).toInt(), (28 * d).toInt(), 0) })
+
+            box.addView(col, FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { gravity = Gravity.CENTER })
+
+            content.addView(box, ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            ))
+
+            box.alpha = 0f
+            box.animate().alpha(1f).setDuration(180L).start()
+            col.scaleX = 0.92f
+            col.scaleY = 0.92f
+            col.animate().scaleX(1f).scaleY(1f).setDuration(220L).start()
+
+            root = box
         }
-
-        val col = LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-        }
-
-        val size = (SIZE_DP * d).toInt()
-        val ind = LoadingIndicator(activity).apply {
-            indicatorSize = size
-            setIndicatorColor(0xFFA0C4FF.toInt())
-            show()
-        }
-        col.addView(ind, LinearLayout.LayoutParams(size, size))
-
-        // 固定三段文案，中英混排按用户给的原文
-        col.addView(label(activity, "Can't Connect To The Internet!", 17f, 0xFFFFFFFF.toInt(), bold = true)
-            .apply { setPadding(0, (24 * d).toInt(), 0, (6 * d).toInt()) })
-        col.addView(label(activity, "这可能是你的问题，也有可能是我们的问题，但目前无法知晓!", 13f, 0xFFB9C0CC.toInt())
-            .apply { setPadding((28 * d).toInt(), 0, (28 * d).toInt(), 0) })
-        col.addView(label(activity, "请尝试重新连接 Internet/WIFI!", 13f, 0xFFB9C0CC.toInt())
-            .apply { setPadding((28 * d).toInt(), (6 * d).toInt(), (28 * d).toInt(), 0) })
-
-        box.addView(col, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { gravity = Gravity.CENTER })
-
-        content.addView(box, ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        ))
-
-        box.alpha = 0f
-        box.animate().alpha(1f).setDuration(180L).start()
-        col.scaleX = 0.92f
-        col.scaleY = 0.92f
-        col.animate().scaleX(1f).scaleY(1f).setDuration(220L).start()
-
-        root = box
     }
 
     private fun label(a: Activity, t: String, sp: Float, color: Int, bold: Boolean = false): TextView =
@@ -148,14 +166,14 @@ object OfflineOverlay {
         }
 
     private fun detach() {
-        val box = root ?: run {
-            // 尚未 attach 也要清状态
-            return
+        synchronized(this) {
+            val box = root ?: return
+            root = null
+            val parent = box.parent as? ViewGroup
+            box.animate().cancel()
+            box.animate().alpha(0f).setDuration(150L).withEndAction {
+                parent?.removeView(box)
+            }.start()
         }
-        root = null
-        val parent = box.parent as? ViewGroup
-        box.animate().alpha(0f).setDuration(150L).withEndAction {
-            parent?.removeView(box)
-        }.start()
     }
 }
