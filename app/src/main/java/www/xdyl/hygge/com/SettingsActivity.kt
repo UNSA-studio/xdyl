@@ -425,16 +425,22 @@ class SettingsActivity : AppCompatActivity() {
      * 这里用 done 标记做同步：请求结束时置 done=true；
      * 展开回调若发现已完成，就跳过显示（或立刻反向收起）。
      */
+    /**
+     * 统一的 ping 流程：展开结果框 → 显示 spinner → 执行 → 收起 spinner。
+     *
+     * 两个坑都要处理：
+     *  1. 结果框展开要 1200ms，MC ping 可能几十毫秒就回来 —— spinner 不能提前点亮，
+     *     但也不能因为"已经完成"就完全不亮（那样用户什么都看不到）。
+     *     这里改成：请求完成后，等展开动画结束再决定 ——
+     *     若耗时够长就正常显示并收起；若太快则补一段最短展示时间，保证看得见。
+     *  2. 收起时必须淡出缩放，不能直接 GONE。
+     */
     private fun runPingFlow(
         textView: TextView,
         indicator: LoadingIndicator,
         loadingText: String,
         work: suspend () -> String
     ) {
-        textView.layoutParams.height = 0
-        textView.visibility = View.VISIBLE
-        textView.text = loadingText
-
         // 上一次若还在跑，先复位
         indicator.animate().cancel()
         indicator.visibility = View.GONE
@@ -442,13 +448,18 @@ class SettingsActivity : AppCompatActivity() {
         indicator.scaleY = 1f
         indicator.alpha = 1f
 
-        val done = java.util.concurrent.atomic.AtomicBoolean(false)
+        textView.layoutParams.height = 0
+        textView.visibility = View.VISIBLE
+        textView.text = loadingText
+
         val d = resources.displayMetrics.density
         indicator.indicatorSize = (12 * d).toInt()
 
-        // 显示 spinner（小尺寸：缩放幅度大一些才看得出"长出来"）
+        // 结果框展开 → 然后点亮 spinner
+        var resultText: String? = null
+        var expandDone = false
+
         fun showSpinner() {
-            if (done.get()) return      // 已出结果，不要再点亮
             indicator.visibility = View.VISIBLE
             indicator.scaleX = 0.2f
             indicator.scaleY = 0.2f
@@ -457,32 +468,48 @@ class SettingsActivity : AppCompatActivity() {
                 .setDuration(220L)
                 .setInterpolator(android.view.animation.DecelerateInterpolator(1.6f))
                 .start()
-            indicator.show()          // M3：必须 show() 才启动形变+旋转
+            indicator.show()   // M3：必须 show() 才启动形变+旋转
         }
 
-        expandView(textView) { showSpinner() }
+        fun hideSpinner() {
+            indicator.animate().cancel()
+            indicator.animate().scaleX(0.2f).scaleY(0.2f).alpha(0f)
+                .setDuration(200L)
+                .setInterpolator(android.view.animation.AccelerateInterpolator(1.8f))
+                .withEndAction {
+                    indicator.hide()
+                    indicator.visibility = View.GONE
+                    indicator.scaleX = 1f
+                    indicator.scaleY = 1f
+                    indicator.alpha = 1f
+                }
+                .start()
+        }
+
+        expandView(textView) {
+            expandDone = true
+            // 展开完成。如果结果已经回来，说明是"快请求"，
+            // 补一个最短可见时间，避免用户只看到结果没有任何加载反馈
+            if (resultText != null) {
+                showSpinner()
+                textView.postDelayed({ hideSpinner() }, 420L)
+            } else {
+                showSpinner()
+            }
+        }
 
         scope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) { work() }
-                done.set(true)
-                textView.text = result
-                expandView(textView)
-            } finally {
-                done.set(true)
-                // 收起：若是被竞态提前点亮过，这里也会把它收掉
-                indicator.animate().cancel()
-                indicator.animate().scaleX(0.2f).scaleY(0.2f).alpha(0f)
-                    .setDuration(200L)
-                    .setInterpolator(android.view.animation.AccelerateInterpolator(1.8f))
-                    .withEndAction {
-                        indicator.hide()
-                        indicator.visibility = View.GONE
-                        indicator.scaleX = 1f
-                        indicator.scaleY = 1f
-                        indicator.alpha = 1f
-                    }
-                    .start()
+            val result = try {
+                withContext(Dispatchers.IO) { work() }
+            } catch (e: Exception) {
+                "错误：" + e.message
+            }
+            resultText = result
+            textView.text = result
+            expandView(textView)
+            if (expandDone) {
+                // 展开已完成但 spinner 还在显示 → 正常收起
+                hideSpinner()
             }
         }
     }

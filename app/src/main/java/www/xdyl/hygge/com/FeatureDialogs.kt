@@ -63,8 +63,50 @@ object FeatureDialogs {
      * （spinner 在上、说明文字在下），而不是挤在左边一行。
      * 尺寸用 24dp —— 局部区域的规范下限（全局页面级才用 48dp）。
      */
+    /** 加载占位行的标记 tag，用于统一淡出移除 */
+    private const val TAG_LOADING = "xdyl_loading_row"
+
+    /**
+     * 淡出并移除加载行。
+     * 直接 removeViewAll 会让 spinner 瞬间消失（小尺寸下尤其突兀），
+     * 这里先缩放淡出再摘掉。
+     */
+    /**
+     * 清空列表；若只有加载行，就让它淡出 150ms 后再真正移除，
+     * 避免 spinner 直接消失（小尺寸下尤其生硬）。
+     *
+     * 调用方紧接着会 addView 新内容，这里只摘掉"加载行"，
+     * 新内容自然排在它后面；淡出期间两者短暂共存，形成过渡。
+     */
+    fun removeAllViewsFaded(parent: LinearLayout) {
+        val first = if (parent.childCount > 0) parent.getChildAt(0) else null
+        val isLoading = first != null && first.tag == TAG_LOADING
+        if (!isLoading) {
+            parent.removeAllViews()
+            return
+        }
+        for (i in parent.childCount - 1 downTo 1) {
+            parent.removeViewAt(i)
+        }
+        first.animate()
+            .alpha(0f).scaleX(0.85f).scaleY(0.85f)
+            .setDuration(150L)
+            .withEndAction { parent.removeView(first) }
+            .start()
+    }
+
+    fun fadeOutLoading(parent: android.view.ViewGroup) {
+        val target = parent.findViewWithTag<android.view.View>(TAG_LOADING) ?: return
+        target.animate()
+            .alpha(0f).scaleX(0.8f).scaleY(0.8f)
+            .setDuration(160L)
+            .withEndAction { parent.removeView(target) }
+            .start()
+    }
+
     fun loadingRow(a: AppCompatActivity, text: String = "加载中…"): LinearLayout =
         LinearLayout(a).apply {
+            tag = TAG_LOADING
             orientation = LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER_HORIZONTAL
             setPadding(0, dp(a, 20), 0, dp(a, 20))
@@ -300,14 +342,14 @@ object FeatureDialogs {
         container.addView(listCol)
 
         fun doLoad() {
-            listCol.removeAllViews()
+            removeAllViewsFaded(listCol)
             listCol.addView(loadingRow(activity))
             activity.lifecycleScope.launch {
                 try {
                     val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get(path) } }
                     LogManager.log("[PAGE] $path => " + root.toString().take(500))
                     val arr = toArray(root)
-                    listCol.removeAllViews()
+                    removeAllViewsFaded(listCol)
                     if (arr == null || arr.length() == 0) {
                         listCol.addView(textView(activity, "暂无数据", 13f, 0xFF9AA0A6.toInt()))
                         return@launch
@@ -329,7 +371,7 @@ object FeatureDialogs {
                         }
                     }
                 } catch (e: Exception) {
-                    listCol.removeAllViews()
+                    removeAllViewsFaded(listCol)
                     handleError(activity, e)
                     listCol.addView(textView(activity, "加载失败：" + e.message, 13f, 0xFFE57373.toInt()))
                 }
@@ -367,13 +409,13 @@ object FeatureDialogs {
         container.addView(listCol)
 
         fun doLoad() {
-            listCol.removeAllViews()
+            removeAllViewsFaded(listCol)
             listCol.addView(loadingRow(activity))
             activity.lifecycleScope.launch {
                 try {
                     val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get("/tasks") } }
                     val arr = toArray(root)
-                    listCol.removeAllViews()
+                    removeAllViewsFaded(listCol)
                     if (arr == null || arr.length() == 0) {
                         listCol.addView(textView(activity, "暂无任务", 13f, 0xFF9AA0A6.toInt()))
                         return@launch
@@ -421,7 +463,7 @@ object FeatureDialogs {
                         )
                     }
                 } catch (e: Exception) {
-                    listCol.removeAllViews()
+                    removeAllViewsFaded(listCol)
                     handleError(activity, e)
                     listCol.addView(textView(activity, "加载失败：" + e.message, 13f, 0xFFE57373.toInt()))
                 }
@@ -513,7 +555,7 @@ object FeatureDialogs {
         container.addView(listCol)
 
         fun load() {
-            listCol.removeAllViews()
+            removeAllViewsFaded(listCol)
             listCol.addView(loadingRow(activity))
             activity.lifecycleScope.launch {
                 try {
@@ -522,7 +564,7 @@ object FeatureDialogs {
                     val data = root.optJSONObject("data")
                     val arr = data?.optJSONArray("milestones")
                     val totalSec = data?.optLong("total_seconds", 0L) ?: 0L
-                    listCol.removeAllViews()
+                    removeAllViewsFaded(listCol)
                     listCol.addView(
                         textView(
                             activity,
@@ -568,7 +610,7 @@ object FeatureDialogs {
                     }
                 } catch (e: Exception) {
                     handleError(activity, e)
-                    listCol.removeAllViews()
+                    removeAllViewsFaded(listCol)
                     listCol.addView(textView(activity, "加载失败：" + e.message, 13f, 0xFFE57373.toInt()))
                 }
             }
@@ -661,7 +703,7 @@ object FeatureDialogs {
                 val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get("/suggestions") } }
                 LogManager.log("[PAGE] /suggestions => " + root.toString().take(400))
                 val arr = toArray(root)
-                listCol.removeAllViews()
+                removeAllViewsFaded(listCol)
                 if (arr == null || arr.length() == 0) {
                     listCol.addView(textView(activity, "暂无意见", 13f, 0xFF9AA0A6.toInt()))
                 } else {
@@ -671,7 +713,7 @@ object FeatureDialogs {
                     }
                 }
             } catch (e: Exception) {
-                listCol.removeAllViews()
+                removeAllViewsFaded(listCol)
                 handleError(activity, e)
                 listCol.addView(textView(activity, "加载失败：" + e.message, 13f, 0xFFE57373.toInt()))
             }
@@ -729,7 +771,7 @@ object FeatureDialogs {
                 val root = withContext(Dispatchers.IO) { LoadingOverlay.quiet { api.get(path) } }
                 LogManager.log("[PAGE] $path => " + root.toString().take(300))
                 val arr = toArray(root)
-                listCol.removeAllViews()
+                removeAllViewsFaded(listCol)
                 if (arr == null || arr.length() == 0) {
                     listCol.addView(textView(activity, "暂无数据", 12f, 0xFF9AA0A6.toInt()))
                     return@launch
@@ -744,7 +786,7 @@ object FeatureDialogs {
                     }
                 }
             } catch (e: Exception) {
-                listCol.removeAllViews()
+                removeAllViewsFaded(listCol)
                 handleError(activity, e)
                 listCol.addView(textView(activity, "加载失败：" + e.message, 12f, 0xFFE57373.toInt()))
             }
@@ -981,7 +1023,7 @@ object FeatureDialogs {
         }
 
         fun load() {
-            listCol.removeAllViews()
+            removeAllViewsFaded(listCol)
             listCol.addView(loadingRow(activity))
             activity.lifecycleScope.launch {
                 try {
@@ -997,13 +1039,13 @@ object FeatureDialogs {
                         }
                     }
                     if (name.isBlank()) {
-                        listCol.removeAllViews()
+                        removeAllViewsFaded(listCol)
                         listCol.addView(textView(activity, "未获取到玩家名，请先到「我的」刷新资料", 13f, 0xFFE57373.toInt()))
                         return@launch
                     }
 
                     val skins = withContext(Dispatchers.IO) { YsmApi.history(activity, name) }
-                    listCol.removeAllViews()
+                    removeAllViewsFaded(listCol)
                     if (skins == null) {
                         listCol.addView(textView(activity, "YSM 服务连接失败，请稍后重试", 13f, 0xFFE57373.toInt()))
                         return@launch
@@ -1023,7 +1065,7 @@ object FeatureDialogs {
                     }
                 } catch (e: Exception) {
                     handleError(activity, e)
-                    listCol.removeAllViews()
+                    removeAllViewsFaded(listCol)
                     listCol.addView(textView(activity, "加载失败：" + e.message, 13f, 0xFFE57373.toInt()))
                 }
             }
