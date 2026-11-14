@@ -296,7 +296,9 @@ public sealed class UpdateService
         var html = await http.GetStringAsync(_baseUrl, ct).ConfigureAwait(false);
         var result = new List<string>();
         // 简单粗暴地找 href="xxx.jar"
-        foreach (var m in System.Text.RegularExpressions.Regex.Matches(html, "href=\"([^\"]+\\.jar)\""))
+        // MatchCollection 非泛型，foreach 的 var 会被推断成 object，必须显式声明类型
+        var matches = System.Text.RegularExpressions.Regex.Matches(html, "href=\"([^\"]+\\.jar)\"");
+        foreach (System.Text.RegularExpressions.Match m in matches)
         {
             var name = Uri.UnescapeDataString(m.Groups[1].Value);
             name = name[(name.LastIndexOf('/') + 1)..];
