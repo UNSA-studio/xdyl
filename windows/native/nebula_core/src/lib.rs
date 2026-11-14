@@ -198,8 +198,12 @@ pub extern "C" fn nebula_download_file(
 
         // user_data 是 *mut c_void，本身不满足 Send/Sync；
         // 转成 usize 后再捕获，线程里还原成指针（地址不变，语义等价）。
+        //
+        // 必须写 move：否则闭包按引用借用 progress / ud，
+        // 一旦被送进 'static 线程就会报 "closure may outlive"。
+        // progress 是 Option<extern fn>，ud 是 usize，都是 Copy，move 不产生额外开销。
         let ud = user_data as usize;
-        let step = |n: usize| -> bool {
+        let step = move |n: usize| -> bool {
             match progress {
                 Some(f) => f(n as i64, ud as *mut c_void),
                 None => true,
