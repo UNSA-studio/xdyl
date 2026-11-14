@@ -79,9 +79,8 @@ object FeatureDialogs {
      * 新内容自然排在它后面；淡出期间两者短暂共存，形成过渡。
      */
     fun removeAllViewsFaded(parent: LinearLayout) {
-        val first = if (parent.childCount > 0) parent.getChildAt(0) else null
-        val isLoading = first != null && first.tag == TAG_LOADING
-        if (!isLoading) {
+        val first: android.view.View? = if (parent.childCount > 0) parent.getChildAt(0) else null
+        if (first == null || first.tag != TAG_LOADING) {
             parent.removeAllViews()
             return
         }
@@ -92,15 +91,6 @@ object FeatureDialogs {
             .alpha(0f).scaleX(0.85f).scaleY(0.85f)
             .setDuration(150L)
             .withEndAction { parent.removeView(first) }
-            .start()
-    }
-
-    fun fadeOutLoading(parent: android.view.ViewGroup) {
-        val target = parent.findViewWithTag<android.view.View>(TAG_LOADING) ?: return
-        target.animate()
-            .alpha(0f).scaleX(0.8f).scaleY(0.8f)
-            .setDuration(160L)
-            .withEndAction { parent.removeView(target) }
             .start()
     }
 
