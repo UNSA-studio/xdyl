@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using System.IO.Compression;
+using System.Formats.Tar;
 using System.Text;
 
 namespace NebulaUpdater.Core.Services;
@@ -15,7 +15,8 @@ namespace NebulaUpdater.Core.Services;
 /// </summary>
 public static class PyExtManager
 {
-    public const string DefaultUrl = "https://unsa-fdws.cc.cd/api/download/python_windows.zip";
+    /// <summary>扩展包直链（网盘重构后的新地址）。内容是 python_windows.tar.gz，不是 zip。</summary>
+    public const string DefaultUrl = "https://pan.ezv.cc/v/2d8747f5c6bf4a34d138e1eafd30a78f";
 
     /// <summary>扩展包安装根目录</summary>
     public static string PythonRoot =>
@@ -77,17 +78,29 @@ public static class PyExtManager
             var root = PythonRoot;
             Directory.CreateDirectory(root);
 
-            // ZipFile 解压 + 剥掉可能的顶层目录，兼容两种打包方式
-            using (var zip = ZipFile.OpenRead(tmp))
+            // 扩展包是 .tar.gz（不是 zip）。
+            // System.Formats.Tar 从 .NET 7 起内置，不需要额外 NuGet 依赖。
+            // 顶层目录 python_windows/ 要剥掉，解到 python_root 下才是 python.exe。
+            using (var gz = new System.IO.Compression.GZipStream(
+                       File.OpenRead(tmp), System.IO.Compression.CompressionMode.Decompress))
+            using (var reader = new TarReader(gz))
             {
-                foreach (var entry in zip.Entries)
+                TarEntry? entry;
+                while ((entry = reader.GetNextEntry()) != null)
                 {
-                    var name = StripTopLevel(entry.FullName);
-                    if (string.IsNullOrEmpty(name) || name.EndsWith('/')) continue;
+                    // 只处理普通文件；目录/符号链接跳过（Windows 上符号链接多数用不到）
+                    if (entry.EntryType != TarEntryType.RegularFile) continue;
+                    if (entry.DataStream == null) continue;
 
-                    var dest = Path.Combine(root, name);
+                    var name = StripTopLevel(entry.Name.Replace('\\', '/'));
+                    if (string.IsNullOrEmpty(name)) continue;
+
+                    var dest = Path.Combine(root, name.Replace('/', Path.DirectorySeparatorChar));
                     Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
-                    entry.ExtractToFile(dest, overwrite: true);
+                    using var fs = File.Create(dest);
+                    entry.DataStream.CopyTo(fs);
+
+                    // 保留可执行属性对 Windows 无意义，跳过
                 }
             }
 
