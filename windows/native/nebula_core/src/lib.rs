@@ -196,9 +196,12 @@ pub extern "C" fn nebula_download_file(
             let _ = std::fs::create_dir_all(p);
         }
 
+        // user_data 是 *mut c_void，本身不满足 Send/Sync；
+        // 转成 usize 后再捕获，线程里还原成指针（地址不变，语义等价）。
+        let ud = user_data as usize;
         let step = |n: usize| -> bool {
             match progress {
-                Some(f) => f(n as i64, user_data),
+                Some(f) => f(n as i64, ud as *mut c_void),
                 None => true,
             }
         };
@@ -207,7 +210,7 @@ pub extern "C" fn nebula_download_file(
         let use_chunked = expected_size > 0 && chunks > 1 && expected_size as usize > CHUNK_MIN * 2;
 
         let dl_result = if use_chunked {
-            download_chunked(url, &part, expected_size, chunks, &step, cancel)
+            download_chunked(url, &part, expected_size, chunks, step, cancel)
         } else {
             download_single(url, &part, expected_size, &step, cancel)
         };
@@ -339,11 +342,11 @@ fn download_chunked<F>(
     part: &str,
     expected_size: i64,
     chunks: usize,
-    step: &F,
+    step: F,
     cancel: Option<&CancelToken>,
 ) -> Result<(), c_int>
 where
-    F: Fn(usize) -> bool + Send + Sync + Copy,
+    F: Fn(usize) -> bool + Send + Sync + Copy + 'static,
 {
     let total = expected_size as usize;
     // 分块粒度受限：块太多会导致连接爆炸，块太少又发挥不出并行
@@ -358,12 +361,12 @@ where
         let end = if i == n_chunks - 1 { total - 1 } else { start + per - 1 };
         let url = url.to_string();
         let chunk_file = format!("{}.{}", part, i);
-        let step = *step;
-        // 取消令牌用指针地址传进线程：它生命周期由 C# 保证覆盖整个调用
+        let step = step;   // Copy，逐线程一份
+        // 取消令牌用指针地址传进线程：其生命周期由调用方保证覆盖整个调用
         let cancel_addr = cancel.map(|c| c as *const CancelToken as usize);
 
         let handle = std::thread::spawn(move || -> Result<(), c_int> {
-            download_range(&url, &chunk_file, start as u64, end as u64, &step, cancel_addr)
+            download_range(&url, &chunk_file, start as u64, end as u64, step, cancel_addr)
         });
         handles.push(handle);
     }
@@ -413,7 +416,7 @@ fn download_range<F>(
     dest: &str,
     start: u64,
     end: u64,
-    step: &F,
+    step: F,
     cancel_addr: Option<usize>,
 ) -> Result<(), c_int>
 where
