@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -36,6 +37,29 @@ object FeatureDialogs {
 
     private fun dp(a: AppCompatActivity, v: Int): Int =
         (v * a.resources.displayMetrics.density).toInt()
+
+    /**
+     * 统一的加载占位行：MD 转圈 + "加载中…"。
+     * 替代原先只有一行灰字的写法，进入加载态时能看到动画在跑。
+     */
+    fun loadingRow(a: AppCompatActivity, text: String = "加载中…"): LinearLayout =
+        LinearLayout(a).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(0, dp(a, 10), 0, dp(a, 10))
+            addView(CircularProgressIndicator(a).apply {
+                isIndeterminate = true
+                trackThickness = dp(a, 2)
+                indicatorSize = dp(a, 16)
+                setIndicatorColor(0xFF9AA0A6.toInt())
+            })
+            addView(TextView(a).apply {
+                this.text = text
+                textSize = 13f
+                setTextColor(0xFF9AA0A6.toInt())
+                setPadding(dp(a, 10), 0, 0, 0)
+            })
+        }
 
     /** 归一化 data → JSONArray（兼容多种包裹方式） */
     private fun toArray(root: JSONObject): JSONArray? {
@@ -247,7 +271,7 @@ object FeatureDialogs {
 
         fun doLoad() {
             listCol.removeAllViews()
-            listCol.addView(textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt()))
+            listCol.addView(loadingRow(activity))
             activity.lifecycleScope.launch {
                 try {
                     val root = withContext(Dispatchers.IO) { api.get(path) }
@@ -314,7 +338,7 @@ object FeatureDialogs {
 
         fun doLoad() {
             listCol.removeAllViews()
-            listCol.addView(textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt()))
+            listCol.addView(loadingRow(activity))
             activity.lifecycleScope.launch {
                 try {
                     val root = withContext(Dispatchers.IO) { api.get("/tasks") }
@@ -460,7 +484,7 @@ object FeatureDialogs {
 
         fun load() {
             listCol.removeAllViews()
-            listCol.addView(textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt()))
+            listCol.addView(loadingRow(activity))
             activity.lifecycleScope.launch {
                 try {
                     val root = withContext(Dispatchers.IO) { api.get("/playtime/rewards") }
@@ -601,7 +625,7 @@ object FeatureDialogs {
 
         val listCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
         container.addView(listCol)
-        listCol.addView(textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt()))
+        listCol.addView(loadingRow(activity))
         activity.lifecycleScope.launch {
             try {
                 val root = withContext(Dispatchers.IO) { api.get("/suggestions") }
@@ -669,7 +693,7 @@ object FeatureDialogs {
         })
         val listCol = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
         container.addView(listCol)
-        listCol.addView(textView(activity, "加载中…", 12f, 0xFF9AA0A6.toInt()))
+        listCol.addView(loadingRow(activity))
         activity.lifecycleScope.launch {
             try {
                 val root = withContext(Dispatchers.IO) { api.get(path) }
@@ -737,7 +761,9 @@ object FeatureDialogs {
         container.addView(textView(activity, "排位匹配", 16f, 0xFFA0C4FF.toInt(), bold = true).apply {
             setPadding(0, dp(activity, 12), 0, dp(activity, 8))
         })
-        val matchInfo = textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt())
+        val matchInfo = textView(activity, "", 13f, 0xFF9AA0A6.toInt())
+        val matchLoading = loadingRow(activity)
+        container.addView(matchLoading)
         container.addView(matchInfo)
         val matchBtn = MaterialButton(activity).apply {
             text = "开始匹配"
@@ -776,8 +802,10 @@ object FeatureDialogs {
                     append("时间偏好：").append(pref).append("\n\n")
                     append("状态：").append(status)
                 }
+                matchLoading.visibility = ViewGroup.GONE
             } catch (e: Exception) {
                 handleError(activity, e)
+                matchLoading.visibility = ViewGroup.GONE
                 matchInfo.text = "加载失败：" + e.message
             }
         }
@@ -924,7 +952,7 @@ object FeatureDialogs {
 
         fun load() {
             listCol.removeAllViews()
-            listCol.addView(textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt()))
+            listCol.addView(loadingRow(activity))
             activity.lifecycleScope.launch {
                 try {
                     // 先确保有玩家名
@@ -1079,7 +1107,9 @@ object FeatureDialogs {
         container.addView(textView(activity, "爱发电", 18f, 0xFFA0C4FF.toInt(), bold = true).apply {
             setPadding(0, dp(activity, 4), 0, dp(activity, 10))
         })
-        val tv = textView(activity, "加载中…", 13f, 0xFF9AA0A6.toInt())
+        val tv = textView(activity, "", 13f, 0xFF9AA0A6.toInt())
+        val afLoading = loadingRow(activity)
+        container.addView(afLoading)
         container.addView(tv)
         container.addView(MaterialButton(activity).apply {
             text = "领取赞助奖励"
@@ -1102,7 +1132,9 @@ object FeatureDialogs {
                 }
                 LogManager.log("[PAGE] /afdian/status => " + root.toString().take(300))
                 tv.text = friendly(root, "已加载")
+                afLoading.visibility = ViewGroup.GONE
             } catch (e: Exception) {
+                afLoading.visibility = ViewGroup.GONE
                 tv.text = "加载失败：" + e.message
             }
         }

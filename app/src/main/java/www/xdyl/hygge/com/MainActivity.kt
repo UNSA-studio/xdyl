@@ -23,7 +23,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.updateLayoutParams
 import androidx.transition.ChangeBounds
-import androidx.transition.Fade
 import androidx.transition.TransitionManager
 import androidx.transition.TransitionSet
 import androidx.core.content.ContextCompat
@@ -600,10 +599,12 @@ class MainActivity : AppCompatActivity() {
     private fun applySongCardCollapsed(collapsed: Boolean, animate: Boolean = false) {
         val ph = binding.pageHome
         if (animate) {
-            val set = TransitionSet()
-                .addTransition(ChangeBounds())
-                .addTransition(Fade())
+            // 只用 ChangeBounds：同一批视图靠约束补间移动/缩放。
+            // 不加 Fade——Fade 默认 IN_OUT，会让整张卡片（含背景图）先淡出再淡入，
+            // 观感上就是"闪一下"。确实需要淡入淡出的单个视图在下面单独处理。
+            val set = TransitionSet().addTransition(ChangeBounds())
             set.duration = 260
+            set.interpolator = android.view.animation.DecelerateInterpolator(1.4f)
             TransitionManager.beginDelayedTransition(ph.songContainer, set)
         }
         ph.songContainer.layoutParams = ph.songContainer.layoutParams.also {
@@ -676,10 +677,26 @@ class MainActivity : AppCompatActivity() {
             endToStart = if (collapsed) R.id.songCardRoot else R.id.tvSongTime
             marginEnd = dp(if (collapsed) 10 else 8)
         }
-        ph.tvSongTime.visibility = if (collapsed) View.GONE else View.VISIBLE
+        ph.tvSongTime.animate()
+            .alpha(if (collapsed) 0f else 1f)
+            .setDuration(if (animate) 180L else 0L)
+            .withEndAction {
+                ph.tvSongTime.visibility = if (collapsed) View.GONE else View.VISIBLE
+                ph.tvSongTime.alpha = 1f
+            }
+            .start()
+        if (!collapsed) ph.tvSongTime.visibility = View.VISIBLE
 
         // 标题只在展开态出现；播放按钮从右上滑到右下
-        ph.tvSongTitle.visibility = if (collapsed) View.GONE else View.VISIBLE
+        ph.tvSongTitle.animate()
+            .alpha(if (collapsed) 0f else 1f)
+            .setDuration(if (animate) 180L else 0L)
+            .withEndAction {
+                ph.tvSongTitle.visibility = if (collapsed) View.GONE else View.VISIBLE
+                ph.tvSongTitle.alpha = 1f
+            }
+            .start()
+        if (!collapsed) ph.tvSongTitle.visibility = View.VISIBLE
         ph.btnSongPlay.updateLayoutParams<ConstraintLayout.LayoutParams> {
             topToTop = if (collapsed) -1 else R.id.songCardRoot
             topMargin = dp(if (collapsed) 0 else 4)

@@ -117,11 +117,7 @@ object ForumPostDialog {
         fun reload() {
             activity.lifecycleScope.launch {
                 col.removeAllViews()
-                val loading = TextView(activity).apply {
-                    text = "加载中…"
-                    setTextColor(0xFF9AA0A6.toInt())
-                    textSize = 13f
-                }
+                val loading = FeatureDialogs.loadingRow(activity)
                 col.addView(loading)
                 try {
                     val root = withContext(Dispatchers.IO) {
