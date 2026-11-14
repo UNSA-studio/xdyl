@@ -59,7 +59,7 @@
                 </StackPanel>
             </Border>
 
-            <TextBlock Text="提示：MC 服务器在线人数为服务端提供的值，仅供参考。"
+            <TextBlock Text="MC 状态查询依赖扩展程序包（嵌入式 Python + mcstatus），首次使用会自动下载安装。"
                        Style="{StaticResource CaptionTextBlockStyle}"
                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                        TextWrapping="Wrap" />
