@@ -15,6 +15,7 @@ class App : Application() {
         ctx = this
         // 全局加载指示器：所有网络请求自动亮起右上角形变 LoadingIndicator
         LoadingOverlay.install(this)
+        OfflineOverlay.install(this)
         // 自动恢复 WiFi ADB 配置
         val prefs = getSharedPreferences("xdyl_settings", MODE_PRIVATE)
         if (prefs.getBoolean("wifi_adb_enabled", false)) {

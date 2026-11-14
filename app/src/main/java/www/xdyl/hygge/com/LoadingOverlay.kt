@@ -166,6 +166,18 @@ object LoadingOverlay {
         shownAt = System.currentTimeMillis()
     }
 
+    /** 强制立即撤下（离线层接管时用），不做最短展示时间限制 */
+    fun forceDismiss() {
+        synchronized(this) {
+            visibleCount = 0
+            silentDepth = 0
+            pendingHide?.let { host?.window?.decorView?.removeCallbacks(it) }
+            pendingHide = null
+        }
+        val a = host
+        if (a != null) a.runOnUiThread { detachNow() } else detachNow()
+    }
+
     private fun detachNow() {
         val ind = indicator
         val box = overlay

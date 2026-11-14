@@ -1,7 +1,9 @@
 package www.xdyl.hygge.com
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -259,6 +261,32 @@ class ApiClient(private val session: SessionStore) {
         true
     }
 
+    /**
+     * 断网自动等待 + 重试。
+     *
+     * 用户要求的口径：连不上时就一直显示那个大转圈 + 文案，
+     * **不要在底下再弹一条 Toast 警告**。所以这里不把网络异常抛给上层，
+     * 而是挂起、每 2 秒探一次，网络恢复后自动把这次请求重发。
+     *
+     * 服务端明确报错（ApiException）照旧抛出 —— ERROR 弹窗优先级更高。
+     */
+    private suspend fun <T> retryOnOffline(block: () -> T): T {
+        while (true) {
+            try {
+                val r = block()
+                if (OfflineOverlay.showing) OfflineOverlay.hide()
+                return r
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (!NetState.isNetworkFailure(e)) throw e
+                LogManager.log("[NET] 连不上，等待网络恢复: ${e.javaClass.simpleName}")
+                OfflineOverlay.show()
+                delay(2000L)
+            }
+        }
+    }
+
     // ==================== 通用请求 ====================
 
     /** GET 并返回 envelope 根对象（调用方自行取 data） */
@@ -266,7 +294,7 @@ class ApiClient(private val session: SessionStore) {
         withContext(Dispatchers.IO) {
             LoadingOverlay.begin()
             try {
-                execute("GET", path, null, requiresAuth, allowRefresh = true)
+                retryOnOffline { execute("GET", path, null, requiresAuth, allowRefresh = true) }
             } finally {
                 LoadingOverlay.end()
             }
@@ -277,7 +305,7 @@ class ApiClient(private val session: SessionStore) {
         withContext(Dispatchers.IO) {
             LoadingOverlay.begin()
             try {
-                execute("POST", path, body, requiresAuth, allowRefresh = true)
+                retryOnOffline { execute("POST", path, body, requiresAuth, allowRefresh = true) }
             } finally {
                 LoadingOverlay.end()
             }
@@ -372,7 +400,7 @@ class ApiClient(private val session: SessionStore) {
         // allowRefresh = true：access_token 过期时自动用 refresh_token 续期并重放请求
         LoadingOverlay.begin()
         try {
-            execute(method, path, body ?: JSONObject(), requiresAuth, allowRefresh = true)
+            retryOnOffline { execute(method, path, body ?: JSONObject(), requiresAuth, allowRefresh = true) }
         } finally {
             LoadingOverlay.end()
         }
