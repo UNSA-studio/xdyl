@@ -40,7 +40,9 @@ object ChatKeyBackupService {
                 .array()
             val payload = header + priv + pub
 
-            val code = ChatKeyBackup.newRecoveryCode()
+            // 已经有过恢复码就沿用 —— 否则每次备份都换码，用户抄下的立刻作废
+            val existing = savedCode(context)
+            val code = if (existing != null) existing else ChatKeyBackup.newRecoveryCode()
             val normCode = ChatKeyBackup.normalizeCode(code)
 
             // 两份密文：一份用登录密码，一份用恢复码
