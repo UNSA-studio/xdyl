@@ -61,11 +61,13 @@ object FeatureDialogs {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
             setPadding(0, dp(a, 10), 0, dp(a, 10))
-            addView(LoadingIndicator(a).apply {
-                // M3 Expressive：圆角多边形循环形变 + 旋转
+            // 必须调用 show() 才会启动形变动画；只 setVisibility 会停在静止形状（看起来是个方块）
+            val ind = LoadingIndicator(a).apply {
                 indicatorSize = dp(a, 22)
                 setIndicatorColor(0xFFA0C4FF.toInt())
-            })
+                show()
+            }
+            addView(ind)
             addView(TextView(a).apply {
                 this.text = text
                 textSize = 13f

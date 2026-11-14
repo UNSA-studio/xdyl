@@ -199,43 +199,27 @@
                         android:textSize="16sp"/>
                 </LinearLayout>
 
-                <FrameLayout
+                <TextView
 
-                    android:layout_width="match_parent"
+                android:id="@+id/tvPingServerResult"
 
-                    android:layout_height="wrap_content"
+                android:layout_width="match_parent"
 
-                    android:layout_marginTop="4dp">
+                android:layout_height="wrap_content"
 
-                    <TextView
-                    android:id="@+id/tvPingServerResult"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:textColor="@color/primary_light_blue"
-                    android:textSize="14sp"
-                    android:fontFamily="monospace"
-                    android:background="#1E1E1E"
-                    android:padding="8dp"
-                    android:visibility="gone"/>
+                android:layout_marginTop="4dp"
 
-                    <com.google.android.material.loadingindicator.LoadingIndicator
+                android:textColor="@color/primary_light_blue"
 
-                        android:id="@+id/ldPingServer"
+                android:textSize="14sp"
 
-                        android:layout_width="20dp"
+                android:fontFamily="monospace"
 
-                        android:layout_height="20dp"
+                android:background="#1E1E1E"
 
-                        android:layout_gravity="top|end"
+                android:padding="8dp"
 
-                        android:layout_marginTop="6dp"
-
-                        android:layout_marginEnd="6dp"
-
-                        android:visibility="gone"/>
-
-                </FrameLayout>
+                android:visibility="gone"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -280,43 +264,27 @@
                         android:textSize="16sp"/>
                 </LinearLayout>
 
-                <FrameLayout
+                <TextView
 
-                    android:layout_width="match_parent"
+                android:id="@+id/tvPingWifiResult"
 
-                    android:layout_height="wrap_content"
+                android:layout_width="match_parent"
 
-                    android:layout_marginTop="4dp">
+                android:layout_height="wrap_content"
 
-                    <TextView
-                    android:id="@+id/tvPingWifiResult"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:textColor="@color/primary_light_blue"
-                    android:textSize="14sp"
-                    android:fontFamily="monospace"
-                    android:background="#1E1E1E"
-                    android:padding="8dp"
-                    android:visibility="gone"/>
+                android:layout_marginTop="4dp"
 
-                    <com.google.android.material.loadingindicator.LoadingIndicator
+                android:textColor="@color/primary_light_blue"
 
-                        android:id="@+id/ldPingWifi"
+                android:textSize="14sp"
 
-                        android:layout_width="20dp"
+                android:fontFamily="monospace"
 
-                        android:layout_height="20dp"
+                android:background="#1E1E1E"
 
-                        android:layout_gravity="top|end"
+                android:padding="8dp"
 
-                        android:layout_marginTop="6dp"
-
-                        android:layout_marginEnd="6dp"
-
-                        android:visibility="gone"/>
-
-                </FrameLayout>
+                android:visibility="gone"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -361,43 +329,27 @@
                         android:textSize="16sp"/>
                 </LinearLayout>
 
-                <FrameLayout
+                <TextView
 
-                    android:layout_width="match_parent"
+                android:id="@+id/tvPingMcResult"
 
-                    android:layout_height="wrap_content"
+                android:layout_width="match_parent"
 
-                    android:layout_marginTop="4dp">
+                android:layout_height="wrap_content"
 
-                    <TextView
-                    android:id="@+id/tvPingMcResult"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:textColor="@color/primary_light_blue"
-                    android:textSize="14sp"
-                    android:fontFamily="monospace"
-                    android:background="#1E1E1E"
-                    android:padding="8dp"
-                    android:visibility="gone"/>
+                android:layout_marginTop="4dp"
 
-                    <com.google.android.material.loadingindicator.LoadingIndicator
+                android:textColor="@color/primary_light_blue"
 
-                        android:id="@+id/ldPingMc"
+                android:textSize="14sp"
 
-                        android:layout_width="20dp"
+                android:fontFamily="monospace"
 
-                        android:layout_height="20dp"
+                android:background="#1E1E1E"
 
-                        android:layout_gravity="top|end"
+                android:padding="8dp"
 
-                        android:layout_marginTop="6dp"
-
-                        android:layout_marginEnd="6dp"
-
-                        android:visibility="gone"/>
-
-                </FrameLayout>
+                android:visibility="gone"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

@@ -100,6 +100,8 @@ object LoadingOverlay {
         val ind = LoadingIndicator(activity).apply {
             indicatorSize = size
             setIndicatorColor(0xFFA0C4FF.toInt())
+            // show() 才会真正启动形变+旋转动画；只 visibility 会得到静止方块
+            show()
         }
 
         // 只占右上角一小块，不挡整页；其余区域不拦截触摸
@@ -139,6 +141,7 @@ object LoadingOverlay {
         val parent = box.parent as? ViewGroup
         if (ind != null) {
             ind.animate().alpha(0f).setDuration(120L).withEndAction {
+                ind.hide()
                 parent?.removeView(box)
             }.start()
         } else {

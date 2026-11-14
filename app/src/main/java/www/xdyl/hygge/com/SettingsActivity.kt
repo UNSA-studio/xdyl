@@ -76,10 +76,10 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         binding.btnPingServer.setOnClickListener {
-            startPing("82.157.155.86", binding.tvPingServerResult, true, binding.ldPingServer)
+            startPing("82.157.155.86", binding.tvPingServerResult, true)
         }
         binding.btnPingWifi.setOnClickListener {
-            startPing("8.8.8.8", binding.tvPingWifiResult, false, binding.ldPingWifi)
+            startPing("8.8.8.8", binding.tvPingWifiResult, false)
         }
 
         // MC 服务器 Ping：需要 Python + mcstatus 扩展包
@@ -370,23 +370,23 @@ class SettingsActivity : AppCompatActivity() {
     private fun startPing(
         address: String,
         textView: TextView,
-        hideIp: Boolean,
-        indicator: android.view.View? = null
+        hideIp: Boolean
     ) {
         // 收起状态准备展开
         textView.layoutParams.height = 0
         textView.visibility = View.VISIBLE
         textView.text = "Pinging..."
         expandView(textView)
-        indicator?.visibility = android.view.View.VISIBLE
+        Spinner.showOnTextEnd(textView, 15)
         scope.launch {
             try {
                 val result = withContext(Dispatchers.IO) { executePing(address, hideIp) }
+                Spinner.hideOnText(textView)
                 textView.text = result
                 // 结果内容更长，再次展开到新高度
                 expandView(textView)
             } finally {
-                indicator?.visibility = android.view.View.GONE
+                Spinner.hideOnText(textView)
             }
         }
     }
@@ -417,14 +417,15 @@ class SettingsActivity : AppCompatActivity() {
         tv.visibility = View.VISIBLE
         tv.text = "查询中..."
         expandView(tv)
-        binding.ldPingMc.visibility = android.view.View.VISIBLE
+        Spinner.showOnTextEnd(tv, 15)
         scope.launch {
             try {
                 val result = withContext(Dispatchers.IO) { executeMcPing() }
+                Spinner.hideOnText(tv)
                 tv.text = result
                 expandView(tv)
             } finally {
-                binding.ldPingMc.visibility = android.view.View.GONE
+                Spinner.hideOnText(tv)
             }
         }
     }
