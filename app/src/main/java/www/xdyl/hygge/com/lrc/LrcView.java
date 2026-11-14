@@ -523,8 +523,8 @@ public class LrcView extends View {
 
             if (i == mCurrentLine) {
                 mLrcPaint.setTextSize(mCurrentTextSize);
-                // 未唱部分：当前行颜色的暗化版（保留同一色系，避免跳色）
-                mLrcPaint.setColor(mNormalTextColor);
+                // 当前行整行高亮（KTV 逐字填充移除后，高亮改由整行颜色表达）
+                mLrcPaint.setColor(mCurrentTextColor);
                 // 单行模式：超宽行从左侧开始，按本行时长缓慢滚到右侧
                 float scrollX = isShowTimeline ? 0f : getHorizontalScroll(entry, i);
                 drawText(canvas, entry, y, scrollX);

@@ -706,7 +706,8 @@ class MainActivity : AppCompatActivity() {
             tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, targetSp)
             return
         }
-        // 补间过程中宽度在变，系统会反复判断是否溢出 → 省略号闪一下。动画期间先关掉 ellipsize。
+        // 补间过程中宽度和字号同时变化，系统每帧都会重新判断是否溢出 → 省略号闪一下。
+        // 整个卡片动画（含 ChangeBounds 的宽度补间）结束后才恢复 ellipsize。
         val oldEllipsize = tv.ellipsize
         tv.ellipsize = null
         val anim = android.animation.ValueAnimator.ofFloat(current, targetSp)
@@ -716,8 +717,8 @@ class MainActivity : AppCompatActivity() {
         }
         anim.addListener(object : android.animation.AnimatorListenerAdapter() {
             override fun onAnimationEnd(animation: android.animation.Animator) {
-                tv.ellipsize = oldEllipsize
                 tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, targetSp)
+                tv.postDelayed({ tv.ellipsize = oldEllipsize }, 140)
             }
         })
         anim.start()
