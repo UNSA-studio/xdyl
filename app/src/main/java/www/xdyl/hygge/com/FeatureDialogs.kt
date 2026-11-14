@@ -56,14 +56,21 @@ object FeatureDialogs {
      * 统一的加载占位行：MD 转圈 + "加载中…"。
      * 替代原先只有一行灰字的写法，进入加载态时能看到动画在跑。
      */
+    /**
+     * 列表/弹窗内的加载占位。
+     *
+     * M3 规范：加载"容器"时指示器应居中于该区域，所以这里是垂直居中的一列
+     * （spinner 在上、说明文字在下），而不是挤在左边一行。
+     * 尺寸用 24dp —— 局部区域的规范下限（全局页面级才用 48dp）。
+     */
     fun loadingRow(a: AppCompatActivity, text: String = "加载中…"): LinearLayout =
         LinearLayout(a).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding(0, dp(a, 10), 0, dp(a, 10))
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            setPadding(0, dp(a, 20), 0, dp(a, 20))
             // 必须调用 show() 才会启动形变动画；只 setVisibility 会停在静止形状（看起来是个方块）
             val ind = LoadingIndicator(a).apply {
-                indicatorSize = dp(a, 24)   // 规范下限 24dp
+                indicatorSize = dp(a, 24)
                 setIndicatorColor(0xFFA0C4FF.toInt())
                 show()
             }
@@ -72,7 +79,7 @@ object FeatureDialogs {
                 this.text = text
                 textSize = 13f
                 setTextColor(0xFF9AA0A6.toInt())
-                setPadding(dp(a, 10), 0, 0, 0)
+                setPadding(0, dp(a, 10), 0, 0)
             })
         }
 

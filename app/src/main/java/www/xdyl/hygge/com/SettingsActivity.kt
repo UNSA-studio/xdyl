@@ -380,9 +380,13 @@ class SettingsActivity : AppCompatActivity() {
         textView.visibility = View.VISIBLE
         textView.text = "Pinging..."
         expandView(textView)
-        // M3：indicator 必须 show() 才会形变+旋转，仅 visible 会停在静止方块
-        indicator.visibility = View.VISIBLE
-        indicator.show()
+        // 等这一帧布局落地（框已有高度）再显示 indicator，
+        // 否则会被 height=0 的动画压扁，看起来像个小方块
+        textView.post {
+            indicator.visibility = View.VISIBLE
+            // M3：必须 show() 才启动形变+旋转
+            indicator.show()
+        }
         scope.launch {
             try {
                 val result = withContext(Dispatchers.IO) { executePing(address, hideIp) }
@@ -422,8 +426,10 @@ class SettingsActivity : AppCompatActivity() {
         tv.visibility = View.VISIBLE
         tv.text = "查询中..."
         expandView(tv)
-        binding.ldPingMc.visibility = View.VISIBLE
-        binding.ldPingMc.show()
+        binding.ldPingMc.post {
+            binding.ldPingMc.visibility = View.VISIBLE
+            binding.ldPingMc.show()
+        }
         scope.launch {
             try {
                 val result = withContext(Dispatchers.IO) { executeMcPing() }

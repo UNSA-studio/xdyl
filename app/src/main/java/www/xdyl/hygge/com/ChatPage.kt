@@ -617,6 +617,10 @@ object ChatPage {
             render()
 
             Thread {
+                // 发送链路要跑 ECH 握手 + 取对方公钥 + 加密 + 上传，耗时明显，
+                // 用 M3 居中的 LoadingIndicator 给等待反馈
+                LoadingOverlay.begin()
+                try {
                 if (!ChatIdentity.isCurrent(activity, owner)) return@Thread
                 val key = runCatching { ensureSessionKey(activity, peerKey, myName) }.getOrNull()
                 if (key == null) {
@@ -642,6 +646,9 @@ object ChatPage {
                     LogManager.w("[CHAT] 发送失败：" + err)
                     // 弹窗必须在主线程创建（这里在 Thread 里跑，之前漏了 runOnUiThread 会崩）
                     activity.runOnUiThread { AppDialogs.tip(activity, "消息未发出", tip) }
+                }
+                } finally {
+                    LoadingOverlay.end()
                 }
             }.start()
         }
