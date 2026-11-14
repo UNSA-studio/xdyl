@@ -35,7 +35,7 @@ import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.animation.LinearInterpolator;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.Scroller;
 
 import java.io.File;
@@ -80,11 +80,9 @@ public class LrcView extends View {
     private float mOffset;
     private int mCurrentLine;
     /** 当前行演唱进度 0..1（KTV 逐字填充） */
-    private float mLineProgress = 0f;
     /** 最近一次 updateTime 的播放时间（用于字级绘制） */
     private long mCurrentTime = 0L;
     /** 已唱部分的颜色（默认同当前行颜色） */
-    private int mSungTextColor;
     private Object mFlag;
     private boolean isShowTimeline;
     private boolean isTouching;
@@ -151,7 +149,6 @@ public class LrcView extends View {
         mAnimationDuration = (mAnimationDuration < 0) ? defDuration : mAnimationDuration;
         mNormalTextColor = ta.getColor(R.styleable.LrcView_lrcNormalTextColor, getResources().getColor(R.color.lrc_normal_text_color));
         mCurrentTextColor = ta.getColor(R.styleable.LrcView_lrcCurrentTextColor, getResources().getColor(R.color.lrc_current_text_color));
-        mSungTextColor = mCurrentTextColor;
         mTimelineTextColor = ta.getColor(R.styleable.LrcView_lrcTimelineTextColor, getResources().getColor(R.color.lrc_timeline_text_color));
         mDefaultLabel = ta.getString(R.styleable.LrcView_lrcLabel);
         mDefaultLabel = TextUtils.isEmpty(mDefaultLabel) ? getContext().getString(R.string.lrc_label) : mDefaultLabel;
@@ -441,23 +438,8 @@ public class LrcView extends View {
                     invalidate();
                 }
             }
-            // KTV：计算本行演唱进度
-            // 优先用歌词自带结束时间 [开始]正文[结束]，这样区间只覆盖“真正在唱”的部分，
-            // 不会被后面的伴奏/间奏拉长导致匀速假动画。没给结束时间才退回“到下一行开始”。
+            // 只记录播放时间：进度用于超长行的横向滚动与逐帧刷新（KTV 逐字填充已移除）
             if (line >= 0 && line < mLrcEntryList.size()) {
-                LrcEntry cur = mLrcEntryList.get(line);
-                long startT = cur.getTime();
-                long declaredEnd = cur.getEndTime();
-                long endT;
-                if (declaredEnd > startT) {
-                    endT = declaredEnd;
-                } else if (line + 1 < mLrcEntryList.size()) {
-                    endT = mLrcEntryList.get(line + 1).getTime();
-                } else {
-                    endT = startT + 4000L;
-                }
-                long span = Math.max(endT - startT, 200L);
-                mLineProgress = Math.max(0f, Math.min(1f, (time - startT) / (float) span));
                 mCurrentTime = time;
                 invalidate();
             }
@@ -546,11 +528,6 @@ public class LrcView extends View {
                 // 单行模式：超宽行从左侧开始，按本行时长缓慢滚到右侧
                 float scrollX = isShowTimeline ? 0f : getHorizontalScroll(entry, i);
                 drawText(canvas, entry, y, scrollX);
-                // 已唱部分：按像素宽度裁剪逐字填充
-                if (mLineProgress > 0f) {
-                    int secondH = entry.getSecondLayout() != null ? entry.getSecondLayout().getHeight() : 0;
-                    drawTextKtv(canvas, entry.getStaticLayout(), y - secondH / 2f, mLineProgress, entry, mSungTextColor, scrollX);
-                }
                 continue;
             } else if (isShowTimeline && i == centerLine) {
                 mLrcPaint.setColor(mTimelineTextColor);
@@ -627,103 +604,18 @@ public class LrcView extends View {
         long lead = 350L;
         long tail = 450L;
         long moving = Math.max(span - lead - tail, 400L);
-        float elapsedSec = (mCurrentTime - start - lead) / 1000f;
-        if (elapsedSec <= 0f) {
+        float t = (mCurrentTime - start - lead) / (float) moving;
+        if (t <= 0f) {
             return 0f;
         }
-        float density = getResources().getDisplayMetrics().density;
-        // 匀速滚动：至少 60dp/s，保证一句之内能滚到句尾（不会中途跳行）
-        float needSpeed = maxScroll / (moving / 1000f);
-        float speed = Math.max(60f * density, needSpeed);
-        float scrolled = elapsedSec * speed;
-        return Math.min(maxScroll, scrolled);
-    }
-
-    /**
-     * KTV 逐字填充：按【像素宽度】裁剪已唱区域，视线平浓。
-     *
-     * @param progress 本行演唱进度 0..1
-     */
-    private void drawTextKtv(Canvas canvas, StaticLayout staticLayout, float y, float progress, LrcEntry entry, int color) {
-        drawTextKtv(canvas, staticLayout, y, progress, entry, color, 0f);
-    }
-
-    private void drawTextKtv(Canvas canvas, StaticLayout staticLayout, float y, float progress, LrcEntry entry, int color, float scrollX) {
-        mLrcPaint.setColor(color);
-        canvas.save();
-        canvas.translate(mLrcPadding - scrollX, y - (staticLayout.getHeight() >> 1));
-
-        long[] wordTimes = entry == null ? null : entry.getWordTimes();
-        int[] wordIndices = entry == null ? null : entry.getWordIndices();
-        String text = entry == null ? null : entry.getText();
-
-        // 有字级时间：按每个字的真实时间推进（精确跟唱）
-        if (wordTimes != null && wordIndices != null && wordTimes.length > 0 && text != null) {
-            float charPos = 0f;
-            for (int i = 0; i < wordTimes.length; i++) {
-                long t0 = wordTimes[i];
-                long t1 = (i + 1 < wordTimes.length) ? wordTimes[i + 1] : t0 + 400L;
-                if (mCurrentTime >= t1) {
-                    charPos = (i + 1 < wordIndices.length) ? wordIndices[i + 1] : text.length();
-                } else if (mCurrentTime >= t0) {
-                    int s0 = Math.min(wordIndices[i], text.length());
-                    int s1 = (i + 1 < wordIndices.length) ? Math.min(wordIndices[i + 1], text.length()) : text.length();
-                    float f = (mCurrentTime - t0) / (float) Math.max(t1 - t0, 1L);
-                    charPos = s0 + (s1 - s0) * f;
-                    break;
-                } else {
-                    break;
-                }
-            }
-
-            int lineCount = staticLayout.getLineCount();
-            for (int ln = 0; ln < lineCount; ln++) {
-                int lStart = staticLayout.getLineStart(ln);
-                int lEnd = staticLayout.getLineEnd(ln);
-                if (charPos <= lStart) break;
-                float left = staticLayout.getLineLeft(ln);
-                float top = staticLayout.getLineTop(ln);
-                float bottom = staticLayout.getLineBottom(ln);
-                float right;
-                if (charPos >= lEnd) {
-                    right = staticLayout.getLineRight(ln);
-                } else {
-                    right = staticLayout.getPrimaryHorizontal((int) charPos);
-                }
-                canvas.save();
-                canvas.clipRect(left, top, Math.max(right, left + 0.01f), bottom);
-                staticLayout.draw(canvas);
-                canvas.restore();
-            }
-            canvas.restore();
-            return;
+        if (t >= 1f) {
+            return maxScroll;
         }
-
-        // 无字级时间：按行内总进度均分（原来的行为）
-        float totalWidth = 0f;
-        int lineCount = staticLayout.getLineCount();
-        float[] widths = new float[lineCount];
-        for (int ln = 0; ln < lineCount; ln++) {
-            widths[ln] = staticLayout.getLineWidth(ln);
-            totalWidth += widths[ln];
-        }
-        if (totalWidth <= 0f) {
-            canvas.restore();
-            return;
-        }
-        float remain = totalWidth * progress;
-        for (int ln = 0; ln < lineCount && remain > 0f; ln++) {
-            float take = Math.min(widths[ln], remain);
-            float left = staticLayout.getLineLeft(ln);
-            float top = staticLayout.getLineTop(ln);
-            float bottom = staticLayout.getLineBottom(ln);
-            canvas.save();
-            canvas.clipRect(left, top, left + take, bottom);
-            staticLayout.draw(canvas);
-            canvas.restore();
-            remain -= take;
-        }
-        canvas.restore();
+        // easeInOut：起步和收尾都减速，中段匀速——比线性更像自然阅读
+        float eased = t < 0.5f
+                ? 4f * t * t * t
+                : 1f - 4f * (1f - t) * (1f - t) * (1f - t);
+        return maxScroll * eased;
     }
 
     @Override
@@ -913,7 +805,7 @@ public class LrcView extends View {
 
         mAnimator = ValueAnimator.ofFloat(mOffset, offset);
         mAnimator.setDuration(duration);
-        mAnimator.setInterpolator(new LinearInterpolator());
+        mAnimator.setInterpolator(new DecelerateInterpolator(1.6f));
         mAnimator.addUpdateListener(animation -> {
             mOffset = (float) animation.getAnimatedValue();
             invalidate();

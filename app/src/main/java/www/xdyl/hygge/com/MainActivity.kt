@@ -706,11 +706,20 @@ class MainActivity : AppCompatActivity() {
             tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, targetSp)
             return
         }
+        // 补间过程中宽度在变，系统会反复判断是否溢出 → 省略号闪一下。动画期间先关掉 ellipsize。
+        val oldEllipsize = tv.ellipsize
+        tv.ellipsize = null
         val anim = android.animation.ValueAnimator.ofFloat(current, targetSp)
         anim.duration = duration
         anim.addUpdateListener {
             tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, it.animatedValue as Float)
         }
+        anim.addListener(object : android.animation.AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: android.animation.Animator) {
+                tv.ellipsize = oldEllipsize
+                tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, targetSp)
+            }
+        })
         anim.start()
     }
 
@@ -737,7 +746,7 @@ class MainActivity : AppCompatActivity() {
                 val now = AudioPlayer.currentPositionNow().toLong()
                 ph.lvSong.updateTime(now)
             }
-            handler.postDelayed(this, 100)
+            handler.postDelayed(this, 50)
         }
     }
 
@@ -769,11 +778,9 @@ class MainActivity : AppCompatActivity() {
         ph.sbSong.progress = 0
         val lrcFile = MusicPack.sidecar(song)
         songLyric = SongLyric.load(lrcFile)
-        // 歌词受「卡片滚动歌词」开关控制（扩展页，默认关闭）
-        val lyricOn = prefs.getBoolean("song_card_lyric", false)
-        ph.lvSong.visibility = if (lyricOn) View.VISIBLE else View.GONE
+        ph.lvSong.visibility = View.VISIBLE
         val lrcText = if (lrcFile.exists()) lrcFile.readText(Charsets.UTF_8) else ""
-        if (lyricOn && lrcText.isNotEmpty()) {
+        if (lrcText.isNotEmpty()) {
             // 读成文本交给 LrcView，内部 LrcUtils 会把同时间戳的两行合并成「原文 + 译词」
             ph.lvSong.loadLrc(lrcText)
         } else {
