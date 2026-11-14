@@ -411,16 +411,45 @@ class SettingsActivity : AppCompatActivity() {
         hideIp: Boolean,
         indicator: LoadingIndicator
     ) {
-        // 收起状态准备展开
+        runPingFlow(textView, indicator, "Pinging...") { executePing(address, hideIp) }
+    }
+
+    /**
+     * 统一的 ping 流程：展开结果框 → 显示 spinner → 执行 → 收起 spinner。
+     *
+     * 关键：**必须处理竞态**。
+     * MC ping 有时几十毫秒就返回，而结果框的展开动画要 1200ms。
+     * 如果只是"展开完成 → show()"，请求结果早已回来、spinner 也已经 hide 过，
+     * 之后回调再把它 show 出来，就永远停在一个转圈上。
+     *
+     * 这里用 done 标记做同步：请求结束时置 done=true；
+     * 展开回调若发现已完成，就跳过显示（或立刻反向收起）。
+     */
+    private fun runPingFlow(
+        textView: TextView,
+        indicator: LoadingIndicator,
+        loadingText: String,
+        work: suspend () -> String
+    ) {
         textView.layoutParams.height = 0
         textView.visibility = View.VISIBLE
-        textView.text = "Pinging..."
-        expandView(textView) {
-            val d = resources.displayMetrics.density
-            // 容器 20dp，图形本体 12dp：形变时最大帧也不会超出 View 边界被裁掉
-            indicator.indicatorSize = (12 * d).toInt()
+        textView.text = loadingText
+
+        // 上一次若还在跑，先复位
+        indicator.animate().cancel()
+        indicator.visibility = View.GONE
+        indicator.scaleX = 1f
+        indicator.scaleY = 1f
+        indicator.alpha = 1f
+
+        val done = java.util.concurrent.atomic.AtomicBoolean(false)
+        val d = resources.displayMetrics.density
+        indicator.indicatorSize = (12 * d).toInt()
+
+        // 显示 spinner（小尺寸：缩放幅度大一些才看得出"长出来"）
+        fun showSpinner() {
+            if (done.get()) return      // 已出结果，不要再点亮
             indicator.visibility = View.VISIBLE
-            // 小尺寸（12dp）在视觉上变化不明显，缩放幅度要大一些才看得出"长出来"
             indicator.scaleX = 0.2f
             indicator.scaleY = 0.2f
             indicator.alpha = 0f
@@ -428,17 +457,21 @@ class SettingsActivity : AppCompatActivity() {
                 .setDuration(220L)
                 .setInterpolator(android.view.animation.DecelerateInterpolator(1.6f))
                 .start()
-            // M3：必须 show() 才启动形变+旋转
-            indicator.show()
+            indicator.show()          // M3：必须 show() 才启动形变+旋转
         }
+
+        expandView(textView) { showSpinner() }
+
         scope.launch {
             try {
-                val result = withContext(Dispatchers.IO) { executePing(address, hideIp) }
+                val result = withContext(Dispatchers.IO) { work() }
+                done.set(true)
                 textView.text = result
-                // 结果内容更长，再次展开到新高度
                 expandView(textView)
             } finally {
-                // 退出同样放大缩小幅度，避免"小点突然消失"
+                done.set(true)
+                // 收起：若是被竞态提前点亮过，这里也会把它收掉
+                indicator.animate().cancel()
                 indicator.animate().scaleX(0.2f).scaleY(0.2f).alpha(0f)
                     .setDuration(200L)
                     .setInterpolator(android.view.animation.AccelerateInterpolator(1.8f))
@@ -481,42 +514,7 @@ class SettingsActivity : AppCompatActivity() {
 
     // MC 服务器 Ping：通过 Python + mcstatus 查询
     private fun pingMcServer() {
-        val tv = binding.tvPingMcResult
-        tv.layoutParams.height = 0
-        tv.visibility = View.VISIBLE
-        tv.text = "查询中..."
-        expandView(tv) {
-            val d = resources.displayMetrics.density
-            binding.ldPingMc.indicatorSize = (12 * d).toInt()
-            binding.ldPingMc.visibility = View.VISIBLE
-            binding.ldPingMc.scaleX = 0.2f
-            binding.ldPingMc.scaleY = 0.2f
-            binding.ldPingMc.alpha = 0f
-            binding.ldPingMc.animate().scaleX(1f).scaleY(1f).alpha(1f)
-                .setDuration(220L)
-                .setInterpolator(android.view.animation.DecelerateInterpolator(1.6f))
-                .start()
-            binding.ldPingMc.show()
-        }
-        scope.launch {
-            try {
-                val result = withContext(Dispatchers.IO) { executeMcPing() }
-                tv.text = result
-                expandView(tv)
-            } finally {
-                binding.ldPingMc.animate().scaleX(0.2f).scaleY(0.2f).alpha(0f)
-                    .setDuration(200L)
-                    .setInterpolator(android.view.animation.AccelerateInterpolator(1.8f))
-                    .withEndAction {
-                        binding.ldPingMc.hide()
-                        binding.ldPingMc.visibility = View.GONE
-                        binding.ldPingMc.scaleX = 1f
-                        binding.ldPingMc.scaleY = 1f
-                        binding.ldPingMc.alpha = 1f
-                    }
-                    .start()
-            }
-        }
+        runPingFlow(binding.tvPingMcResult, binding.ldPingMc, "查询中...") { executeMcPing() }
     }
 
     private fun executeMcPing(): String {
