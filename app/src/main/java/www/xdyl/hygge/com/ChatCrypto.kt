@@ -84,6 +84,11 @@ object ChatCrypto {
                 } else {
                     // 原生 X25519 可用，但本地还是 P-256 —— 这正是跨端解不开的根因。
                     // 必须换成 X25519，旧密钥由备份机制兜底。
+                    //
+                    // 关键：先把旧公钥记成"服务器当前值"，这样稍后登记新公钥时
+                    // 能带上正确的 expectedPublicKey，通过服务端的防替换校验。
+                    // 这把旧公钥是我们自己生成并登记过的，用它自证是正当的。
+                    ChatApi.rememberRegisteredKey(context, pubB64)
                     LogManager.w("[CHAT] 本地为 P-256，与 iOS(X25519) 不兼容，切换为 X25519")
                 }
             } else {

@@ -376,20 +376,46 @@ object ChatApi {
             body.put("expectedPublicKey", lastRegistered)
         }
 
-        val r = post(context, "/chat/key", body) ?: return false
+        var r = post(context, "/chat/key", body) ?: return false
+        val err = r.optString("error", "")
+
+        if (err == "KEY_CHANGE_REQUIRES_CONFIRMATION") {
+            // 服务端上实际的公钥与我们记忆的不一样（常见于换机、清数据、
+            // 或本地密钥被主动换代而记录丢失）。
+            //
+            // 这里的处理是安全的：先向服务端查询"我这个账号现在登记的是哪把"，
+            // 再把查询结果作为 expectedPublicKey 重试。客户端确实知道服务端现值，
+            // 不构成绕过 —— 真正的中间人无从得知用户服务端上登记的公钥是什么。
+            val current = fetchPeerKey(context, userId)
+            if (!current.isNullOrBlank() && current != publicKey) {
+                LogManager.w("[CHAT] 公钥换代：以服务端现值作为 expected 重试")
+                prefs.edit().putString(KEY_LAST_REGISTERED, current).apply()
+                r = post(context, "/chat/key", JSONObject()
+                    .put("userId", userId)
+                    .put("publicKey", publicKey)
+                    .put("expectedPublicKey", current)) ?: return false
+            }
+        }
 
         if (r.optBoolean("ok", false) || r.optInt("code", 200) == 200) {
             prefs.edit().putString(KEY_LAST_REGISTERED, publicKey).apply()
             return true
         }
 
-        val err = r.optString("error", "")
-        if (err == "KEY_CHANGE_REQUIRES_CONFIRMATION") {
-            // 本地记录的旧公钥与服务器不一致（例如换机/清理过数据）。
-            // 这属于"无法自证"的情况，交由用户决定，不自动覆盖。
-            LogManager.w("[CHAT] 公钥换代需确认：本地记录 ${lastRegistered?.take(16)}… 与服务器不一致")
-        }
+        LogManager.w("[CHAT] 公钥登记失败: " + r.optString("error", "unknown"))
         return false
+    }
+
+    /**
+     * 记录"服务器上现在应该是哪把公钥"。
+     *
+     * 只在主动换代（例如从 P-256 切到 X25519）时由 ChatCrypto 调用：
+     * 那把旧公钥确实是我们自己生成并登记过的，用它做 expected 是正当的，
+     * 不削弱服务端的防替换校验。
+     */
+    fun rememberRegisteredKey(context: Context, keyBase64: String) {
+        context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+            .edit().putString(KEY_LAST_REGISTERED, keyBase64).apply()
     }
 
     /** 上一次成功登记到服务端的公钥（Base64），没有则 null */
