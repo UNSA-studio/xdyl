@@ -1,49 +1,49 @@
-# NU Chat — Architecture & Recovery Design
+# NU 私聊 —— 架构与密钥恢复设计
 
-> Status: **v1 implemented on Android; iOS keeps v2.** Server is the single
-> source of truth for platform → node mapping. Live Worker version: see
-> `wrangler deploy` output. Canonical server source: `cloudflare/nu-chat-worker/`
-> (deployed from the VPS copy at `/root/nu-chat/backend/nu-chat-worker` with
-> `npx wrangler deploy -c wrangler.production.jsonc`).
+> 现状：**Android 走 v1（legacy），iOS 保持 v2**。平台的「用哪个节点」由服务端
+> 说了算。服务端正式源码在 `cloudflare/nu-chat-worker/`，实际部署自 VPS 上的
+> 副本 `/root/nu-chat/backend/nu-chat-worker`（`npx wrangler deploy -c wrangler.production.jsonc`）。
 
-## 1. Two protocols, one data space
+## 一、两套协议，一份数据
 
-Android speaks **v1 (legacy)**, iOS speaks **v2**. Both hit the same Worker at
-`https://nu-pe-chat.cc.cd`:
+Android 说 **v1（legacy）**，iOS 说 **v2**，两者打到同一个 Worker：
 
 ```
-Android →  https://nu-pe-chat.cc.cd/Android/chat/…   → v1 handler (legacy.js)
-iOS     →  https://nu-pe-chat.cc.cd/iOS/chat/v2/…    → v2 handler (v2.js)
+Android →  https://nu-pe-chat.cc.cd/Android/chat/…   → 走 legacy.js
+iOS     →  https://nu-pe-chat.cc.cd/iOS/chat/v2/…    → 走 v2.js
 ```
 
-The `/Android/` and `/iOS/` prefixes are stripped at the top of the fetch
-handler (`index.js`), so both protocols share one router. Data flows into the
-same D1 tables keyed by `subject` (derived from the main-station account id),
-so **a user registered on Android is reachable from iOS and vice versa** —
-neither client needs to implement the other's protocol. This is the
-"server-side conversion" model the project was designed around.
+`/Android/`、`/iOS/` 这两个前缀在 fetch 入口（`index.js`）就被剥掉，所以两套
+协议共用一套路由。数据都写进同一批 D1 表，键是 `subject`（由主站账号 ID
+派生），因此**某人在 Android 上登记过，iOS 就能找到他；反过来也一样**——两端
+都不必去兼容对方的协议。这就是当初「协议不同、数据互通、转换在服务端做」的
+设计。
 
-### GET-as-POST alias
+### GET 伪装成 POST（`__alias`）
 
-Networks that RST plain GETs can send `POST /…?__alias=1` instead; the Worker
-rewrites it to the real verb before routing. Implemented in `index.js`
-(`new Request(url, { method: 'GET', headers })` — cloning via `Request(req)`
-throws in Workers, do not "simplify" it back).
+某些网络会直接 RST 明文 GET，客户端可改发 `POST /…?__alias=1`，Worker 在路由
+之前把它还原成真正的动词。实现见 `index.js`：
 
-## 2. First-launch device registration
-
-Purpose: a fresh install must learn "which chat node do I use" from the server,
-and **after reinstalls it must be recognized instantly, with no user action**.
-
-```
-device_code = SHA-256("nu-device-v1" | user_id | platform)   // 64 hex
+```js
+req = new Request(url.toString(), { method: 'GET', headers: req.headers });
 ```
 
-- Derived from the main-station account id (`my_user_id`), never stored.
-- Same account ⇒ same code ⇒ **reinstall yields the same code**; the server
-  sees an existing row and answers immediately.
-- Registering is fire-and-forget: on profile refresh (`MainActivity`), a
-  background thread calls `ChatDeviceRegistry.ensureRegistered()`:
+**不要**「简化」回 `new Request(req, { method: 'GET' })`——在 Workers 里克隆
+一个带 body 的 POST 成 GET 会抛异常，结果是所有 POST 都返回 1101。
+
+## 二、首次启动的设备登记
+
+目的：新装的应用必须知道「我该连哪个私聊节点」，而且**重装之后要立刻被认
+出来，不需要用户做任何操作**。
+
+```
+device_code = SHA-256("nu-device-v1" | user_id | platform)   // 64 位 hex
+```
+
+- 由主站账号 ID（`my_user_id`）派生，**不落盘**。
+- 同一账号 ⇒ 同一设备码 ⇒ 重装算出来的码不变，服务端查到已有行就直接回话。
+- 登记属于「顺手做的事」：`MainActivity` 刷新资料时会起一个后台线程调
+  `ChatDeviceRegistry.ensureRegistered()`：
 
 ```
 POST /Android/chat/device/register
@@ -51,90 +51,84 @@ POST /Android/chat/device/register
   →  { ok, data: { chat_base, entry_prefix, protocol, … } }
 ```
 
-- Server stores/refreshes `device_registry(subject, device_code, …)`.
-- Response `chat_base` is written back to the `chat_server` pref; all
-  subsequent chat traffic targets it.
-- Idempotent: a shared-preferences flag prevents repeat calls; logout clears
-  the flag (`ChatDeviceRegistry.reset`) so the next account re-registers.
-- If registration fails (offline, ECH-less old Android being RST'd), nothing
-  breaks — the built-in default base is already correct; it just retries on
-  the next profile refresh.
+- 服务端写入/刷新 `device_registry(subject, device_code, …)`。
+- 返回的 `chat_base` 会写回 `chat_server` 偏好，之后所有私聊流量都走它。
+- 幂等：本地用一个偏好位拦住重复请求；登出时 `ChatDeviceRegistry.reset`
+  清掉标志，换号后会重新登记。
+- 登记失败（离线、或者老系统没有 ECH 栈被 RST）不影响使用——内置默认地址
+  本来就是对的，下次刷新资料再试。
 
-**Trade-off worth knowing:** because the code derives from the account, two
-different phones running the same account produce the same code and share one
-registry row. Per-physical-device identity would require a locally generated
-random code, which contradicts the reinstall-recognition requirement. We chose
-reinstall-recognition.
+**一个要清楚的取舍**：设备码由账号派生，所以同一账号在两台手机上算出来的
+码相同，登记表里算同一台设备。要做到「每台物理设备独立」，设备码就必须本地
+随机生成并持久化，但那样重装就换码，与「重装秒认」矛盾。当前选择的是
+**重装秒认**。
 
-## 3. Private key backup (B1 + B3)
+## 三、私钥备份（B1 + B3）
 
-End-to-end encryption is never weakened: **the server only ever holds
-ciphertext.**
+端到端加密不降级：**服务器从头到尾只拿到密文**。
 
 ```
-payload = [u32 priv_len][u32 pub_len][PKCS#8 priv][SPKI pub]
+payload = [u32 私钥长度][u32 公钥长度][PKCS#8 私钥][SPKI 公钥]
 
-KEK     = PBKDF2-HMAC-SHA256(secret, salt, 210000 iterations, 256-bit)
-blob    = base64(salt[16] | nonce[12] | AES-256-GCM(KEK, payload))
+KEK  = PBKDF2-HMAC-SHA256(secret, salt, 210000 次, 256 位)
+blob = base64(salt[16] | nonce[12] | AES-256-GCM(KEK, payload))
 ```
 
-Two blobs are uploaded per user (`PUT /chat/key-backup`):
+每个用户上传两份密文（`PUT /chat/key-backup`）：
 
-| blob      | secret                          | purpose                        |
-|-----------|---------------------------------|--------------------------------|
-| `pwd_blob`  | login password                  | everyday recovery path (B1)    |
-| `code_blob` | recovery code (20 chars, Crockford-ish alphabet, no 0/O/1/I/L) | password-loss recovery (B3) |
+| 密文 | 用什么加密 | 用途 |
+|---|---|---|
+| `pwd_blob`  | 登录密码 | 日常恢复（B1） |
+| `code_blob` | 恢复码（20 位，字符集去掉了 0/O/1/I/L） | 忘记密码时兜底（B3） |
 
-The server additionally stores `code_hash = SHA-256(normalized code)` so the
-"forgot password" flow can locate the row (`POST /chat/key-backup/lookup`)
-without ever seeing the code itself.
+服务端另外存 `code_hash = SHA-256(规整化后的恢复码)`，只用于「忘记密码」时
+定位记录（`POST /chat/key-backup/lookup`），它本身不能反推出恢复码。
 
-Recovery (`ChatKeyBackupService`):
+恢复逻辑（`ChatKeyBackupService`）：
 
-- `restoreWithPassword(ctx, password)` — GET backup, decrypt `pwd_blob`,
-  install keypair, re-register public key.
-- `restoreWithCode(ctx, code)` — normalize input (uppercase, strip
-  separators), hash it, lookup, decrypt `code_blob`, install.
+- `restoreWithPassword(ctx, password)` —— 取备份、解密 `pwd_blob`、装回密钥、
+  重新登记公钥。
+- `restoreWithCode(ctx, code)` —— 规整输入（转大写、去分隔符）、取哈希、查表、
+  解密 `code_blob`、装回密钥。
 
-Recovery codes are shown **once** at first backup (dialog + auto-copy to
-clipboard) and re-backups reuse the existing code so a saved code never
-silently expires.
+恢复码**只在首次备份时展示一次**（弹窗 + 自动复制到剪贴板）；重复备份沿用
+已有恢复码，不会让已经抄下来的码悄悄失效。
 
-## 4. Dialogs
+## 四、弹窗规范
 
-All user-facing dialogs go through `AppDialogs`
-(`MaterialAlertDialogBuilder` + `R.style.DialogAnimation`): `tip`, `confirm`,
-`choose`, and `input` (single-line, password-capable). Do **not** instantiate
-`androidx.appcompat.app.AlertDialog.Builder` directly — that was the reason
-the key-backup dialogs looked off-theme; they were migrated in commit
-`8efc967`.
+所有面向用户的弹窗都走 `AppDialogs`（`MaterialAlertDialogBuilder` +
+`R.style.DialogAnimation`），现有 `tip`、`confirm`、`choose`，以及补齐的
+`input`（单行输入，支持密码模式）。
 
-## 5. Deployment
+**不要**直接 new `androidx.appcompat.app.AlertDialog.Builder`——密钥备份那几个
+弹窗当初就是这么写的，结果没有走应用的深色主题和转场动画，已在提交
+`8efc967` 里全部迁移。
 
-```
-# on the VPS (holds the canonical source + wrangler OAuth)
+## 五、部署
+
+```bash
+# 在 VPS 上（正式源码 + wrangler 授权都在那儿）
 cd /root/nu-chat/backend/nu-chat-worker
-# schema changes: add migrations/00NN_*.sql, then
+
+# 改表结构：新增 migrations/00NN_*.sql 后执行
 npx wrangler d1 migrations apply nu-chat-db --remote -c wrangler.production.jsonc
+
+# 发布
 npx wrangler deploy -c wrangler.production.jsonc
 ```
 
-Bindings after deploy: `DB` (D1 nu-chat-db), `BARK_ENABLED`,
-`BARK_ENCRYPTION_KEY` (secret), `CURSOR_SECRET` (secret). Secrets survive
-deploys; never re-enter them.
+部署后的绑定：`DB`（D1 `nu-chat-db`）、`BARK_ENABLED`、
+`BARK_ENCRYPTION_KEY`（secret）、`CURSOR_SECRET`（secret）。secret 不会因为
+重新部署而丢失，不需要重新录入。
 
-The repo's `cloudflare/nu-chat-worker/` mirrors the VPS source. When editing
-server code, edit here **or** there and copy back — the VPS copy is what
-actually deploys, so after changes on either side, sync both.
+仓库里的 `cloudflare/nu-chat-worker/` 是 VPS 源码的镜像。改服务端代码时改哪
+边都行，但**真正部署的是 VPS 那份**，改完记得两边同步。
 
-## 6. Current limits / known issues
+## 六、当前限制与已知问题
 
-- The Android client on this test phone (SDK 29, no ECH network stack) gets
-  RST when connecting directly to `nu-pe-chat.cc.cd`; the app has endpoint rotation + the
-  `__alias` escape hatch, so it should still connect, but first-contact
-  registration may need a retry.
-- Old undecryptable history (sent before key rotation) stays undecryptable by
-  design — it renders as the "无法解密" error card with a 核对密钥 action in
-  the client.
-- The recovery-code sheet in the **iOS** client is rendered by the iOS app's
-  own components; nothing in this repo controls its styling.
+- 这台测试用的 Android 是 SDK 29，没有 ECH 网络栈，直连 `nu-pe-chat.cc.cd`
+  会被 RST；客户端有端点轮换和 `__alias` 逃生通道，正常情况下仍能连上，
+  但首次登记可能需要重试。
+- 密钥轮换之前的旧消息解不开，这是端到端加密的物理事实，客户端会渲染成
+  「无法解密」的错误卡片（带「核对密钥」入口）。
+- **iOS 客户端**的恢复码界面由 iOS 自己的组件渲染，本仓库管不到它的样式。
