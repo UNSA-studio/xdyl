@@ -43,4 +43,22 @@ object EchTls {
         echConfig: ByteArray,
         rawRequest: ByteArray
     ): ByteArray?
+
+    /**
+     * 生成一对 X25519 密钥，写进传入的 32 字节数组。
+     *
+     * 用途：Android SDK < 33 没有系统 X25519，只能退回 P-256，而 iOS 端是
+     * X25519 —— 两条曲线算不出同一个共享密钥，跨端必然解不开。这里直接借
+     * BoringSSL（ECH 已经在用）补齐。
+     *
+     * @return false 表示原生库不可用或随机数失败，调用方应回退
+     */
+    external fun x25519Generate(privOut: ByteArray, pubOut: ByteArray): Boolean
+
+    /**
+     * 用自己的 32 字节私钥和对方 32 字节公钥算共享密钥。
+     *
+     * @return 32 字节共享密钥；公钥非法（低阶点）或原生库不可用时返回 null
+     */
+    external fun x25519Shared(priv: ByteArray, peerPub: ByteArray): ByteArray?
 }

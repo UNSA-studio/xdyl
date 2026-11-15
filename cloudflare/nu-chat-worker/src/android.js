@@ -41,7 +41,10 @@ export async function legacySend(db,env,from,b,now,authGuard=null,sourceKeyId=nu
     if(!key)fail(409,'KEYSET_CHANGED');selected=await legacyPeer(db,from,key.algorithm);
     if(selected.key_id!==sourceKeyId)fail(409,'KEYSET_CHANGED');
   }
-  const recipient=await legacyPeer(db,b.to,selected.algorithm);
+  // 关键：不能拿发送方的算法去要求接收方。两端允许算法不同（Android X25519 /
+  // iOS X25519 或 P-256），真正能互通的前提是双方都支持同一种。这里只按
+  // 接收方自己登记的算法取公钥，让客户端拿到真实公钥后自行判断能否协商。
+  const recipient=await legacyPeer(db,b.to);
   if(b.recipient_public_key!==undefined&&b.recipient_public_key!==recipient.public_key)fail(409,'KEYSET_CHANGED');
   const algorithm=selected.algorithm;
   if(!selected.subject||!recipient.subject){

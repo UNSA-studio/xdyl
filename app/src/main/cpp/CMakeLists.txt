@@ -9,7 +9,9 @@ if(EXISTS ${BS_DIR}/libssl.so)
     add_library(crypto SHARED IMPORTED)
     set_target_properties(crypto PROPERTIES IMPORTED_LOCATION ${BS_DIR}/libcrypto.so)
 
-    add_library(echjni SHARED ech_jni.c)
+    # ech_jni.c    : ECH-TLS 通道
+    # x25519_jni.c : X25519 密钥协商（补 Android <13 缺失的能力，供与 iOS 互通）
+    add_library(echjni SHARED ech_jni.c x25519_jni.c)
     target_include_directories(echjni PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/boringssl/include)
     target_link_libraries(echjni ssl crypto log)
 else()
