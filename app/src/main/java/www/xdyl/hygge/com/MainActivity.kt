@@ -1882,38 +1882,32 @@ class MainActivity : AppCompatActivity() {
      */
     private fun showRecoveryCodeDialog(code: String) {
         val formatted = ChatKeyBackup.formatCode(code)
-        val message = buildString {
-            appendLine("聊天密钥已加密备份到服务器。")
-            appendLine()
-            appendLine("请把下面这串恢复码抄下来，离线保存：")
-            appendLine()
-            appendLine(formatted)
-            appendLine()
-            appendLine("它的作用：以后卸载重装、或忘记登录密码时，")
-            appendLine("凭这串码就能把聊天密钥恢复回来。")
-            appendLine()
-            appendLine("注意：服务器只存加密后的备份，没有这串码、")
-            appendLine("也没有密码的话，任何人都无法恢复你的私钥。")
-        }
+        // 弹窗出现的同时把码放进剪贴板，用户直接去粘贴保存即可
+        val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                as android.content.ClipboardManager
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("恢复码", formatted))
+        Toast.makeText(this, "恢复码已复制到剪贴板", Toast.LENGTH_SHORT).show()
 
-        val tv = android.widget.TextView(this).apply {
-            text = message
-            setPadding(48, 32, 48, 0)
-            textSize = 13f
-        }
+        AppDialogs.tip(
+            this,
+            title = "请保存恢复码",
+            message = "聊天密钥已加密备份到服务器。
 
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("请保存恢复码")
-            .setView(tv)
-            .setPositiveButton("我已抄好") { d, _ -> d.dismiss() }
-            .setNegativeButton("复制") { d, _ ->
-                val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE)
-                        as android.content.ClipboardManager
-                cm.setPrimaryClip(android.content.ClipData.newPlainText("恢复码", formatted))
-                Toast.makeText(this, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
-                d.dismiss()
-            }
-            .show()
+" +
+                    "请把下面这串恢复码抄下来，离线保存：
+
+" +
+                    formatted + "
+
+" +
+                    "它的作用：以后卸载重装、或忘记登录密码时，" +
+                    "凭这串码就能把聊天密钥恢复回来。
+
+" +
+                    "注意：服务器只存加密后的备份，没有这串码、" +
+                    "也没有密码的话，任何人都无法恢复你的私钥。",
+            button = "我已抄好"
+        )
     }
 
     /** QQ 登录：内置 WebView 打开授权页，完成后自动返回 */

@@ -1379,107 +1379,80 @@ object FeatureDialogs {
      * 所以这里提供一个独立入口，用户自己输入一次密码即可。
      */
     private fun showKeyBackup(activity: AppCompatActivity) {
-        val ctx = activity
-        val input = android.widget.EditText(ctx).apply {
-            hint = "请输入当前登录密码"
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or
-                    android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-        }
-
-        androidx.appcompat.app.AlertDialog.Builder(ctx)
-            .setTitle("聊天密钥备份")
-            .setMessage("会把你的聊天私钥用这个密码加密后存到服务器。\n" +
+        AppDialogs.input(
+            activity,
+            title = "聊天密钥备份",
+            message = "会把你的聊天私钥用这个密码加密后存到服务器。\n" +
                     "服务器只拿到密文，解不开。\n\n" +
-                    "备份后会生成一串恢复码，请务必抄下来。")
-            .setView(input)
-            .setPositiveButton("备份") { d, _ ->
-                val pwd = input.text?.toString().orEmpty()
-                if (pwd.isEmpty()) {
-                    Toast.makeText(ctx, "密码不能为空", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
+                    "备份后会生成一串恢复码，请务必抄下来。",
+            hint = "请输入当前登录密码",
+            positive = "备份"
+        ) { pwd ->
+            if (pwd.isEmpty()) {
+                Toast.makeText(activity, "密码不能为空", Toast.LENGTH_SHORT).show()
+                return@input
+            }
+            activity.lifecycleScope.launch {
+                val oldCode = ChatKeyBackupService.savedCode(activity)
+                val code = withContext(Dispatchers.IO) {
+                    ChatKeyBackupService.backup(activity, pwd)
                 }
-                d.dismiss()
-                ctx.lifecycleScope.launch {
-                    val oldCode = ChatKeyBackupService.savedCode(ctx)
-                    val code = withContext(Dispatchers.IO) {
-                        ChatKeyBackupService.backup(ctx, pwd)
-                    }
-                    if (code == null) {
-                        Toast.makeText(ctx, "备份失败：密码不对或网络异常", Toast.LENGTH_LONG).show()
-                    } else if (oldCode != null) {
-                        Toast.makeText(ctx, "备份已更新（恢复码不变）", Toast.LENGTH_SHORT).show()
-                    } else {
-                        showRecoveryCode(ctx, code)
-                    }
+                if (code == null) {
+                    Toast.makeText(activity, "备份失败：密码不对或网络异常", Toast.LENGTH_LONG).show()
+                } else if (oldCode != null) {
+                    Toast.makeText(activity, "备份已更新（恢复码不变）", Toast.LENGTH_SHORT).show()
+                } else {
+                    showRecoveryCode(activity, code)
                 }
             }
-            .setNegativeButton("取消", null)
-            .show()
+        }
     }
 
     /** 用恢复码恢复密钥 */
     private fun showRestoreByCode(activity: AppCompatActivity) {
-        val ctx = activity
-        val input = android.widget.EditText(ctx).apply {
-            hint = "XXXX-XXXX-XXXX-XXXX-XXXX"
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or
-                    android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-        }
-
-        androidx.appcompat.app.AlertDialog.Builder(ctx)
-            .setTitle("用恢复码恢复密钥")
-            .setMessage("输入备份时拿到的恢复码。\n\n" +
-                    "恢复成功后，之前的聊天记录就能正常解密了。")
-            .setView(input)
-            .setPositiveButton("恢复") { d, _ ->
-                val code = input.text?.toString().orEmpty()
-                if (code.isBlank()) {
-                    Toast.makeText(ctx, "请输入恢复码", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
+        AppDialogs.input(
+            activity,
+            title = "用恢复码恢复密钥",
+            message = "输入备份时拿到的恢复码。\n\n" +
+                    "恢复成功后，之前的聊天记录就能正常解密了。",
+            hint = "XXXX-XXXX-XXXX-XXXX-XXXX",
+            positive = "恢复"
+        ) { code ->
+            if (code.isBlank()) {
+                Toast.makeText(activity, "请输入恢复码", Toast.LENGTH_SHORT).show()
+                return@input
+            }
+            activity.lifecycleScope.launch {
+                val ok = withContext(Dispatchers.IO) {
+                    ChatKeyBackupService.restoreWithCode(activity, code)
                 }
-                d.dismiss()
-                ctx.lifecycleScope.launch {
-                    val ok = withContext(Dispatchers.IO) {
-                        ChatKeyBackupService.restoreWithCode(ctx, code)
-                    }
-                    if (ok) {
-                        Toast.makeText(ctx, "密钥已恢复，重新打开私聊即可", Toast.LENGTH_LONG).show()
-                    } else {
-                        Toast.makeText(ctx, "恢复失败：恢复码不对或没有备份", Toast.LENGTH_LONG).show()
-                    }
+                if (ok) {
+                    Toast.makeText(activity, "密钥已恢复，重新打开私聊即可", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(activity, "恢复失败：恢复码不对或没有备份", Toast.LENGTH_LONG).show()
                 }
             }
-            .setNegativeButton("取消", null)
-            .show()
+        }
     }
 
     /** 展示恢复码（手动备份首次生成时调用） */
-    private fun showRecoveryCode(ctx: android.content.Context, code: String) {
+    private fun showRecoveryCode(activity: AppCompatActivity, code: String) {
         val formatted = ChatKeyBackup.formatCode(code)
-        val tv = android.widget.TextView(ctx).apply {
-            text = buildString {
-                appendLine("备份完成。请把这串恢复码抄下来，离线保存：")
-                appendLine()
-                appendLine(formatted)
-                appendLine()
-                appendLine("忘记登录密码、或重装应用时，凭它就能恢复密钥。")
-                appendLine("服务器只有密文，没有这串码谁也恢复不了。")
-            }
-            setPadding(48, 32, 48, 0)
-            textSize = 13f
-        }
-        androidx.appcompat.app.AlertDialog.Builder(ctx)
-            .setTitle("请保存恢复码")
-            .setView(tv)
-            .setPositiveButton("我已抄好", null)
-            .setNegativeButton("复制") { d, _ ->
-                val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
-                        as android.content.ClipboardManager
-                cm.setPrimaryClip(android.content.ClipData.newPlainText("恢复码", formatted))
-                Toast.makeText(ctx, "已复制", Toast.LENGTH_SHORT).show()
-                d.dismiss()
-            }
-            .show()
+        AppDialogs.tip(
+            activity,
+            title = "请保存恢复码",
+            message = "备份完成。请把这串恢复码抄下来，离线保存：\n\n" +
+                    formatted + "\n\n" +
+                    "忘记登录密码、或重装应用时，凭它就能恢复密钥。\n" +
+                    "服务器只有密文，没有这串码谁也恢复不了。",
+            button = "我已抄好"
+        )
+        // 复制动作不占弹窗按钮位：提示框出现的同时直接把码放进剪贴板，
+        // 用户想存就长按粘贴，不需要额外点击。
+        val cm = activity.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                as android.content.ClipboardManager
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("恢复码", formatted))
+        Toast.makeText(activity, "恢复码已复制到剪贴板", Toast.LENGTH_SHORT).show()
     }
 
     // ==================== 动作实现 ====================
