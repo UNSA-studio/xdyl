@@ -615,7 +615,7 @@ object ChatPage {
                 stale.forEach { m ->
                     if (!ChatIdentity.isCurrent(activity, owner)) return@Thread
                     val ok = try {
-                        val key = runCatching { ensureSessionKey(activity, peerKey, myName) }.getOrNull()
+                        val key = ensureSessionKey(activity, peerKey, myName)
                         if (key == null) {
                             ChatStore.updateMessageState(activity, peerKey, m.id, "failed", owner)
                             changed = true
@@ -986,7 +986,7 @@ object ChatPage {
                     return saved
                 }
                 val key = if (keyAttempts.containsKey(peer)) keyAttempts[peer] else {
-                    runCatching { ensureSessionKey(activity, peer, owner.username) }.getOrNull().also { keyAttempts[peer] = it }
+                    ensureSessionKey(activity, peer, owner.username).also { keyAttempts[peer] = it }
                 }
                 val plain = key?.let { ChatCrypto.decrypt(it, o.optString("cipher")) }
                 if (plain == null) {

@@ -288,14 +288,23 @@ object ChatApi {
 
             // ① ECH（BoringSSL，加密 SNI）：绕过明文 SNI 阻断，HTTPS 端点首选
             if (ep.startsWith("https://", ignoreCase = true) && EchTls.available()) {
-                val echResp = EchChannel.request(
-                    context,
-                    ep,
-                    PLATFORM_PREFIX + path,
-                    method,
-                    httpHeaders,
-                    if (method == "GET") null else (body ?: JSONObject()).toString().toByteArray(Charsets.UTF_8)
-                )
+                // native TLS 失败会抛异常（TLS handshake aborted / Connection reset）。
+                // 以前没有兜住，异常直接穿出 call()，整条请求链变成 null，
+                // 上层只能显示"服务器未返回公钥"，把网络问题误报成账号问题。
+                val echResp = try {
+                    EchChannel.request(
+                        context,
+                        ep,
+                        PLATFORM_PREFIX + path,
+                        method,
+                        httpHeaders,
+                        if (method == "GET") null else (body ?: JSONObject()).toString().toByteArray(Charsets.UTF_8)
+                    )
+                } catch (e: Throwable) {
+                    LogManager.w("[CHAT] " + method + " " + PLATFORM_PREFIX + path + " @"
+                            + shortEp(ep) + " ECH 失败: " + (e.message ?: e.javaClass.simpleName))
+                    null
+                }
                 if (echResp != null) {
                     code = echResp.code
                     text = echResp.body
@@ -377,8 +386,13 @@ object ChatApi {
         }
 
         var r = post(context, "/chat/key", body) ?: return false
-        val err = r.optString("error", "")
+        var err = r.optString("error", "")
 
+        // 409 有两种来源，都必须处理：
+        //   a) 本地记得旧公钥 -> 带 expected 重发即可（正常换代）
+        //   b) 本地没有记忆（首次安装/清过数据/换机）-> 请求根本没带 expected，
+        //      服务端必然回 KEY_CHANGE_REQUIRES_CONFIRMATION。
+        // 这正是跨端一直登记不上的真正原因：本机 chat_last_registered_key 为空。
         if (err == "KEY_CHANGE_REQUIRES_CONFIRMATION") {
             // 服务端上实际的公钥与我们记忆的不一样（常见于换机、清数据、
             // 或本地密钥被主动换代而记录丢失）。
@@ -394,6 +408,9 @@ object ChatApi {
                     .put("userId", userId)
                     .put("publicKey", publicKey)
                     .put("expectedPublicKey", current)) ?: return false
+                err = r.optString("error", "")
+            } else if (current.isNullOrBlank()) {
+                LogManager.w("[CHAT] 公钥换代失败：查不到服务端现值（" + userId + "）")
             }
         }
 
@@ -486,7 +503,7 @@ object ChatApi {
             .put("cipher", cipher)
             .put("ts", ts)) ?: return false to "NETWORK"
         if (r.optBoolean("ok", false) || r.optInt("code", 0) == 200) return true to ""
-        val err = r.optString("error", "")
+        var err = r.optString("error", "")
         return false to (if (err.isBlank()) "UNKNOWN" else err)
     }
 
