@@ -11,8 +11,12 @@
  *  公钥格式：32 字节原始 u 坐标。
  * ============================================================================
  */
+#include <jni.h>
+#include <android/log.h>
 #include <openssl/curve25519.h>
 #include <openssl/rand.h>
+
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "echjni", __VA_ARGS__)
 
 /** 生成一对 X25519 密钥。成功返回 true。 */
 JNIEXPORT jboolean JNICALL
