@@ -303,7 +303,10 @@ object ChatApi {
             if (code < 0) try {
                     val rb = Request.Builder().url(url)
                     httpHeaders.forEach { (k, v) -> rb.header(k, v) }
-                    rb.post((payload ?: ByteArray(0)).toRequestBody(jsonType))
+                    // 必须用真实动词：原先无条件 .post()，导致 PUT 请求在回退分支
+                    // 被发成 POST —— 服务端按 method 分流会 404。
+                    val reqBody = (payload ?: ByteArray(0)).toRequestBody(jsonType)
+                    rb.method(httpMethod, if (httpMethod == "GET") null else reqBody)
                     client.newCall(rb.build()).execute().use { resp ->
                         code = resp.code
                         text = resp.body?.string() ?: ""

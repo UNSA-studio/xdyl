@@ -145,7 +145,9 @@ export async function legacy(req, env, db, url, deps) {
   // ---------------- Private key backup (B1 password + B3 recovery code) ----------------
   // Both blobs are client-side PBKDF2/AES-GCM ciphertext. The server stores them
   // but cannot decrypt: no password, no recovery code. E2EE is not weakened.
-  if (path === '/chat/key-backup' && req.method === 'PUT') {
+  // Accept PUT (proper) and POST (fallback path when a proxy degrades PUT).
+  // Both are idempotent upserts, so the verb carries no extra meaning.
+  if (path === '/chat/key-backup' && (req.method === 'PUT' || req.method === 'POST')) {
     query(url, []);
     const b = object(await body(req), ['pwd_blob', 'code_blob', 'code_hash', 'kdf']);
     text(b.pwd_blob, 8000); text(b.code_blob, 8000); text(b.kdf, 64);
