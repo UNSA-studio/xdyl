@@ -43,6 +43,8 @@ class SessionStore(private val context: Context) {
         ChatPage.resetForAccountChange()
         // 换号后设备码随之改变，清掉登记标记让下次登录重新登记新账号
         ChatDeviceRegistry.reset(context)
+        // 换号后公钥登记记录失效，否则会把上一个账号的旧公钥当成 expected 发出去
+        ChatApi.clearRegisteredKey(context)
     }
 
     fun logout() = synchronized(sessionLock) {

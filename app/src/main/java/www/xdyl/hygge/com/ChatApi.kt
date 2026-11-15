@@ -38,6 +38,9 @@ object ChatApi {
 
     const val PREF_SERVER = "chat_server"
 
+    /** 上次成功登记的公钥，换代时作为 expectedPublicKey */
+    private const val KEY_LAST_REGISTERED = "chat_last_registered_key"
+
     /**
      * 平台路径前缀。
      *
@@ -350,12 +353,54 @@ object ChatApi {
     private fun post(context: Context, path: String, body: JSONObject): JSONObject? =
         call(context, "POST", path, body)
 
-    /** 登记本机公钥（身份来自 Bearer 头） */
+    /**
+     * 登记本机公钥（身份来自 Bearer 头）。
+     *
+     * 服务端有一道保护：如果本地要登记的公钥与服务器上现有的不同，
+     * 必须附带"我认为服务器上现在是哪把"（expectedPublicKey），
+     * 否则拒绝（409 KEY_CHANGE_REQUIRES_CONFIRMATION）—— 防止中间人
+     * 静默替换公钥。
+     *
+     * 所以这里记住上一次成功登记的公钥，主动换代时把它作为 expected 带上。
+     * 这是正常的密钥轮换流程，不是绕过安全校验。
+     */
     fun uploadKey(context: Context, userId: String, publicKey: String): Boolean {
-        val r = post(context, "/chat/key", JSONObject()
+        val prefs = context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+        val lastRegistered = prefs.getString(KEY_LAST_REGISTERED, null)
+
+        val body = JSONObject()
             .put("userId", userId)
-            .put("publicKey", publicKey)) ?: return false
-        return r.optBoolean("ok", false) || r.optInt("code", 0) == 200
+            .put("publicKey", publicKey)
+        // 只有"确实换过"才带 expected，首次登记不带
+        if (lastRegistered != null && lastRegistered != publicKey) {
+            body.put("expectedPublicKey", lastRegistered)
+        }
+
+        val r = post(context, "/chat/key", body) ?: return false
+
+        if (r.optBoolean("ok", false) || r.optInt("code", 200) == 200) {
+            prefs.edit().putString(KEY_LAST_REGISTERED, publicKey).apply()
+            return true
+        }
+
+        val err = r.optString("error", "")
+        if (err == "KEY_CHANGE_REQUIRES_CONFIRMATION") {
+            // 本地记录的旧公钥与服务器不一致（例如换机/清理过数据）。
+            // 这属于"无法自证"的情况，交由用户决定，不自动覆盖。
+            LogManager.w("[CHAT] 公钥换代需确认：本地记录 ${lastRegistered?.take(16)}… 与服务器不一致")
+        }
+        return false
+    }
+
+    /** 上一次成功登记到服务端的公钥（Base64），没有则 null */
+    fun lastRegisteredKey(context: Context): String? =
+        context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+            .getString(KEY_LAST_REGISTERED, null)
+
+    /** 清掉登记记录（登出时调），下次登录当作首次登记 */
+    fun clearRegisteredKey(context: Context) {
+        context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
+            .edit().remove(KEY_LAST_REGISTERED).apply()
     }
 
     /** 取对端公钥（null = 用户不存在 / 未绑定 / 网络失败） */
