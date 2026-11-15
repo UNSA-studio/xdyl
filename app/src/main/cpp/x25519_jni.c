@@ -27,7 +27,9 @@ Java_www_xdyl_hygge_com_EchTls_x25519Generate(JNIEnv *env, jclass cls,
     unsigned char pub[32];
 
     if (RAND_bytes(priv, sizeof(priv)) != 1) return JNI_FALSE;
-    if (!X25519_public_from_private(pub, priv)) return JNI_FALSE;
+    // 注意：X25519_public_from_private 返回 void（老版 BoringSSL），
+    // 不能用返回值判断成败；X25519_keypair 内部会做 clamp 并生成配对的公钥。
+    X25519_keypair(pub, priv);
 
     (*env)->SetByteArrayRegion(env, jpriv, 0, 32, (const jbyte *) priv);
     (*env)->SetByteArrayRegion(env, jpub,  0, 32, (const jbyte *) pub);
