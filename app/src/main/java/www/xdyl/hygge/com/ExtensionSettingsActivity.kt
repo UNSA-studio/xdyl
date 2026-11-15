@@ -91,7 +91,12 @@ class ExtensionSettingsActivity : AppCompatActivity() {
         // 私聊服务器地址
         val etChatServer = findViewById<TextInputEditText>(R.id.etChatServer)
         val btnSaveChatServer = findViewById<MaterialButton>(R.id.btnSaveChatServer)
-        etChatServer.setText(prefs.getString("chat_server", ""))
+        // 显示实际生效的地址：手动填写值，或内置默认值（空字符串时）。
+        // hint 保持为空串，说明这里留空 = 使用内置默认。
+        val effectiveServer = prefs.getString("chat_server", "")?.trim()
+            ?.ifBlank { ChatDeviceRegistry.DEFAULT_CHAT_BASE } ?: ChatDeviceRegistry.DEFAULT_CHAT_BASE
+        etChatServer.setText(effectiveServer)
+        etChatServer.hint = "留空 = 使用内置默认（" + ChatDeviceRegistry.DEFAULT_CHAT_BASE + ")"
         btnSaveChatServer.setOnClickListener {
             val url = etChatServer.text.toString().trim().trimEnd('/')
             prefs.edit().putString("chat_server", url).apply()

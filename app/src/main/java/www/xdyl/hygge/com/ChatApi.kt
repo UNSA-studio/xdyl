@@ -108,7 +108,10 @@ object ChatApi {
 
     fun serverBase(context: Context): String {
         val prefs = context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE)
-        return prefs.getString(PREF_SERVER, "")?.trim()?.trimEnd('/') ?: ""
+        val manual = prefs.getString(PREF_SERVER, "")?.trim()?.trimEnd('/') ?: ""
+        // 用户手动填写的地址优先；为空时落到内置默认地址。
+        // 这样新装机不需要任何配置就能开始登记和使用私聊。
+        return manual.ifBlank { www.xdyl.hygge.com.ChatDeviceRegistry.DEFAULT_CHAT_BASE }
     }
 
     fun isConfigured(context: Context): Boolean = serverBase(context).isNotBlank()
@@ -243,6 +246,10 @@ object ChatApi {
      *   2. OkHttp（系统 TLS）——Cronet 不可用时兜底
      * 两者都不通就换下一个端点（443 → 8443 → 2053 → http）。
      */
+    /** 供 ChatDeviceRegistry 等内部组件使用；不对外暴露 */
+    fun callInternal(context: Context, method: String, path: String, body: JSONObject?): JSONObject? =
+        call(context, method, path, body)
+
     private fun call(context: Context, method: String, path: String, body: JSONObject?): JSONObject? {
         val base = serverBase(context)
         if (base.isBlank()) return null

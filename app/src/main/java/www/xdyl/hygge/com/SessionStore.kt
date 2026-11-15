@@ -41,6 +41,8 @@ class SessionStore(private val context: Context) {
         context.getSharedPreferences("xdyl_settings", Context.MODE_PRIVATE).edit()
             .remove("my_player_name").remove("my_user_id").apply()
         ChatPage.resetForAccountChange()
+        // 换号后设备码随之改变，清掉登记标记让下次登录重新登记新账号
+        ChatDeviceRegistry.reset(context)
     }
 
     fun logout() = synchronized(sessionLock) {

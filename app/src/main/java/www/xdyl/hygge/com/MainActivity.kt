@@ -1638,7 +1638,12 @@ class MainActivity : AppCompatActivity() {
                         (api.firstString(data, "coins", "balance", "coin", "money", "points") ?: "")
                     else ""
                     data?.optInt("id", 0)?.let { uid ->
-                        if (uid > 0) prefs.edit().putInt("my_user_id", uid).apply()
+                        if (uid > 0) {
+                            prefs.edit().putInt("my_user_id", uid).apply()
+                            // 拿到账号 ID → 设备码可派生 → 立即向私聊服务端登记。
+                            // 幂等：登记过就直接返回；失败不影响本页功能，下次再试。
+                            Thread { ChatDeviceRegistry.ensureRegistered(this) }.start()
+                        }
                     }
                     // 私聊身份用 username（/player/info 的键）
                     val uname = data?.optString("username", "").orEmpty()

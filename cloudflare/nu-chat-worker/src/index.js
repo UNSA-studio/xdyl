@@ -2171,6 +2171,45 @@ async function legacy(req, env, db, url, deps) {
     await atomic(db, statements);
     return { ok: true };
   }
+  // ==================== 设备登记（v1 入口） ====================
+  //
+  // 新装机首次使用私聊时调用。客户端带上主站 token，报告自己的
+  // platform（android/ios）和 device_code（由 user_id 派生，重装不变）。
+  // 服务端记录后，返回这个平台对应的节点入口。
+  //
+  // chat_base 目前就是本 Worker 自己的地址。之所以由服务端下发而不是
+  // 客户端写死，是为了将来可以把 android/ios 分别迁移到不同 Worker
+  // 而不需要发版 —— 服务端改一行配置即可。
+  if (path === "/chat/device/register" && req.method === "POST") {
+    query(url, []);
+    const b = object(await body(req), ["device_code", "platform"], ["app_version"]);
+    if (typeof b.device_code !== "string" || !/^[0-9a-f]{64}$/.test(b.device_code)) fail(400, "INVALID_REQUEST");
+    if (b.platform !== "android" && b.platform !== "ios") fail(400, "INVALID_REQUEST");
+    text(b.app_version, 32);
+
+    await atomic(db, [
+      statement(db, `INSERT INTO device_registry(subject,device_code,platform,app_version,first_seen,last_seen)
+        VALUES(?,?,?,?,?,?)
+        ON CONFLICT(subject,device_code) DO UPDATE SET
+          platform=excluded.platform, app_version=excluded.app_version, last_seen=excluded.last_seen`,
+        owner, b.device_code, b.platform, b.app_version || "", now, now)
+    ]);
+
+    // 平台 → 节点入口映射。改这里即可把某平台迁去别的域名。
+    const CHAT_NODES = {
+      android: { chat_base: "https://nu-pe-chat.cc.cd", entry_prefix: "/Android", protocol: "v1-legacy" },
+      ios:     { chat_base: "https://nu-pe-chat.cc.cd", entry_prefix: "/iOS",     protocol: "v2" }
+    };
+    const node = CHAT_NODES[b.platform];
+    return { ok: true, data: {
+      platform: b.platform,
+      chat_base: node.chat_base,
+      entry_prefix: node.entry_prefix,
+      protocol: node.protocol,
+      registered_at_ms: now
+    } };
+  }
+
   // ==================== 私钥备份（v1 入口） ====================
   //
   // Android 客户端走 legacy（v1）鉴权：Bearer 主站 token → mainIdentity → username。
@@ -2242,6 +2281,7 @@ var routes = [
   [/^\/chat\/pull$/, ["GET"]],
   [/^\/chat\/read$/, ["GET", "POST"]],
   // 私钥备份（v1 入口，Android 使用）。GET 会被客户端伪造成 POST+__alias。
+  [/^\/chat\/device\/register$/, ["POST"]],
   [/^\/chat\/key-backup$/, ["GET", "POST", "PUT", "DELETE"]],
   [/^\/chat\/key-backup\/lookup$/, ["POST"]],
   [/^\/chat\/v2\/capabilities$/, ["GET"]],
