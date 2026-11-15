@@ -446,9 +446,23 @@ object ChatApi {
             .edit().remove(KEY_LAST_REGISTERED).apply()
     }
 
-    /** 取对端公钥（null = 用户不存在 / 未绑定 / 网络失败） */
+    /**
+     * 取对端公钥（null = 用户不存在 / 未绑定 / 网络失败）
+     *
+     * 必须带上本机实际使用的算法。
+     *
+     * 以前的坑：服务端在收到 Bearer 时，会用"我"在 users 表里登记的公钥反推算法，
+     * 再要求对端返回同算法的公钥。users 表是覆盖写的历史值，一旦本机已经换成
+     * X25519 而那一行还是旧的 P-256，服务端就会把对方的 P-256 公钥发过来 ——
+     * 两端曲线不同，会话密钥算不出同一个值，对方永远解不开。
+     *
+     * 现在显式声明，服务端按这个算法挑对端密钥；对端没有该算法的密钥时，
+     * 服务端会明确报 LEGACY_ALGORITHM_MISMATCH，而不是静默给错曲线。
+     */
     fun fetchPeerKey(context: Context, userId: String): String? {
-        val r = get(context, "/chat/key/$userId") ?: return null
+        val alg = ChatCrypto.currentAlgorithm()
+        val path = if (alg.isBlank()) "/chat/key/$userId" else "/chat/key/$userId?algorithm=$alg"
+        val r = get(context, path) ?: return null
         val data = r.optJSONObject("data") ?: r
         return data.optString("publicKey", "").ifBlank { null }
     }

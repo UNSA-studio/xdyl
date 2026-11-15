@@ -259,6 +259,21 @@ object ChatCrypto {
         }
     }
 
+    /**
+     * 本机当前使用的曲线（上报给服务端，用于挑对端的同算法公钥）。
+     *
+     * 取值与服务端 v2_keys.algorithm 一致：X25519 / P256。
+     * 空串表示尚未初始化，调用方应退化为"不带 algorithm 参数"的老行为。
+     */
+    fun currentAlgorithm(): String {
+        val priv = rawPriv
+        if (priv != null) return "X25519"
+        val lp = localPrivate ?: return ""
+        // P-256 的私钥是 EC，X25519 的私钥算法名是 XDH/X25519
+        val name = lp.algorithm.uppercase()
+        return if (name.contains("X25519") || name.contains("XDH")) "X25519" else "P256"
+    }
+
     /** 本机公钥（Base64），上传给服务器供对端取用 */
     fun publicKeyBase64(): String {
         val spki = rawPub?.let { wrapX25519Spki(it) }
