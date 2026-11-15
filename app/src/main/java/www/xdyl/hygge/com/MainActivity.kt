@@ -1847,23 +1847,18 @@ class MainActivity : AppCompatActivity() {
                     try {
                         api.login(account, password)
 
-                        // 登录成功 → 把私钥用密码加密后备份到服务端。
-                        // 这样卸载重装后密钥能恢复，对端缓存的公钥继续有效。
-                        // 首次备份会生成恢复码，必须展示给用户抄下来。
-                        val hadCode = ChatKeyBackupService.savedCode(this@MainActivity) != null
-                        val newCode = withContext(Dispatchers.IO) {
-                            ChatKeyBackupService.backup(this@MainActivity, password)
-                        }
-
+                        // 登录成功**不再**自动备份私钥。
+                        //
+                        // 曾经这里的做法是"登录成功即用登录密码加密并把私钥上传服务端"，
+                        // 这样做的问题很明确：用户什么都没点，私钥就已经离开这台设备了。
+                        // 私钥出设备必须是用户明确知情并主动发起的行为，因此改为：
+                        // 「我的 → 账户设置 → 聊天密钥备份」里手动触发，且需要用户
+                        // 单独输入一次备份密码，不复用登录密码。
                         refreshProfileUI()
                         profileBinding.tvProfileStatus.text = "登录成功"
                         shopLoaded = false
                         dialog.dismiss()
                         Toast.makeText(this@MainActivity, "欢迎，" + session.username, Toast.LENGTH_SHORT).show()
-
-                        if (newCode != null && !hadCode) {
-                            showRecoveryCodeDialog(newCode)
-                        }
                     } catch (e: Exception) {
                         profileBinding.tvProfileStatus.text = "登录失败：" + e.message
                         Toast.makeText(this@MainActivity, "登录失败：" + e.message, Toast.LENGTH_LONG).show()
