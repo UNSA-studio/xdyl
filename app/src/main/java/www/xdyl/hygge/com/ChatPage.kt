@@ -671,11 +671,12 @@ object ChatPage {
             Thread {
                 try {
                 if (!ChatIdentity.isCurrent(activity, owner)) return@Thread
-                val key = runCatching { ensureSessionKey(activity, peerKey, myName) }.getOrNull()
+                val key = ensureSessionKey(activity, peerKey, myName)
                 if (key == null) {
                     ChatStore.updateMessageState(activity, peerKey, msgId, "failed", owner)
+                    val why = lastKeyError.ifBlank { "无法建立会话密钥" }
                     activity.runOnUiThread {
-                        AppDialogs.tip(activity, "发送失败", "对方不存在或服务器未返回公钥（404）")
+                        AppDialogs.tip(activity, "发送失败", why)
                         render()
                     }
                     return@Thread
@@ -896,18 +897,47 @@ object ChatPage {
 
     // ==================== 加密 / 收发 ====================
 
+    /**
+     * 协商会话密钥。
+     *
+     * 返回 null 有四种完全不同的原因，绝不能一律报成"对方不存在（404）"：
+     *   ① 未登录                  → 会话失效
+     *   ② 对端公钥查不到（真 404）→ 对方没登记过
+     *   ③ 对端公钥算法与本机不同   → 需要双方都升级到同一曲线
+     *   ④ 登记被拒（409）         → 密钥换代没通过自证
+     * 所以这里把原因写进 [lastKeyError]，由调用方原样展示给用户。
+     */
+    @Volatile
+    var lastKeyError: String = ""
+
     private fun ensureSessionKey(activity: AppCompatActivity, peerKey: String, myId: String): ByteArray? {
-        val owner = ChatIdentity.current(activity) ?: return null
+        lastKeyError = ""
+        val owner = ChatIdentity.current(activity)
+        if (owner == null) { lastKeyError = "登录状态已失效，请重新登录"; return null }
         ChatCrypto.init(activity)
         ChatCrypto.getCachedKey(peerKey, owner.scope)?.let { return it }
-        ChatApi.uploadKey(activity, myId, ChatCrypto.publicKeyBase64())
+        // 登记本机公钥（失败不致命，但记录原因）
+        val uploaded = ChatApi.uploadKey(activity, myId, ChatCrypto.publicKeyBase64())
+        if (!uploaded) {
+            lastKeyError = "本机公钥登记失败（服务端拒绝），请稍后重试"
+            LogManager.w("[CHAT] 本机公钥登记失败：$peerKey 之前的上传被拒")
+        }
         val peerPub = ChatApi.fetchPeerKey(activity, peerKey)
         if (peerPub == null) {
+            lastKeyError = "对端账号 $peerKey 未在私聊服务端登记，或账号名写错了（列表里显示的名字不是账号名）"
             LogManager.w("[CHAT] 对端 $peerKey 公钥不存在（404）")
             return null
         }
-        if (!ChatIdentity.isCurrent(activity, owner)) return null
-        val key = ChatCrypto.deriveSessionKey(peerPub)
+        if (!ChatIdentity.isCurrent(activity, owner)) { lastKeyError = "登录状态已切换"; return null }
+        val key = try {
+            ChatCrypto.deriveSessionKey(peerPub)
+        } catch (e: Exception) {
+            // 这里最常见的就是"对端还是 P-256、本机已经是 X25519"。
+            // 以前异常被 runCatching 吞掉，用户只看到误导性的 404 弹窗。
+            lastKeyError = e.message ?: "协商失败"
+            LogManager.w("[CHAT] 与 $peerKey 协商失败：${e.message}")
+            null
+        } ?: return null
         ChatCrypto.cacheKey(peerKey, key, owner.scope)
         LogManager.d("[CHAT] 会话密钥指纹 ${ChatCrypto.fingerprint(key)}（对端 $peerKey）")
         return key
