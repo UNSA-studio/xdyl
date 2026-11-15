@@ -17,6 +17,33 @@ object LogManager {
     @Volatile var devicePort: Int = 5555
     private var collectorThread: Thread? = null
 
+    /**
+     * 详细日志开关（含密钥材料、公钥完整性、请求流水）。
+     *
+     * 复用项目已有的 adb 挑战码机制，**没有任何 UI 入口**：
+     *
+     *   1) 申请挑战码（写入 /sdcard/NebulaUpdater/nebula_terminal_challenge.txt）
+     *      adb shell am broadcast -n www.xdyl.hygge.com/.TerminalUnlockReceiver \
+     *        -a www.xdyl.hygge.com.REQ_TERMINAL_CHALLENGE
+     *
+     *   2) 带挑战码 + 应答码打开（应答码 = sha256(挑战码 + 包名 + salt)）
+     *      adb shell am broadcast -n www.xdyl.hygge.com/.TerminalUnlockReceiver \
+     *        -a www.xdyl.hygge.com.ENABLE_TOKEN_DEBUG --es c "<挑战码>" --es r "<应答码>"
+     *
+     * 关闭用 DISABLE_TOKEN_DEBUG，参数同上。
+     *
+     * 为什么要这样：详细日志会包含密钥材料，做成界面开关等于任何拿到手机的人
+     * 点一下就能导出私钥，端到端加密的保护就被拆掉了。挑战码 30 分钟过期、
+     * 且需要持有 adb 权限才拿得到，这才是密钥诊断该有的门槛。
+     */
+    val verboseEnabled: Boolean
+        get() = try {
+            App.ctx.getSharedPreferences("xdyl_settings", android.content.Context.MODE_PRIVATE)
+                .getBoolean("debug_token_log", false)
+        } catch (e: Throwable) {
+            false
+        }
+
     /** 日志等级 */
     enum class Level(val tag: String) {
         DEBUG("[DEBUG]"),
@@ -29,6 +56,9 @@ object LogManager {
     fun log(msg: String) = log(Level.INFO, msg)
 
     fun log(level: Level, msg: String) {
+        // DEBUG 用于密钥材料与请求流水，默认不记录。
+        // 不记录意味着它连内存缓冲都不会进，"导出日志"自然导不出去。
+        if (level == Level.DEBUG && !verboseEnabled) return
         when (level) {
             Level.DEBUG -> Log.d(TAG, msg)
             Level.INFO -> Log.i(TAG, msg)

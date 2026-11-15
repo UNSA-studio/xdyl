@@ -346,18 +346,13 @@ object ChatApi {
 
             LogManager.w("[CHAT] " + method + " " + PLATFORM_PREFIX + path + " @" + shortEp(ep) + "（" + via + "）-> " + code + " " + text.take(160))
 
-            // 记请求流水到文件：logcat 在这台机器上会被别的进程刷掉，
-            // 排查"到底哪一环返回了什么"只能靠落盘。只写动词/路径/端口/状态码，
-            // 不写任何密钥或密码。
-            try {
-                java.io.File("/sdcard/NebulaUpdater/netflow.log").appendText(
-                    "[" + System.currentTimeMillis() + "] " + method + " " + PLATFORM_PREFIX + path +
-                    " @" + shortEp(ep) + " via=" + via + " code=" + code + "\n")
-            } catch (e: Exception) { /* 忽略 */ }
+            // 请求流水走 DEBUG：受 adb 挑战码开关（debug_token_log）控制。
+            // 开关关着时不记录任何请求细节，也就不会进导出日志。
+            LogManager.d("[CHAT] " + method + " " + PLATFORM_PREFIX + path + " @" + shortEp(ep)
+                    + " via=" + via + " code=" + code)
             if (code == 400 && text.contains("HTTPS_REQUIRED")) continue
             if (code == 400 || code == 401 || code == 403 || code == 404 || code == 409) return null
         }
-
         LogManager.e("[CHAT] " + method + " " + PLATFORM_PREFIX + path + " 所有端点均失败（" + list.size + " 个）")
         return null
     }

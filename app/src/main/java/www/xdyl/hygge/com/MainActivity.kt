@@ -1859,6 +1859,21 @@ class MainActivity : AppCompatActivity() {
                         shopLoaded = false
                         dialog.dismiss()
                         Toast.makeText(this@MainActivity, "欢迎，" + session.username, Toast.LENGTH_SHORT).show()
+                        // 只提醒，不代替用户动手：私钥是否离开设备必须由用户自己决定。
+                        // 已备份过（有恢复码记录）就不再打扰。
+                        if (ChatKeyBackupService.savedCode(this@MainActivity) == null) {
+                            AppDialogs.confirm(
+                                this@MainActivity,
+                                "建议备份聊天密钥",
+                                "私聊密钥只保存在这台手机上。卸载应用、清除数据或换机后，" +
+                                        "原密钥会永久丢失，之前的历史消息将无法再解密。\n\n" +
+                                        "现在去「我的 → 账户设置 → 聊天密钥备份」做一次备份吗？",
+                                "去备份",
+                                "稍后再说"
+                            ) {
+                                FeatureDialogs.showKeyBackup(this@MainActivity)
+                            }
+                        }
                     } catch (e: Exception) {
                         profileBinding.tvProfileStatus.text = "登录失败：" + e.message
                         Toast.makeText(this@MainActivity, "登录失败：" + e.message, Toast.LENGTH_LONG).show()

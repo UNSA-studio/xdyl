@@ -1012,15 +1012,17 @@ object ChatPage {
         // 诊断：把对端公钥的真实长度与前缀记下来。
         // 跨端解不开时，第一个要看的就是"服务端到底给了我什么曲线"。
         if (peerPub != null) {
-            // 只记曲线特征，不落地任何密钥原文。
-            // 公钥虽然是公开信息，但没有理由整串写进磁盘——
-            // 定位"两端曲线不一致"只需要长度和 SPKI 前缀这几个字节。
+            // 公钥完整性走 DEBUG 级别，受 adb 开关 debug.xdyl.chat 控制。
+            // 开关关着时这行连内存缓冲都不会进，"导出日志"也导不出任何密钥材料；
+            // 开关开着时保留完整原文，下次再遇到跨端曲线问题时直接就能比对。
             val curve = try {
                 val raw = android.util.Base64.decode(peerPub, android.util.Base64.NO_WRAP)
                 val head = raw.take(12).joinToString("") { String.format("%02x", it) }
                 "len=" + raw.size + " head=" + head
             } catch (e: Exception) { "base64 解码失败" }
             LogManager.d("[CHAT] 对端 " + peerKey + " 公钥曲线 " + curve)
+            LogManager.d("[CHAT] 对端 " + peerKey + " 公钥(SPKI) " + peerPub)
+            LogManager.d("[CHAT] 本机公钥(SPKI) " + runCatching { ChatCrypto.publicKeyBase64() }.getOrNull())
         }
         if (peerPub == null) {
             lastKeyError = "对端账号 $peerKey 未在私聊服务端登记，或账号名写错了（列表里显示的名字不是账号名）"

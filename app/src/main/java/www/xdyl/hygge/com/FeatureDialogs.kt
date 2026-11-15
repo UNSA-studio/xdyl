@@ -1378,7 +1378,7 @@ object FeatureDialogs {
      * 已登录的用户如果不退出重登就永远触发不到；QQ 登录更是没有密码。
      * 所以这里提供一个独立入口，用户自己输入一次密码即可。
      */
-    private fun showKeyBackup(activity: AppCompatActivity) {
+    fun showKeyBackup(activity: AppCompatActivity) {
         AppDialogs.input(
             activity,
             title = "聊天密钥备份",
