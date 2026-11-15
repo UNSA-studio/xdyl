@@ -923,6 +923,16 @@ object ChatPage {
             LogManager.w("[CHAT] 本机公钥登记失败：$peerKey 之前的上传被拒")
         }
         val peerPub = ChatApi.fetchPeerKey(activity, peerKey)
+        // 诊断：把对端公钥的真实长度与前缀记下来。
+        // 跨端解不开时，第一个要看的就是"服务端到底给了我什么曲线"。
+        if (peerPub != null) {
+            val diag = try {
+                val raw = android.util.Base64.decode(peerPub, android.util.Base64.NO_WRAP)
+                val hex = raw.take(12).joinToString("") { String.format("%02x", it) }
+                "len=${raw.size} head=$hex"
+            } catch (e: Exception) { "base64 解码失败" }
+            LogManager.d("[CHAT] 对端 $peerKey 公钥 $diag")
+        }
         if (peerPub == null) {
             lastKeyError = "对端账号 $peerKey 未在私聊服务端登记，或账号名写错了（列表里显示的名字不是账号名）"
             LogManager.w("[CHAT] 对端 $peerKey 公钥不存在（404）")
