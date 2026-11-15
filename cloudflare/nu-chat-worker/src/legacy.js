@@ -11,19 +11,30 @@ export async function legacy(req, env, db, url, deps) {
       limits: { page: 500 }, v2_path: '/chat/v2/capabilities' };
   }
   if (path.startsWith('/chat/key/')) {
-    query(url, []); await noBody(req); let user;
+    query(url, ['algorithm']); await noBody(req); let user;
     try { user = decodeURIComponent(path.slice(10)); } catch { fail(400, 'INVALID_REQUEST'); }
     username(user);
-    // Modern Android sends Bearer even on key lookup. Select the matching curve
-    // from the V2 primary device; never return P256 to an X25519-only client.
+    // 算法必须由"请求方当前实际使用的曲线"决定，不能靠 users 表的旧值去猜。
+    //
+    // 原来的写法是拿"我"在 users 表里的公钥反推算法，再要求对端返回同算法的公钥。
+    // users 表是历次登记覆盖写的结果，一旦本机换过曲线而这行还没跟上，
+    // 就会把 P-256 分发给一个已经在用 X25519 的客户端 —— 两端曲线不同，
+    // 会话密钥必然算不出同一个值，对方的消息也就永远解不开。
+    //
+    // 改成：优先采用客户端显式声明的 ?algorithm=；没声明才回退到旧推断。
+    // 声明与实际不符时 legacyPeer 会以 LEGACY_ALGORITHM_MISMATCH 失败，
+    // 不会静默给错曲线。
     let algorithm;
-    if(req.headers.has('Authorization')){
-      const identity=await mainIdentity(req,deps.fetch);
-      const own=await q(db,'SELECT public_key FROM users WHERE username=?',identity.username).first();
-      if(own)algorithm=await legacyAlgorithm(own.public_key);
+    const declared = (url.searchParams.get('algorithm') || '').toUpperCase();
+    if (declared === 'X25519' || declared === 'P256') {
+      algorithm = declared;
+    } else if (req.headers.has('Authorization')) {
+      const identity = await mainIdentity(req, deps.fetch);
+      const own = await q(db, 'SELECT public_key FROM users WHERE username=?', identity.username).first();
+      if (own) algorithm = await legacyAlgorithm(own.public_key);
     }
-    const peer=await legacyPeer(db,user,algorithm);
-    return { ok: true, data: { userId: user, publicKey: peer.public_key } };
+    const peer = await legacyPeer(db, user, algorithm);
+    return { ok: true, data: { userId: user, publicKey: peer.public_key, algorithm: peer.algorithm } };
   }
   const identity = await mainIdentity(req, deps.fetch);const me=identity.username;const owner=subject(identity);
   await atomic(db,[q(db,`INSERT INTO v2_accounts(subject,username) VALUES(?,?)
