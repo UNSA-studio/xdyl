@@ -590,6 +590,8 @@ object ChatPage {
                 list.addView(bubble(activity, m, nickname))
             }
             scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+            // 让「点击失败消息重试」能在任意线程触发重绘
+            activeRender = { render() }
         }
 
 
@@ -738,6 +740,7 @@ object ChatPage {
         }
         dialog.setOnDismissListener {
             pollHandler.removeCallbacks(poller)
+            activeRender = null
             if (activeDialog === dialog) activeDialog = null
         }
         dialog.setOnShowListener {
@@ -851,9 +854,92 @@ object ChatPage {
                 marginEnd = (8 * dens).toInt()
             })
         }
+        // 发送失败的消息可以点一下重试。
+        //
+        // 以前失败只能干看着，用户唯一的出路是重新打一遍字再发送；
+        // 但那条消息本来就完整存在本地，重算一次密文即可。
+        if (out && m.state == "failed") {
+            box.isClickable = true
+            box.isFocusable = true
+            box.foreground = circleRipple(activity, 0x33FFFFFF)
+            box.setOnClickListener { retryMessage(activity, m) }
+        }
         row.addView(box)
         return row
     }
+
+    /**
+     * 重试一条发送失败的消息。
+     *
+     * 服务端按 (from, msgId) 幂等，所以沿用同一个 msgId 重发不会产生重复消息；
+     * 这里刻意不换新 msgId —— 换了对端会收到两条一模一样的文本。
+     */
+    private fun retryMessage(activity: AppCompatActivity, m: ChatStore.Message) {
+        val owner = ChatIdentity.current(activity) ?: return
+        val peerKey = m.to
+        val myName = meName(activity)
+        if (myName.isBlank()) {
+            AppDialogs.tip(activity, "未获取到玩家名", "请先在「我的」页刷新资料后重试")
+            return
+        }
+        // 先回到 pending，界面立刻能看到转圈
+        ChatStore.updateMessageState(activity, peerKey, m.id, "pending", owner)
+        renderChatList()
+        Thread {
+            try {
+                if (!ChatIdentity.isCurrent(activity, owner)) return@Thread
+                val key = ensureSessionKey(activity, peerKey, myName)
+                if (key == null) {
+                    ChatStore.updateMessageState(activity, peerKey, m.id, "failed", owner)
+                    val why = lastKeyError.ifBlank { "无法建立会话密钥" }
+                    LogManager.w("[CHAT] 重试失败（协商）：" + why)
+                    activity.runOnUiThread {
+                        if (ChatIdentity.isCurrent(activity, owner)) {
+                            AppDialogs.tip(activity, "重试失败", why)
+                            renderChatList()
+                        }
+                    }
+                    return@Thread
+                }
+                val cipher = ChatCrypto.encrypt(key, m.text)
+                val (ok, err) = ChatApi.send(activity, myName, peerKey, m.id, cipher, m.time)
+                ChatStore.updateMessageState(activity, peerKey, m.id, if (ok) "sent" else "failed", owner)
+                if (!ok) {
+                    val tip = when {
+                        err == "INVALID_REQUEST" -> "不能给自己发消息"
+                        err == "USER_NOT_FOUND" || err == "recipient not found" ->
+                            "对方还没有上传公钥：让对方装新版并打开一次私聊页"
+                        err == "NETWORK" -> "网络不通（ECH 与备用通道都失败了）"
+                        else -> "发送失败：" + err
+                    }
+                    LogManager.w("[CHAT] 重试失败（发送）：" + err)
+                    activity.runOnUiThread {
+                        if (ChatIdentity.isCurrent(activity, owner)) {
+                            AppDialogs.tip(activity, "重试失败", tip)
+                            renderChatList()
+                        }
+                    }
+                } else {
+                    activity.runOnUiThread { renderChatList() }
+                }
+            } catch (e: Exception) {
+                ChatStore.updateMessageState(activity, peerKey, m.id, "failed", owner)
+                LogManager.e("[CHAT] 重试异常：" + e.message)
+                activity.runOnUiThread { renderChatList() }
+            }
+        }.start()
+    }
+
+    /** 主线程重建当前会话列表（重试用；不动游标、不重启轮询） */
+    private fun renderChatList() {
+        val cb = activeRender ?: return
+        android.os.Handler(android.os.Looper.getMainLooper()).post { cb() }
+    }
+
+    /** 当前打开会话的重绘回调；会话关闭时置空 */
+    @Volatile
+    private var activeRender: (() -> Unit)? = null
+
 
     // ==================== 工具 ====================
 
