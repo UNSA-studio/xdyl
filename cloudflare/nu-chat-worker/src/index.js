@@ -2171,6 +2171,64 @@ async function legacy(req, env, db, url, deps) {
     await atomic(db, statements);
     return { ok: true };
   }
+  // ==================== 私钥备份（v1 入口） ====================
+  //
+  // Android 客户端走 legacy（v1）鉴权：Bearer 主站 token → mainIdentity → username。
+  // 数据仍写进 v2_key_backups，用 subject 做键，所以与 v2 侧完全互通 ——
+  // 一个人用 Android 备份、用 iOS 恢复也能读到同一行。
+  if (path === "/chat/key-backup" && req.method === "PUT") {
+    query(url, []);
+    const b = object(await body(req), ["pwd_blob", "code_blob", "code_hash", "kdf"]);
+    text(b.pwd_blob, 8000);
+    text(b.code_blob, 8000);
+    text(b.kdf, 64);
+    if (typeof b.code_hash !== "string" || !/^[0-9a-f]{64}$/.test(b.code_hash)) fail(400, "INVALID_REQUEST");
+
+    await atomic(db, [
+      statement(db, `INSERT INTO v2_key_backups(subject,pwd_blob,code_blob,code_hash,kdf,updated_at)
+        VALUES(?,?,?,?,?,?)
+        ON CONFLICT(subject) DO UPDATE SET pwd_blob=excluded.pwd_blob,code_blob=excluded.code_blob,
+        code_hash=excluded.code_hash,kdf=excluded.kdf,updated_at=excluded.updated_at`,
+        owner, b.pwd_blob, b.code_blob, b.code_hash, b.kdf, now)
+    ]);
+    return { ok: true, data: { updated_at_ms: now } };
+  }
+
+  if (path === "/chat/key-backup" && req.method === "GET") {
+    query(url, []);
+    await noBody(req);
+    const row = await statement(db, "SELECT pwd_blob,code_blob,kdf,updated_at FROM v2_key_backups WHERE subject=?", owner).first();
+    if (!row) fail(404, "BACKUP_NOT_FOUND");
+    return { ok: true, data: {
+      pwd_blob: row.pwd_blob,
+      code_blob: row.code_blob,
+      kdf: row.kdf,
+      updated_at_ms: row.updated_at
+    } };
+  }
+
+  if (path === "/chat/key-backup/lookup" && req.method === "POST") {
+    query(url, []);
+    const b = object(await body(req), ["code_hash"]);
+    if (typeof b.code_hash !== "string" || !/^[0-9a-f]{64}$/.test(b.code_hash)) fail(400, "INVALID_REQUEST");
+    const row = await statement(db, `SELECT pwd_blob,code_blob,kdf,updated_at FROM v2_key_backups
+      WHERE subject=? AND code_hash=?`, owner, b.code_hash).first();
+    if (!row) fail(404, "CODE_MISMATCH");
+    return { ok: true, data: {
+      pwd_blob: row.pwd_blob,
+      code_blob: row.code_blob,
+      kdf: row.kdf,
+      updated_at_ms: row.updated_at
+    } };
+  }
+
+  if (path === "/chat/key-backup" && req.method === "DELETE") {
+    query(url, []);
+    await noBody(req);
+    await statement(db, "DELETE FROM v2_key_backups WHERE subject=?", owner).run();
+    return { ok: true };
+  }
+
   fail(404, "NOT_FOUND");
 }
 __name(legacy, "legacy");
@@ -2183,6 +2241,9 @@ var routes = [
   [/^\/chat\/send$/, ["POST"]],
   [/^\/chat\/pull$/, ["GET"]],
   [/^\/chat\/read$/, ["GET", "POST"]],
+  // 私钥备份（v1 入口，Android 使用）。GET 会被客户端伪造成 POST+__alias。
+  [/^\/chat\/key-backup$/, ["GET", "POST", "PUT", "DELETE"]],
+  [/^\/chat\/key-backup\/lookup$/, ["POST"]],
   [/^\/chat\/v2\/capabilities$/, ["GET"]],
   [/^\/chat\/v2\/session$/, ["POST", "DELETE"]],
   [/^\/chat\/v2\/devices$/, ["GET"]],

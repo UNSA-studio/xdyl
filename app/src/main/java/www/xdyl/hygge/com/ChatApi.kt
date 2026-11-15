@@ -436,7 +436,8 @@ object ChatApi {
 
     // ==================== 私钥备份 ====================
     //
-    // 服务端 v2 路由：PUT/GET /chat/v2/key-backup、POST /chat/v2/key-backup/lookup
+    // 服务端 v1(legacy) 路由，Android 走 Bearer 主站 token 鉴权；
+    // 数据存进同一张 v2_key_backups 表，按 subject 索引，与 iOS(v2) 完全互通。
     // 字段名用下划线风格（与服务端一致），避免两边命名对不上。
 
     /** 服务端返回的备份包 */
@@ -453,7 +454,7 @@ object ChatApi {
      */
     fun uploadKeyBackup(context: Context, pwdBlob: String, codeBlob: String,
                         codeHash: String, kdf: String): Boolean {
-        val r = call(context, "PUT", "/chat/v2/key-backup", JSONObject()
+        val r = call(context, "PUT", "/chat/key-backup", JSONObject()
             .put("pwd_blob", pwdBlob)
             .put("code_blob", codeBlob)
             .put("code_hash", codeHash)
@@ -463,7 +464,7 @@ object ChatApi {
 
     /** 取回自己的备份；不存在返回 null */
     fun fetchKeyBackup(context: Context): KeyBackup? {
-        val r = get(context, "/chat/v2/key-backup") ?: return null
+        val r = get(context, "/chat/key-backup") ?: return null
         val d = r.optJSONObject("data") ?: r
         val pwd = d.optString("pwd_blob", "")
         val code = d.optString("code_blob", "")
@@ -473,7 +474,7 @@ object ChatApi {
 
     /** 凭恢复码哈希校验并取回备份 */
     fun lookupKeyBackup(context: Context, codeHash: String): KeyBackup? {
-        val r = post(context, "/chat/v2/key-backup/lookup", JSONObject()
+        val r = post(context, "/chat/key-backup/lookup", JSONObject()
             .put("code_hash", codeHash)) ?: return null
         val d = r.optJSONObject("data") ?: r
         val pwd = d.optString("pwd_blob", "")
