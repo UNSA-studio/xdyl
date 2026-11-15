@@ -1642,7 +1642,7 @@ class MainActivity : AppCompatActivity() {
                             prefs.edit().putInt("my_user_id", uid).apply()
                             // 拿到账号 ID → 设备码可派生 → 立即向私聊服务端登记。
                             // 幂等：登记过就直接返回；失败不影响本页功能，下次再试。
-                            Thread { ChatDeviceRegistry.ensureRegistered(this) }.start()
+                            Thread { ChatDeviceRegistry.ensureRegistered(this@MainActivity) }.start()
                         }
                     }
                     // 私聊身份用 username（/player/info 的键）
