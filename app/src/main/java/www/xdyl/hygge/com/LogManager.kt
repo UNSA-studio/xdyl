@@ -65,9 +65,19 @@ object LogManager {
             Level.WARN -> Log.w(TAG, msg)
             Level.ERROR -> Log.e(TAG, msg)
         }
-        val line = "[${System.currentTimeMillis()}] ${level.tag} $msg"
+        // 时间前缀同时给两种形式：
+        //   前者给人看（本地时区，毫秒精度），后者给脚本/排序用（epoch 毫秒）。
+        // 只留 epoch 的话排查时要拿计算器换算，只留可读时间又不好做精确差值。
+        val now = System.currentTimeMillis()
+        val line = "[${stamp(now)} | $now] ${level.tag} $msg"
         logBuilder.appendLine(line)
     }
+
+    /** 本地时区的可读时间：yyyy-MM-dd HH:mm:ss.SSS */
+    private val stampFormat = java.text.SimpleDateFormat(
+        "yyyy-MM-dd HH:mm:ss.SSS", java.util.Locale.US
+    )
+    private fun stamp(ms: Long): String = synchronized(stampFormat) { stampFormat.format(java.util.Date(ms)) }
 
     fun d(msg: String) = log(Level.DEBUG, msg)
     fun i(msg: String) = log(Level.INFO, msg)
