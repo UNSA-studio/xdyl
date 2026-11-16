@@ -1717,10 +1717,13 @@ class MainActivity : AppCompatActivity() {
         if (!prefs.getBoolean("debug_token_log", false)) return
         val t = session.accessToken
         val r = session.refreshToken
-        if (t.isNotBlank()) LogManager.log("[Debug] USER-TOKEN: $t")
-        if (r.isNotBlank()) LogManager.log("[Debug] USER-REFRESH: $r")
-        LogManager.log("[Debug] ACCESS-INFO: ${jwtInfo(t)}")
-        LogManager.log("[Debug] REFRESH-INFO: ${jwtInfo(r)}")
+        // 令牌是要害凭据，必须用 DEBUG 级别：
+        // LogManager 会在 debug_token_log 关闭时直接丢弃 DEBUG，
+        // 等于多一道保险 —— 即使哪天这个函数被别处调用，也不会漏进导出日志。
+        if (t.isNotBlank()) LogManager.d("[Debug] USER-TOKEN: $t")
+        if (r.isNotBlank()) LogManager.d("[Debug] USER-REFRESH: $r")
+        LogManager.d("[Debug] ACCESS-INFO: ${jwtInfo(t)}")
+        LogManager.d("[Debug] REFRESH-INFO: ${jwtInfo(r)}")
     }
 
     /** 解码 JWT payload（不校验签名）：输出 type / iat / exp / 有效期 / 剩余时间 */
